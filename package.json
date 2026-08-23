@@ -1,0 +1,25 @@
+{
+  "name": "meeting-intelligence",
+  "private": true,
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w web\"",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "lint": "oxlint -c .oxlintrc.json",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
