@@ -1,5 +1,140 @@
 # Meeting Intelligence
 
-Upload a speaker-labeled meeting transcript, then ask questions about that meeting’s discussion, decisions, and action items.
+Upload a speaker-labeled meeting transcript, then ask questions about **that** meeting’s discussion, decisions, and action items.
 
-Requires [Node.js](https://nodejs.org/) **24**. Setup and run instructions land later; the product spec is [docs/superpowers/plans/2026-08-21-meeting-intelligence.md](docs/superpowers/plans/2026-08-21-meeting-intelligence.md).
+Chat never mixes meetings. Leaving a meeting (or clicking **Stop**) aborts an in-flight answer.
+
+## Contents
+
+- [Ingestion and retrieval](docs/flows/README.md)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Run](#run)
+- [First transcript](#first-transcript)
+- [How a question is answered](#how-a-question-is-answered)
+- [Transcript format](#transcript-format)
+- [Data](#data)
+- [Checks](#checks)
+
+Ingestion and retrieval diagrams (and the files that implement them) are in [docs/flows](docs/flows/README.md).
+
+## Requirements
+
+- [Node.js](https://nodejs.org/) **24** or later (built-in `node:sqlite`, `--watch`, and `--env-file-if-exists`). Pin with [`.nvmrc`](.nvmrc).
+- An [OpenAI API key](https://platform.openai.com/api-keys) and network access to the chat and embedding API.
+
+Chat and embeddings use one official OpenAI SDK client. `OPENAI_BASE_URL` defaults to `https://api.openai.com/v1`. Point it at a remote OpenAI-compatible HTTP API if you use a proxy; document and query strings are sent unchanged.
+
+## Installation
+
+From the repo root:
+
+```bash
+npm install
+cp .env.example .env
+```
+
+That installs the `server` and `web` workspaces. `.env` is gitignored.
+
+Set `OPENAI_API_KEY` in `.env`. It is required and must be non-empty. The other variables already match the defaults in [`.env.example`](.env.example) and in `loadConfig`:
+
+| Variable                      | Default                     |
+| ----------------------------- | --------------------------- |
+| `OPENAI_BASE_URL`             | `https://api.openai.com/v1` |
+| `CHAT_MODEL`                  | `gpt-5-mini`                |
+| `EMBEDDING_MODEL`             | `text-embedding-3-small`    |
+| `EMBEDDING_DIMENSIONS`        | `1536`                      |
+| `DATABASE_PATH`               | `data/app.db`               |
+| `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                     |
+| `RETRIEVE_K`                  | `8`                         |
+| `FTS_K`                       | `8`                         |
+| `CHAT_HISTORY_TURNS`          | `8`                         |
+| `PORT`                        | `3000`                      |
+
+## Run
+
+The server loads `../.env` from the `server/` workspace (`--env-file-if-exists`). Config is read at process start, so restart `npm run dev` after changing `.env`.
+
+```bash
+npm run dev
+```
+
+That starts both processes:
+
+| Process     | URL                                            | Role                                               |
+| ----------- | ---------------------------------------------- | -------------------------------------------------- |
+| Vite UI     | [http://localhost:5173](http://localhost:5173) | React app. Browser origin. `/api` is proxied here. |
+| Fastify API | `http://127.0.0.1:3000`                        | Ingest, SQLite, chat. Bound to loopback.           |
+
+Open **http://localhost:5173**. The Vite proxy forwards `/api` to port **3000** (that target is hardcoded in `web/vite.config.ts`, so keep `PORT=3000` unless you change the proxy too).
+
+```bash
+curl -s http://localhost:5173/api/health
+```
+
+Expect `{ "ok": true, "chatModel": "gpt-5-mini", "embeddingModel": "text-embedding-3-small" }` when using the defaults.
+
+Ingest **always** embeds. Chat **re-embeds** a meeting only when its stored `embedding_model` / `embedding_dimensions` do not match `.env` **and** the question uses retrieval. Full-transcript chats skip that reindex (the stored vectors are unused). There is one vector per chunk; a reindex replaces it.
+
+## First transcript
+
+1. On the empty state (**Upload a transcript to start**), drop or click-select [`fixtures/transcripts/planning.txt`](fixtures/transcripts/planning.txt).
+2. The app ingests the file and opens that meeting. You get the transcript plus extracted **decisions** and **action items**.
+3. Ask **What are the action items?**
+
+Expect those four owned follow-ups — Omar’s storage RFC by Monday, Priya’s workspace mockups by Wednesday, Sam’s soak test by Thursday, and Maya’s legal retention review next Tuesday. The owners and due days are stated in the transcript; the model may rephrase the wording.
+
+Eleven sample transcripts live under [`fixtures/`](fixtures/README.md), written to read like real transcription-service exports — turns wrapped mid-sentence, filler words, `[inaudible]` markers, diarisation failures — and sized to reach every limit in the pipeline, including ones large enough to force retrieval. That page lists each file’s size, format, and a question with the answer to expect.
+
+## How a question is answered
+
+Uploading parses turns, packs them into chunks (~1800 characters), stores them in SQLite, embeds the chunks, then asks the chat model for decisions and action items.
+
+Asking a question is always `WHERE meeting_id = ?`:
+
+- If the transcript is **under** `FULL_CONTEXT_CHAR_THRESHOLD` (24000 characters in `.env.example`), the model sees the **full transcript**. `planning.txt` takes this path.
+- If it is **at or above** the threshold, the API retrieves a handful of chunks (vector similarity + SQLite FTS, fused) and prompts with those excerpts plus the extracted facts.
+
+On a retrieval answer, citation chips scroll the transcript to the cited turns. Full-transcript answers show a **Full transcript** badge instead — the whole file was in the prompt.
+
+## Transcript format
+
+UTF-8 `.txt` only, up to **5 MiB**. The filename must end in `.txt`. Canonical line:
+
+```text
+[HH:MM:SS] Speaker: utterance
+```
+
+Also accepted:
+
+```text
+[MM:SS] Speaker: utterance
+Speaker (HH:MM:SS): utterance
+Speaker (MM:SS): utterance
+HH:MM:SS Speaker: utterance
+```
+
+Bare clocks (no brackets or parentheses) must be three parts (`H:MM:SS` / `HH:MM:SS`). `01:02 Ada: hello` is not a turn header.
+
+A non-header line **after** the first turn continues that turn. Lines before the first header, and blank lines, are ignored. A file that yields no turns is rejected (`400`).
+
+BOM is stripped. Continuation lines matter more than they look: transcription services wrap a single turn across several lines, breaking on pauses rather than on grammar, so most turns in a real export are multi-line. A phrase can therefore straddle a newline **inside** one turn — collapse whitespace before matching text against turn content.
+
+## Data
+
+| Path                                    | What                                                                                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. With `npm run dev`, the API cwd is `server/`, so the file is `server/data/app.db`. The API creates the directory on first start. |
+| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                                |
+
+Do not commit `data/`, `*.db`, or `.env`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages all live in that SQLite file.
+
+## Checks
+
+```bash
+npm test          # Node test runner in each workspace
+npm run typecheck
+npm run lint
+```
+
+Ingestion and retrieval diagrams (with the implementing files) are in [docs/flows](docs/flows/README.md).
