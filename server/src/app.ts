@@ -7,6 +7,7 @@ import { openDb } from './db/client.ts';
 import { migrate } from './db/migrate.ts';
 import { createLlm } from './llm/client.ts';
 import type { Llm } from './llm/types.ts';
+import { chatRoutes } from './routes/chat.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meetingsRoutes } from './routes/meetings.ts';
 
@@ -45,6 +46,7 @@ export async function buildApp(options?: {
     });
     await scope.register(meetingsRoutes({ db, llm, config }));
   });
+  await app.register(chatRoutes({ db, llm, config }));
 
   return app;
 }
