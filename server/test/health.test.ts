@@ -73,6 +73,22 @@ test('buildApp enables CORS for the Vite origin', async () => {
   await app.close();
 });
 
+test('GET /api/health returns 200 and echoes models from env', async () => {
+  process.env.CHAT_MODEL = 'gpt-4.1-mini';
+  process.env.EMBEDDING_MODEL = 'text-embedding-3-large';
+  const app = await buildApp({ logger: false });
+  const res = await app.inject({ method: 'GET', url: '/api/health' });
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.deepEqual(body, {
+    ok: true,
+    chatModel: 'gpt-4.1-mini',
+    embeddingModel: 'text-embedding-3-large',
+  });
+  assert.equal('llmMode' in body, false);
+  await app.close();
+});
+
 test('loadConfig throws when OPENAI_API_KEY is missing', () => {
   delete process.env.OPENAI_API_KEY;
   assert.throws(() => loadConfig(), /OPENAI_API_KEY/);
