@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { chatSampling } from '../src/llm/chat.ts';
 import { createLlm } from '../src/llm/client.ts';
 import { EMBED_BATCH_SIZE, EmbeddingDimensionError } from '../src/llm/embed.ts';
 import type { LlmConfig } from '../src/llm/types.ts';
@@ -35,6 +36,58 @@ function embeddingPayload(vectors: number[][]) {
     model: 'test',
     usage: { prompt_tokens: 1, total_tokens: 1 },
   };
+}
+
+function chatCompletionPayload(content: string) {
+  return {
+    id: 'chatcmpl-1',
+    object: 'chat.completion',
+    created: 0,
+    model: 'gpt-5-mini',
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content },
+        finish_reason: 'stop',
+      },
+    ],
+  };
+}
+
+function sseChatResponse(deltas: string[]): Response {
+  const events = deltas.map((content) => {
+    const chunk = {
+      id: 'chatcmpl-1',
+      object: 'chat.completion.chunk',
+      created: 0,
+      model: 'gpt-5-mini',
+      choices: [{ index: 0, delta: { content }, finish_reason: null }],
+    };
+    return `data: ${JSON.stringify(chunk)}\n\n`;
+  });
+  return new Response(`${events.join('')}data: [DONE]\n\n`, {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
+function streamGated400(): Response {
+  return jsonResponse(400, {
+    error: {
+      message: 'Your organization must be verified to stream this model.',
+      type: 'invalid_request_error',
+      param: 'stream',
+      code: 'unsupported_value',
+    },
+  });
+}
+
+async function collect(stream: AsyncIterable<string>): Promise<string> {
+  let out = '';
+  for await (const chunk of stream) {
+    out += chunk;
+  }
+  return out;
 }
 
 async function readRequest(input: RequestInfo | URL, init?: RequestInit): Promise<RecordedRequest> {
@@ -169,4 +222,177 @@ test('L2-normalize leaves a zero vector unchanged', async () => {
 
   const [vector] = await llm.embedDocuments(['x']);
   assert.deepEqual(vector, [0, 0, 0, 0]);
+});
+
+test('chatSampling omits temperature for GPT-5 and o-series models', () => {
+  assert.deepEqual(chatSampling('gpt-5-mini', 0.2), {});
+  assert.deepEqual(chatSampling('GPT-5', 0), {});
+  assert.deepEqual(chatSampling('o1-preview', 0.2), {});
+  assert.deepEqual(chatSampling('o4-mini', 0), {});
+  assert.deepEqual(chatSampling('o3-mini', 0), {});
+  assert.deepEqual(chatSampling('gpt-4.1', 0.2), { temperature: 0.2 });
+});
+
+test("streamChat yields concatenated deltas 'ab' from two chunks", async () => {
+  const { fetch, recorded } = recordingFetch(() => sseChatResponse(['a', 'b']));
+  const llm = createLlm(llmConfig(), { fetch });
+
+  const text = await collect(llm.streamChat([{ role: 'user', content: 'hi' }]));
+
+  assert.equal(text, 'ab');
+  assert.equal(recorded.length, 1);
+  assert.match(recorded[0].url, /^http:\/\/openai\.test\/v1\//);
+  assert.equal(recorded[0].body.stream, true);
+  assert.equal(recorded[0].body.temperature, undefined);
+});
+
+test('streamChat sends temperature 0.2 for non-reasoning chat models', async () => {
+  const { fetch, recorded } = recordingFetch(() => sseChatResponse(['ok']));
+  const llm = createLlm(llmConfig({ chatModel: 'gpt-4.1' }), { fetch });
+
+  await collect(llm.streamChat([{ role: 'user', content: 'hi' }]));
+
+  assert.equal(recorded[0].body.temperature, 0.2);
+});
+
+test('streamChat falls back to a non-streaming create after a stream 400', async () => {
+  const { fetch, recorded } = recordingFetch((_url, body) => {
+    if (body.stream) {
+      return streamGated400();
+    }
+    return jsonResponse(200, chatCompletionPayload('ok'));
+  });
+  const llm = createLlm(llmConfig(), { fetch });
+
+  const text = await collect(llm.streamChat([{ role: 'user', content: 'hi' }]));
+
+  assert.equal(text, 'ok');
+  assert.equal(recorded.length, 2);
+  assert.equal(recorded[0].body.stream, true);
+  assert.equal(recorded[1].body.stream, undefined);
+  assert.equal(recorded[1].body.temperature, undefined);
+});
+
+test('streamChat rejects when the abort signal is already aborted', async () => {
+  const { fetch } = recordingFetch(() => sseChatResponse(['nope']));
+  const llm = createLlm(llmConfig(), { fetch });
+  const controller = new AbortController();
+  controller.abort();
+
+  await assert.rejects(() =>
+    collect(llm.streamChat([{ role: 'user', content: 'hi' }], controller.signal)),
+  );
+});
+
+test('completeJson returns content when json_object is supported', async () => {
+  const { fetch, recorded } = recordingFetch(() => sseChatResponse(['{"ok":', 'true}']));
+  const llm = createLlm(llmConfig(), { fetch });
+
+  const result = await llm.completeJson([
+    { role: 'user', content: 'Return a JSON object with ok true' },
+  ]);
+
+  assert.equal(result, '{"ok":true}');
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].body.stream, true);
+  assert.deepEqual(recorded[0].body.response_format, { type: 'json_object' });
+  assert.equal(recorded[0].body.temperature, undefined);
+  assert.equal(recorded[0].body.max_tokens, undefined);
+});
+
+test('completeJson sends temperature 0 for non-reasoning chat models', async () => {
+  const { fetch, recorded } = recordingFetch(() => sseChatResponse(['{"ok":true}']));
+  const llm = createLlm(llmConfig({ chatModel: 'gpt-4.1' }), { fetch });
+
+  await llm.completeJson([{ role: 'user', content: 'Return a JSON object with ok true' }]);
+
+  assert.equal(recorded[0].body.stream, true);
+  assert.equal(recorded[0].body.temperature, 0);
+  assert.equal(recorded[0].body.max_tokens, undefined);
+});
+
+test('completeJson rejects when aborted during a hanging stream', { timeout: 2000 }, async () => {
+  const hanging = new Response(
+    new ReadableStream({
+      start() {
+        // Never enqueue; the abort signal must reject without waiting on SSE.
+      },
+    }),
+    { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+  );
+  const { fetch } = recordingFetch(() => hanging);
+  const llm = createLlm(llmConfig(), { fetch });
+  const controller = new AbortController();
+  const pending = llm.completeJson(
+    [{ role: 'user', content: 'Return a JSON object with ok true' }],
+    controller.signal,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  controller.abort();
+  await assert.rejects(() => pending, { name: 'AbortError' });
+});
+
+test('completeJson rejects when abort errors the SSE body', { timeout: 2000 }, async () => {
+  const controller = new AbortController();
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const signal = init?.signal;
+    return new Response(
+      new ReadableStream({
+        start(stream) {
+          const fail = () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            stream.error(error);
+          };
+          if (signal?.aborted) {
+            fail();
+            return;
+          }
+          signal?.addEventListener('abort', fail, { once: true });
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+    );
+  };
+  const llm = createLlm(llmConfig(), { fetch: fetchImpl });
+  const pending = llm.completeJson(
+    [{ role: 'user', content: 'Return a JSON object with ok true' }],
+    controller.signal,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  controller.abort();
+  await assert.rejects(() => pending, { name: 'AbortError' });
+});
+
+test('completeJson falls back to a non-streaming create after a stream 400', async () => {
+  const { fetch, recorded } = recordingFetch((_url, body) => {
+    if (body.stream) {
+      return streamGated400();
+    }
+    return jsonResponse(200, chatCompletionPayload('{"ok":true}'));
+  });
+  const llm = createLlm(llmConfig(), { fetch });
+
+  const result = await llm.completeJson([
+    { role: 'user', content: 'Return a JSON object with ok true' },
+  ]);
+
+  assert.equal(result, '{"ok":true}');
+  assert.equal(recorded.length, 2);
+  assert.equal(recorded[0].body.stream, true);
+  assert.equal(recorded[1].body.stream, undefined);
+  assert.deepEqual(recorded[0].body.response_format, { type: 'json_object' });
+  assert.deepEqual(recorded[1].body.response_format, { type: 'json_object' });
+});
+
+test('completeJson does not retry when the API returns 401', async () => {
+  const { fetch, recorded } = recordingFetch(() =>
+    jsonResponse(401, {
+      error: { message: 'invalid api key', type: 'invalid_request_error' },
+    }),
+  );
+  const llm = createLlm(llmConfig(), { fetch });
+
+  await assert.rejects(() => llm.completeJson([{ role: 'user', content: 'Return a JSON object' }]));
+  assert.equal(recorded.length, 1);
 });
