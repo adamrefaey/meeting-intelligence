@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
+import { buildApp } from '../src/app.ts';
 import { loadConfig } from '../src/config.ts';
 
 const ENV_KEYS = [
@@ -50,6 +51,26 @@ afterEach(() => {
       process.env[key] = previous;
     }
   }
+});
+
+test('buildApp sets a 600s request timeout', async () => {
+  const app = await buildApp({ logger: false });
+  assert.equal(app.server.requestTimeout, 600_000);
+  await app.close();
+});
+
+test('buildApp enables CORS for the Vite origin', async () => {
+  const app = await buildApp({ logger: false });
+  const res = await app.inject({
+    method: 'OPTIONS',
+    url: '/',
+    headers: {
+      origin: 'http://localhost:5173',
+      'access-control-request-method': 'GET',
+    },
+  });
+  assert.equal(res.headers['access-control-allow-origin'], 'http://localhost:5173');
+  await app.close();
 });
 
 test('loadConfig throws when OPENAI_API_KEY is missing', () => {
