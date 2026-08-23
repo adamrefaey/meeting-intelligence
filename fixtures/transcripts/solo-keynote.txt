@@ -1,0 +1,585 @@
+Evelyn (00:00): — okay, is this on? Can you hear me at the back? Put
+your hand up if you can't hear me.
+
+Evelyn (00:08): [laughs] That's a paradox, isn't it. Sorry.
+
+Evelyn (00:12): Right. Hello. Thank you for coming to the last slot of
+the last day, which is, uh, which is the slot they give you when
+they're not sure about you.
+
+Evelyn (00:24): I'm joking. Mostly.
+
+Evelyn (00:27): So, my talk is called "Consensus Is Not The Hard
+Part", and I want to start by telling you why I gave it that title,
+because I nearly called it something much more boring.
+
+Evelyn (00:41): About four years ago I was on a team that decided we
+needed strongly consistent configuration. Which, fine, reasonable
+thing to want.
+
+Evelyn (00:53): And we did what I think a lot of people do, which is
+we read the Raft paper.
+
+Evelyn (01:00): Has everyone here read the Raft paper? Hands up.
+
+Evelyn (01:05): Okay, that's, what, a third of the room. Be honest.
+
+Evelyn (01:10): [laughs] Now it's a quarter. That's more like it.
+
+Evelyn (01:15): So for the people who haven't, Raft is a consensus
+algorithm. It came out of Stanford in 2014 and its explicit design
+goal was understandability. Not performance, not elegance.
+Understandability.
+
+Evelyn (01:33): Which tells you something about the state of the field
+before it, honestly.
+
+Evelyn (01:39): And it worked. Raft is genuinely understandable. You
+can read that paper in an afternoon and come away with a real mental
+model, which you cannot say about the thing it replaced.
+
+Evelyn (01:54): So we read it, and we understood it, and we felt very
+clever, and then we implemented it.
+
+Evelyn (02:03): And it worked! In development.
+
+Evelyn (02:07): [laughs] You can all see where this is going.
+
+Evelyn (02:11): Let me get the clicker to work. Uh. There we go.
+
+Evelyn (02:17): So this is the timeline of what happened next, and I'm
+going to walk through it because every single one of these is a thing
+I'd never seen written down anywhere.
+
+Evelyn (02:29): Week one in production. Fine. Genuinely fine, no
+issues, we were very pleased with ourselves.
+
+Evelyn (02:38): Week three. First leader election storm.
+
+Evelyn (02:43): Now. Does anyone want to guess what an election storm
+is? Just shout it out.
+
+Evelyn (02:50): Yeah, that's basically it. The cluster can't settle on
+a leader, so it elects one, and it immediately gets deposed, and it
+elects another one, and that gets deposed.
+
+Evelyn (03:04): And while that's happening, the cluster does nothing.
+It's not down, exactly. It's just permanently busy having an election
+and never actually governing.
+
+Evelyn (03:17): There's a political joke there and I'm going to leave
+it alone.
+
+Evelyn (03:22): So why does that happen? It happens because of the
+election timeout.
+
+Evelyn (03:29): The election timeout is how long a follower waits
+without hearing from the leader before it decides the leader is dead
+and starts an election. And in the paper, the suggested range is a
+hundred and fifty to three hundred milliseconds.
+
+Evelyn (03:47): And we used that. Because it's in the paper.
+
+Evelyn (03:52): Here's the thing nobody told me. That number assumes a
+datacenter network. It assumes single-digit millisecond latency
+between your nodes.
+
+Evelyn (04:04): Our nodes were in three availability zones. Which
+sounds like the responsible thing to do, and it is. But cross-zone
+latency was, at the p ninety nine, about ninety milliseconds.
+
+Evelyn (04:19): Ninety. Against a hundred and fifty millisecond
+timeout.
+
+Evelyn (04:24): So most of the time, fine. And then any time the
+network hiccups even slightly, a follower doesn't hear a heartbeat in
+time, and it calls an election. And because they're all on the same
+tight timeout, they all do it at once.
+
+Evelyn (04:43): That's the storm.
+
+Evelyn (04:45): Now the fix is easy. The fix is: make the timeout much
+bigger. We went to two seconds.
+
+Evelyn (04:54): And I want to be precise about the rule, because "make
+it bigger" isn't advice. The rule I'd give you is that your election
+timeout should be at least ten times your measured p ninety nine
+inter-node latency.
+
+Evelyn (05:12): Measured. Not the number your cloud provider puts on a
+marketing page. Measured, by you, on your actual cluster, over at
+least a week, including a weekend.
+
+Evelyn (05:26): Because the p ninety nine on a Tuesday afternoon and
+the p ninety nine on a Sunday night when the backup jobs run are very
+different numbers.
+
+Evelyn (05:37): Right. Next thing. Week seven.
+
+Evelyn (05:42): Week seven we ran out of disk.
+
+Evelyn (05:46): [laughs] Yeah. On every node. At the same time. Which
+is a fun way to find out about log compaction.
+
+Evelyn (05:56): So, Raft keeps a log. Every state change goes in the
+log. That's how a node that's been offline catches up, it replays the
+log.
+
+Evelyn (06:08): And the log grows forever unless you compact it.
+
+Evelyn (06:13): Compaction means: take a snapshot of the current
+state, write it down, and throw away all the log entries before it.
+
+Evelyn (06:23): It's in the paper. It's section seven. It is not
+optional and we treated it as optional, because it was the section
+after the interesting part.
+
+Evelyn (06:36): I want to say something slightly uncomfortable here.
+
+Evelyn (06:41): We didn't skip compaction because we didn't know about
+it. We skipped it because it was work, and it wasn't needed for the
+demo, and the demo was in two weeks.
+
+Evelyn (06:55): And I think that's a much more common failure than
+ignorance. Almost nobody ships a distributed system because they
+didn't know the theory. They ship it because the theory was in the
+part of the work that got cut.
+
+Evelyn (07:12): Anyway. Configure compaction from day one. Even if
+your state is tiny. Especially if your state is tiny, because then
+it's cheap and you'll never think about it again.
+
+Evelyn (07:26): Week eleven. This is my favourite one.
+
+Evelyn (07:31): Week eleven, we did a routine deployment, and we lost
+quorum.
+
+Evelyn (07:37): Five node cluster. Quorum is three. We deployed by
+rolling the nodes one at a time, waiting for health checks, standard
+stuff.
+
+Evelyn (07:49): Except the health check said "is the process running",
+not "has this node caught up with the leader".
+
+Evelyn (07:58): So we'd restart a node, it'd come up, the health check
+would go green in about two seconds, and we'd move on to the next one.
+But that node was still replaying its log and wasn't actually
+participating yet.
+
+Evelyn (08:15): Do that three times in a row and you have three nodes
+that are technically alive and functionally useless, and two that are
+fine, and two is not quorum.
+
+Evelyn (08:28): Cluster stops. Completely. Won't accept writes, won't
+elect anything.
+
+Evelyn (08:35): And here's the really nasty part, which is that
+recovering from lost quorum is not automatic. Somebody has to go in
+and do something. At two in the morning. Which was me.
+
+Evelyn (08:50): So: your deployment tooling has to be quorum-aware.
+It has to know how many nodes it's allowed to take down at once, and
+it has to check that a node has actually rejoined the cluster, not
+just that a process exists.
+
+Evelyn (09:08): Let me drink some water.
+
+Evelyn (09:13): Okay. Month five. Clock skew.
+
+Evelyn (09:19): So, Raft doesn't depend on synchronised clocks for
+correctness. That's one of its genuinely nice properties and if
+you've read the paper you'll be sitting there thinking "clock skew
+doesn't affect Raft".
+
+Evelyn (09:35): And you're right. It doesn't affect correctness.
+
+Evelyn (09:40): It affects everything else.
+
+Evelyn (09:43): Because your timeouts are measured in wall clock time.
+And if one node's clock is drifting, its idea of "a hundred and fifty
+milliseconds" isn't the same as everyone else's.
+
+Evelyn (09:57): We had one node whose clock was drifting by about four
+seconds a day, because the time sync daemon had crashed and nothing
+was watching it.
+
+Evelyn (10:09): That node called an election roughly every nine
+minutes, forever, for six weeks, and nobody noticed because the
+cluster was healthy enough that nothing alerted.
+
+Evelyn (10:23): We found it because someone was looking at a graph for
+an unrelated reason and said "why is the term number so high".
+
+Evelyn (10:33): The term number, for those who haven't read it, goes
+up by one every election. Ours was in the tens of thousands.
+
+Evelyn (10:43): [laughs] For a cluster that should have had maybe
+twenty elections in its entire life.
+
+Evelyn (10:50): So: monitor clock skew. It's one metric. It costs you
+nothing.
+
+Evelyn (10:57): Right, I want to change gear, because I've given you
+four war stories and war stories are fun but they're not a framework.
+
+Evelyn (11:07): And I've got about twelve minutes, so let me do the
+part that I actually care about.
+
+Evelyn (11:15): I want to talk about the decision you make before any
+of this, which is whether to run consensus at all.
+
+Evelyn (11:24): Because every problem I've described is downstream of
+a decision we made in about forty minutes in a meeting room, and that
+decision got about a thousandth of the scrutiny of the implementation
+that followed.
+
+Evelyn (11:41): And I think that's backwards. And I want to spend the
+rest of my time on it, because this is the part of the talk that, if
+you take one thing away, I'd like it to be this one. So. The question
+I'd want you to ask, before you write a single line, is: what
+specifically breaks if this data is stale by five seconds? And I want
+you to answer it with a real scenario, with a real user, doing a real
+thing, not with a principle. Because "we need consistency" is not an
+answer, it's a preference. If the honest answer is "a config change
+takes five seconds to propagate and nobody notices", then you do not
+need consensus, you need a key-value store and a cache, and you will
+be home in time for dinner for the rest of your career. And I want to
+be very clear that I am not saying consensus is bad, or that it's too
+hard, or that you're not smart enough, because that's the version of
+this talk that people give and it's condescending and it's also
+wrong. Plenty of you should run consensus. What I'm saying is that
+the cost is not the algorithm. The algorithm is the cheap part. The
+algorithm is a weekend. The cost is everything I just spent fifteen
+minutes describing, which is the operational surface area: the
+timeouts that are wrong for your network, the compaction you didn't
+configure, the deployment tooling that doesn't understand quorum, the
+clock you're not monitoring, and the runbook that doesn't exist. And
+critically, all of those costs land on a different team, at a
+different time, usually at two in the morning, usually on someone who
+was not in that forty minute meeting and has never read the paper.
+And I want to sit on that for a second, because I think it's the
+actual ethical content of this talk, if a talk about distributed
+systems is allowed to have any. When you choose consensus, you are not
+making a technical decision that you then own. You are writing a
+cheque that somebody else cashes, at three in the morning, eighteen
+months from now, probably after you have moved teams. And the gap
+between those two moments is long enough that you will never feel the
+consequence, which means the feedback loop that would normally teach
+you something is completely severed. I have never once been paged for
+a decision I made in the same quarter that I made it. Not once. Nobody
+has. And that is why I think this particular decision deserves more
+scrutiny than its size suggests, because it is one of the few we make
+where the person bearing the cost has no vote and is frequently not
+yet hired. And that person is going to be paged, and they're going to
+open a
+runbook, and what I want to ask you is: have you tested that runbook?
+Not written it. Tested it. And I mean tested it in the specific sense
+of, take somebody who does not understand this system, wake them up,
+hand them the runbook, break the cluster, and watch what they do. Do
+not help them. Do not answer questions. Just watch, and write down
+every place they get stuck, because every one of those places is a
+place where a real incident gets thirty minutes longer. We did this
+eventually, about a year in, and it was genuinely humiliating. Our
+runbook had a step that said "restore quorum" as though that were a
+single action a person could take. It had a command in it that had
+been renamed six months earlier. It referenced a dashboard that no
+longer existed. And the person we tested it on was a very good
+engineer who simply had no context, and she got about four minutes in
+before she was completely stuck, and the honest truth is that if that
+had been a real page, we would have been down for an hour longer than
+necessary because of a document we'd all agreed was fine.
+
+Evelyn (15:58): So that's my list. And I'll put it on a slide.
+
+Evelyn (16:03): Election timeout at least ten times your measured p
+ninety nine inter-node latency. Log compaction configured from day
+one. Quorum-aware deployments. Clock skew monitoring. And a runbook
+tested by somebody who doesn't understand the system.
+
+Evelyn (16:24): Five things. None of them are in the paper, because
+the paper isn't about operations, it's about correctness, and it's
+excellent at what it's about.
+
+Evelyn (16:37): I want to leave time for questions, so let me do the
+last slide quickly.
+
+Evelyn (16:44): There's a whitepaper version of this talk with the
+actual numbers in it. Our latency measurements, the compaction
+settings we ended up with, the quorum-aware deployment logic. Things
+I couldn't fit on a slide.
+
+Evelyn (17:01): It's not published yet, it's in review. It'll be up on
+Wednesday. I'll put the link in the conference app, and if you're on
+the mailing list you'll get it automatically.
+
+Evelyn (17:15): And the other thing, which I'm slightly nervous about
+announcing here because I haven't finished writing it.
+
+Evelyn (17:23): We're running a chaos testing workshop on Friday.
+Here, at the venue, in one of the small rooms, in the morning.
+
+Evelyn (17:33): It's hands-on. You get a five node cluster and I break
+it in ways I have personally experienced, and you fix it.
+
+Evelyn (17:43): It's capped at thirty people because I only have
+thirty clusters. Sign-up's in the app.
+
+Evelyn (17:51): Right. Questions. There's a mic on either side.
+
+Evelyn (17:57): Yeah, go ahead.
+
+Evelyn (18:05): So the question is whether any of this changes if you
+use a managed service instead of running it yourself.
+
+Evelyn (18:14): Great question and the answer is: about half of it.
+
+Evelyn (18:19): You get compaction for free. You get quorum-aware
+deployments for free, mostly. You get clock monitoring for free.
+
+Evelyn (18:29): You do not get the election timeout question for free,
+because that depends on where you put your nodes, and that's still
+your decision.
+
+Evelyn (18:40): And you absolutely do not get the runbook for free.
+The failure modes are different but they still exist, and now you've
+got the additional fun of not being able to see inside the thing.
+
+Evelyn (18:56): So, use a managed service. Genuinely, use one. But
+don't think it removes the operational question, it just changes which
+half you own.
+
+Evelyn (19:09): Next question, on this side.
+
+Evelyn (19:19): The question is how we found the clock skew thing, and
+whether there was an alert we should have had.
+
+Evelyn (19:27): So we found it by accident, which I mentioned. And
+yes, there absolutely was an alert we should have had.
+
+Evelyn (19:36): The alert I'd want, and this is the one I recommend to
+everyone now, is on the rate of change of the term number. Not the
+value, the rate.
+
+Evelyn (19:48): Because a healthy cluster has a term number that
+essentially never moves. If it goes up more than, say, three times in
+an hour, something is wrong, even if everything looks fine.
+
+Evelyn (20:03): It's a leading indicator. It goes off long before you
+have a user-visible problem.
+
+Evelyn (20:11): One more, and then I think they want the room.
+
+Evelyn (20:20): Okay, so the question is whether I'd make the same
+decision again. Would I use consensus for that config system.
+
+Evelyn (20:30): [long pause] No.
+
+Evelyn (20:34): [laughs] Sorry, that's a very flat answer for a
+keynote.
+
+Evelyn (20:39): No, but let me be specific about why, because it's not
+"consensus was wrong".
+
+Evelyn (20:46): What we actually needed was for a config change to be
+atomic, so you never saw half of it. We did not need it to be
+instantaneous, and we did not need strict ordering with anything else
+in the system.
+
+Evelyn (21:02): And atomicity is a much cheaper property than
+consensus. You can get it by versioning the whole config blob and
+switching a pointer.
+
+Evelyn (21:14): We reached for consensus because it was the strongest
+guarantee available and we hadn't worked out which guarantee we
+needed.
+
+Evelyn (21:24): And I think that's the most common mistake in this
+whole area. Not choosing the wrong tool. Not knowing what property
+you're actually buying.
+
+Evelyn (21:36): They're telling me I've got five more minutes,
+apparently the next session's been moved. So, more questions.
+
+Evelyn (21:44): Yeah, you at the front.
+
+Evelyn (21:53): So the question is how you convince a team not to use
+consensus when they've already decided they want to.
+
+Evelyn (22:02): [laughs] That's a very specific question. Are you
+currently in that situation?
+
+Evelyn (22:09): Yeah, I thought so.
+
+Evelyn (22:12): Okay. Honestly? Don't argue about the algorithm.
+You'll lose, because they've read the paper and they're excited, and
+excitement beats caution in a design review every time.
+
+Evelyn (22:27): What I'd do instead is ask them to write the runbook
+first. Before any code. Just the runbook.
+
+Evelyn (22:36): Because writing a runbook for a system that doesn't
+exist forces you to enumerate the failure modes, and about half the
+time people get three failure modes in and go "oh, actually, do we
+need this".
+
+Evelyn (22:52): And if they get to the end and the runbook is fine,
+then great, they've thought about it and you've got a runbook.
+
+Evelyn (23:01): Either outcome is better than the argument you were
+going to have.
+
+Evelyn (23:07): Next. Yeah, in the middle.
+
+Evelyn (23:17): The question is about using something off the shelf,
+specifically the well-known key-value stores that do consensus for
+you, and whether that changes the calculus.
+
+Evelyn (23:30): It changes it a lot, and I'd say it's the right
+default for most people.
+
+Evelyn (23:37): But I want to flag a specific trap, which is that
+those systems are excellent and they are also a dependency with its
+own operational profile.
+
+Evelyn (23:49): I have seen more than one outage where the thing that
+failed was the coordination system that was supposed to make
+everything else reliable.
+
+Evelyn (24:00): And the reason that hurts so much is that everything
+depends on it, so when it goes, everything goes at once, and your
+dashboards go too, because they were also using it for service
+discovery.
+
+Evelyn (24:16): So: use one, absolutely. But know that you've
+concentrated risk rather than eliminated it, and don't put your
+monitoring behind the thing your monitoring is monitoring.
+
+Evelyn (24:31): [laughs] That's a sentence.
+
+Evelyn (24:35): One more. Sorry, there's a hand at the back, and then
+this side.
+
+Evelyn (24:47): Okay, so this is a challenge rather than a question,
+which I like.
+
+Evelyn (24:53): The point is that everything I've described is an
+operational maturity problem, not a consensus problem. And that a team
+with good operational practice would have caught all five of these.
+
+Evelyn (25:08): And, yeah. That's largely right.
+
+Evelyn (25:12): I'd push back on one part of it though.
+
+Evelyn (25:16): The reason I think consensus specifically deserves
+the attention is that the gap between "works in development" and
+"works in production" is unusually wide, and unusually invisible.
+
+Evelyn (25:31): A slow API endpoint tells you it's slow. You can see
+it. A cluster with a badly chosen election timeout looks completely
+healthy right up until the network hiccups.
+
+Evelyn (25:45): So it's not that operational maturity doesn't help.
+It's that this category punishes immaturity with a longer delay and a
+bigger bill than most.
+
+Evelyn (25:58): But you're right that it's not unique, and if your
+takeaway is "get better at operations generally", that's a better
+takeaway than mine.
+
+Evelyn (26:09): Last one, this side, and then they really will throw
+me out.
+
+Evelyn (26:20): The question is how you actually measure p ninety nine
+inter-node latency, since I keep saying "measured" and being smug
+about it.
+
+Evelyn (26:31): [laughs] That's fair, I have been smug about it.
+
+Evelyn (26:36): The lazy way is to look at what your consensus system
+already reports, because most of them expose heartbeat round-trip
+times, and that's the number that matters.
+
+Evelyn (26:49): The better way, if you're doing this before you build
+anything, is to run a tiny process on each node that pings the others
+on the same schedule your heartbeats would use, and record the
+distribution for a week.
+
+Evelyn (27:06): And I'd stress the distribution rather than the
+average, because the average will be beautiful and completely
+irrelevant.
+
+Evelyn (27:16): The thing that kills you is the tail, and the tail is
+where the backup jobs and the noisy neighbours and the cross-zone
+routing changes live.
+
+Evelyn (27:28): The numbers we ended up with are in the whitepaper,
+including a fairly ugly graph of what a Sunday night looks like.
+
+Evelyn (27:38): Oh, sorry, one more, they're nodding at me so I think
+I've got a minute.
+
+Evelyn (27:47): Yeah, go on.
+
+Evelyn (27:56): Right, the question is what happened in the runbook
+test. The specific failures, not the general point.
+
+Evelyn (28:05): Okay, I'll do it quickly because it's a good list and
+I've never actually said it out loud.
+
+Evelyn (28:13): There were five things and they were all boring, which
+is the point.
+
+Evelyn (28:19): One. The first step said "check cluster health" and
+gave a command that had been renamed six months earlier. So step one
+produced an error message, and she spent ninety seconds deciding
+whether the error meant the cluster was broken or the command was
+wrong.
+
+Evelyn (28:39): Which, by the way, is a horrible ninety seconds,
+because you can't tell.
+
+Evelyn (28:46): Two. It referenced a dashboard by name. The dashboard
+had been rebuilt and renamed. There were now four dashboards with
+similar names and two of them were stale copies.
+
+Evelyn (29:01): Three, and this is my favourite. There was a step that
+said, and I quote, "restore quorum".
+
+Evelyn (29:10): That's it. That's the whole step. As though that's a
+thing a person can do, like closing a window.
+
+Evelyn (29:19): [laughs] I wrote that step. I know exactly what I
+meant when I wrote it, and what I meant was a four command sequence
+that I had in my head at the time and have since forgotten.
+
+Evelyn (29:34): Four. The runbook assumed you had access. She didn't
+have production access to that cluster, because she wasn't on the
+team, and the runbook didn't say how to get it or who to ask.
+
+Evelyn (29:50): So in a real incident that's however long it takes to
+find somebody awake with permissions.
+
+Evelyn (29:59): Five, and this one genuinely surprised me. She did the
+right thing at one point and then undid it, because there was no way
+to tell whether it had worked.
+
+Evelyn (30:12): There was no "you should now see this" anywhere in the
+document. So she ran the correct command, saw no obvious change,
+assumed she'd got it wrong, and reverted.
+
+Evelyn (30:27): That one changed how I write every runbook now. Every
+step gets an expected observation. Not just what to do, what you
+should see afterwards.
+
+Evelyn (30:40): And none of those five are distributed systems
+problems. Not one. They're documentation problems, and they'd have
+cost us about forty minutes in a real incident.
+
+Evelyn (30:55): Right. Now that's genuinely my time. The whitepaper's
+up Wednesday, the workshop's Friday morning, and I'll be by the coffee
+for the next half hour if anyone wants to argue with me.
+
+Evelyn (31:10): Please do argue with me, that's the best part of
+these.
+
+Evelyn (31:15): Thank you.

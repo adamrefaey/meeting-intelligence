@@ -1,0 +1,487 @@
+00:00:00 Aria: Alright, I think we’re on. Tariq, you’re muted.
+00:00:05 Tariq: — sorry. Is that better?
+00:00:08 Aria: That’s better.
+00:00:09 Tariq: I’ve got a new headset and it defaults to muted and I
+forget every single time.
+00:00:16 Zoë: I’ve been in three calls this week where that was the
+first thing said.
+00:00:22 Aria: [laughs] Okay. So this is the review for RFC 042,
+service-to-service authentication. Tariq wrote it, I’m chairing, Zoë
+is here for the platform side.
+00:00:36 Zoë: Hello.
+00:00:37 Aria: And Núria from compliance is joining later, she’s got a
+conflict until about half past.
+00:00:44 Tariq: That’s a bit awkward, half the RFC is compliance.
+00:00:49 Aria: I know. We’ll do the technical part first and hold the
+compliance questions for when she’s here.
+00:00:57 Tariq: Fine by me.
+00:00:58 Aria: Ground rules, same as always. I want disagreement in
+the room rather than in a comment thread three days from now. And if
+we don’t reach a decision that’s an acceptable outcome, we just have
+to be explicit that we didn’t.
+00:01:15 Zoë: Noted.
+00:01:16 Aria: Tariq, give us the five minute version. I’ve read it,
+Zoë’s read it, so don’t read it to us.
+00:01:24 Tariq: Right. So. Today, service to service calls inside the
+cluster are, essentially, unauthenticated. If you’re on the network
+you can call anything.
+00:01:37 Zoë: Which is fine, because the network is private.
+00:01:41 Tariq: Which is fine right up until it isn’t. That’s the
+whole flat network assumption and it’s the thing every breach writeup
+of the last five years has in common.
+00:01:53 Zoë: I’m not disagreeing, I’m stating the current design’s
+rationale.
+00:01:58 Tariq: Sure. So the proposal is mutual TLS between every
+service, with identity issued per workload rather than per host.
+00:02:09 Aria: And the mechanism?
+00:02:11 Tariq: Envoy sidecars doing the TLS termination, and SPIFFE
+for the identity format.
+00:02:18 Zoë: Can you say what SPIFFE actually is for the recording,
+because I had to look it up and I’ve been doing this a long time.
+00:02:27 Tariq: Yeah. So it’s a standard for workload identity. The
+short version is every workload gets a document that says who it is,
+in a URI format, something like spiffe://, then your trust domain,
+then a path for the service.
+00:02:45 Aria: And that’s inside the certificate.
+00:02:48 Tariq: It’s in the SAN field of a short-lived x509
+certificate, yeah.
+00:02:54 Zoë: How short-lived?
+00:02:56 Tariq: The RFC says one hour.
+00:02:59 Zoë: One hour. Okay, that’s the bit I want to talk about,
+but go on.
+00:03:05 Tariq: That’s fine, we’ll come back to it. So each pod gets a
+sidecar, the sidecar gets an identity, and when service A calls
+service B, both ends present certificates and both ends verify.
+00:03:20 Aria: And authorisation?
+00:03:22 Tariq: Separate layer. The RFC deliberately doesn’t solve
+authorisation, it only solves authentication.
+00:03:31 Aria: Why?
+00:03:32 Tariq: Because I’ve watched two other companies try to do
+both at once and it took eighteen months and shipped nothing.
+00:03:41 Zoë: That’s a good reason.
+00:03:43 Aria: I agree with the split. Let me make sure it’s written
+down as a deliberate scope decision rather than an omission, because
+somebody’s going to read this and think we forgot.
+00:03:56 Tariq: It’s in the non-goals section.
+00:03:59 Aria: Make it louder.
+00:04:01 Tariq: I’ll make it louder.
+00:04:03 Zoë: Okay, can I do the sidecar thing now?
+00:04:06 Aria: Go.
+00:04:07 Zoë: So my concern isn’t security, it’s operations. A
+sidecar per pod means we roughly double our container count. We’re at,
+what, eleven hundred pods?
+00:04:20 Tariq: About that.
+00:04:21 Zoë: So twenty two hundred containers. That’s more memory,
+more CPU, and more importantly it’s more things that can be in a crash
+loop at three in the morning.
+00:04:34 Tariq: That’s fair.
+00:04:36 Zoë: And the failure mode is bad. If a sidecar dies, the
+service is up but unreachable, which is the worst kind of broken,
+because health checks pass.
+00:04:48 Tariq: The sidecar failure mode is genuinely the strongest
+argument against this and I want to say that clearly rather than
+defend it.
+00:04:58 Aria: Good.
+00:04:59 Tariq: But the alternative is worse, which is doing TLS in
+the application, and then every language has a different library and
+every team gets it slightly wrong.
+00:05:11 Zoë: I’ve seen that. We did that at my last place. Four
+languages, four different certificate validation bugs.
+00:05:20 Tariq: Right, and at least one of them will accept an expired
+certificate because somebody set a flag during testing and never
+removed it.
+00:05:30 Zoë: That is literally what happened. [laughs]
+00:05:33 Aria: So the sidecar centralises the thing that’s easy to get
+wrong.
+00:05:39 Tariq: That’s the argument, yes. One implementation, one
+place to patch, one place to audit.
+00:05:47 Aria: Zoë, does that address it?
+00:05:50 Zoë: It addresses the security argument. It doesn’t address
+my operational one, but I accept that it’s a trade rather than a
+mistake.
+00:05:59 Aria: Can we do something about the operational side?
+00:06:03 Zoë: We can, actually. If we do it properly. What I’d want
+is the rollout to be per-namespace and reversible, so we can turn it
+on for one team, watch it for a fortnight, and turn it off in one
+command if it’s horrible.
+00:06:20 Tariq: That’s in the RFC.
+00:06:22 Zoë: Is it? I read it as per-cluster.
+00:06:26 Tariq: It’s per-namespace with a permissive mode. So the
+sidecar accepts both mTLS and plain connections while you’re
+migrating, and then you flip it to strict once everything’s talking.
+00:06:41 Zoë: Oh, that’s much better than what I thought I read.
+00:06:45 Aria: That sounds like the RFC isn’t clear enough.
+00:06:49 Tariq: Apparently not.
+00:06:51 Aria: Two people who’ve both read it carefully came away with
+different understandings of the rollout model. That’s a writing
+problem, not a reading problem.
+00:07:03 Tariq: Yeah, alright, I’ll rewrite that section.
+00:07:07 Zoë: I’d genuinely just add a diagram.
+00:07:10 Tariq: I hate making diagrams.
+00:07:12 Zoë: Everyone hates making diagrams and everyone reads them
+first.
+00:07:17 Aria: [laughs] He’s right.
+00:07:19 Tariq: I’ll make a diagram.
+00:07:21 Aria: Right, let’s do the one hour certificate lifetime,
+because Zoë flagged it.
+00:07:27 Zoë: Yeah. So, one hour. Every workload renews its
+certificate every hour, or more often, because you’d renew at half
+life, so every thirty minutes.
+00:07:40 Tariq: Correct.
+00:07:41 Zoë: Eleven hundred pods renewing every thirty minutes is
+about forty renewals a minute, sustained, forever.
+00:07:50 Aria: Is that a lot?
+00:07:52 Zoë: It’s not a lot of load. It’s a lot of dependency. It
+means the certificate authority is now on the critical path for
+everything, permanently. If it’s down for an hour, the entire cluster
+stops being able to talk to itself.
+00:08:11 Tariq: That’s true.
+00:08:12 Aria: What’s the blast radius if the CA is down for, say,
+fifteen minutes?
+00:08:18 Tariq: Nothing. Existing certificates are still valid, and
+renewal retries.
+00:08:24 Aria: Thirty minutes?
+00:08:26 Tariq: Still nothing, mostly, because you’re renewing at half
+life so you’ve got thirty minutes of headroom by design.
+00:08:35 Aria: An hour?
+00:08:36 Tariq: An hour and things start expiring and you have a very
+bad afternoon.
+00:08:42 Zoë: So our tolerance for CA downtime is somewhere between
+thirty and sixty minutes.
+00:08:49 Tariq: Yes.
+00:08:50 Zoë: And what’s our CA’s availability target?
+00:08:54 Tariq: ...We don’t have one, because we don’t have a CA yet.
+00:08:59 Zoë: Right. So that’s a thing the RFC needs, isn’t it.
+00:09:04 Tariq: That’s a fair gap. I’ll add an availability
+requirement for the issuing service.
+00:09:11 Aria: What would you set it at?
+00:09:13 Tariq: If tolerance is thirty minutes, then, you’d want the
+CA to be at least as available as the most available thing that
+depends on it. So three nines at minimum, and realistically you want
+it multi-zone.
+00:09:30 Zoë: I’d push for a longer certificate lifetime instead.
+Make it eight hours and the whole problem softens.
+00:09:39 Tariq: It does soften it, but eight hours also means a stolen
+certificate is useful for eight hours.
+00:09:47 Zoë: Is that realistic though? If someone’s got code
+execution in a pod they can just steal the next certificate too.
+00:09:56 Tariq: They can while they’re in the pod. The value of short
+lifetimes is for the case where they exfiltrate the key material and
+use it from elsewhere later.
+00:10:08 Zoë: Hmm. Okay, that’s a better argument than I expected.
+00:10:13 Aria: Can we split the difference? Is there a number that’s
+short enough to matter and long enough to be operable?
+00:10:21 Tariq: Four hours is defensible. Renewal every two hours,
+tolerance goes to about two hours of CA downtime.
+00:10:31 Zoë: I’d accept four.
+00:10:33 Tariq: I’d rather have one but I’d accept four, and I’d
+rather have four and ship it than argue for one and not ship.
+00:10:42 Aria: That’s a decision then. Certificate lifetime is four
+hours, renewal at half life, and the RFC gets an availability
+requirement for the issuing service. Any objection?
+00:10:56 Zoë: None.
+00:10:57 Tariq: None.
+00:10:58 Aria: Good. Next. Certificate rotation, which I think is
+different from lifetime and the RFC conflates them slightly.
+00:11:08 Tariq: Say what you mean by rotation.
+00:11:11 Aria: I mean rotating the root. Not the leaf certificates,
+the trust anchor. If the root key is compromised, or just expires,
+what happens.
+00:11:23 Tariq: Right, that’s, yeah, that’s underspecified.
+00:11:28 Aria: It’s not in there at all as far as I could see.
+00:11:32 Tariq: It’s not in there at all.
+00:11:34 Zoë: This is the thing that bites everyone in year three.
+00:11:38 Aria: It’s the thing that bites everyone in year three, and
+we are, by definition, in year zero, which is the only time it’s easy.
+00:11:48 Tariq: What do you want in the RFC?
+00:11:51 Aria: I want a documented procedure for rotating the root,
+and I want it to have been tested at least once in a non-production
+environment before we go live anywhere.
+00:12:03 Zoë: Rehearsed, not just written.
+00:12:06 Aria: Rehearsed. A written procedure that’s never been run is
+fiction.
+00:12:12 Tariq: I don’t disagree. That’s a decent chunk of work
+though.
+00:12:17 Aria: How much?
+00:12:18 Tariq: The mechanism is straightforward, you distribute the
+new root alongside the old one, wait for everything to trust both,
+then start issuing from the new one, then remove the old. It’s the
+waiting that’s slow. Realistically a week of elapsed time to rehearse
+properly.
+00:12:39 Aria: A week of elapsed time or a week of effort?
+00:12:43 Tariq: Elapsed. Maybe a day of actual effort.
+00:12:47 Aria: That’s very acceptable. Who owns it?
+00:12:51 Tariq: I’ll write the procedure. I’d want Zoë to run it,
+because if I run it I’ll unconsciously skip the steps I know.
+00:13:01 Zoë: That’s a good instinct, and yes, I’ll run it.
+00:13:05 Aria: When?
+00:13:06 Zoë: Give me until Tuesday for a first pass in the dev
+cluster.
+00:13:11 Aria: Tuesday. Zoë owns rehearsing certificate rotation in
+dev, Tariq writes the procedure.
+00:13:19 Zoë: Yep.
+00:13:21 Tariq: Can I raise the thing I know is going to be
+contentious, or do we wait for Núria?
+00:13:27 Aria: Which one?
+00:13:29 Tariq: Hardware attestation.
+00:13:31 Aria: Ah. Let’s start it, and if it needs her we’ll pause.
+00:13:37 Tariq: Okay. So. Right now the plan is that a workload proves
+its identity using its Kubernetes service account token. The sidecar
+presents the token, the CA validates it with the API server, and
+issues a certificate.
+00:13:55 Zoë: Which is fine.
+00:13:57 Tariq: Which is fine, unless you can read service account
+tokens. And there are a few ways to do that. A container escape, a
+misconfigured mount, a logging system that captures request headers.
+00:14:12 Zoë: So the identity is only as good as the token.
+00:14:16 Tariq: The identity is only as good as the token. Hardware
+attestation fixes that, because the proof is rooted in a TPM on the
+node and you can’t copy it out.
+00:14:29 Zoë: And the cost?
+00:14:31 Tariq: The cost is that it only works on nodes with a TPM,
+which our current instance types mostly have, but our older node pool
+doesn’t.
+00:14:42 Zoë: And the CI runners definitely don’t.
+00:14:45 Tariq: The CI runners definitely don’t, and neither does
+anything anyone runs on a laptop.
+00:14:52 Aria: So it can’t be universal.
+00:14:55 Tariq: It can’t be universal today, which means you end up
+with two classes of identity, and then you have to reason about what
+happens when a strong identity talks to a weak one.
+00:15:08 Zoë: And that reasoning is where the bugs live.
+00:15:12 Tariq: That reasoning is exactly where the bugs live, yes.
+00:15:16 Aria: What’s your actual recommendation? Not the balanced
+view, the recommendation.
+00:15:22 Tariq: My recommendation is that we don’t do hardware
+attestation now, we do software attestation via service account
+tokens, and we design the identity document so that we can add an
+attestation level field later without breaking anything.
+00:15:40 Zoë: I agree with that.
+00:15:42 Aria: I want to push on it, because I think there’s a version
+of this where we regret it.
+00:15:49 Tariq: Go on.
+00:15:50 Aria: If we ship software attestation everywhere, and then
+in a year we want hardware attestation for the payment services
+specifically, is that actually possible? Or have we built something
+that assumes one identity model?
+00:16:07 Tariq: It’s possible if the field exists from day one and
+policies can reference it. If we add the field later, every existing
+policy has to be revisited.
+00:16:19 Aria: So the field has to be there now even though nothing
+uses it.
+00:16:24 Tariq: Yes. And I’ll be honest, that’s a thing reviewers push
+back on, because it looks like speculative generality.
+00:16:33 Aria: I’ll back you on it. There’s a difference between
+building a feature you don’t need and reserving a field you will.
+00:16:42 Zoë: Sorry, Núria’s just joined the call.
+00:16:45 Núria: Hi, hello, sorry. I’ve been trying to get in for four
+minutes, it kept telling me the meeting didn’t exist.
+00:16:53 Aria: You didn’t miss the compliance part, we saved it.
+00:16:57 Núria: Oh good. What are we on?
+00:17:00 Aria: Hardware attestation. Tariq’s recommending we defer it
+and use service account tokens now.
+00:17:08 Núria: Defer it to when?
+00:17:10 Tariq: That’s, uh, that’s the open question.
+00:17:14 Núria: Then that’s my concern, because “defer” in an RFC
+usually means never, and I’ve got an auditor who’s going to ask about
+it in February.
+00:17:25 Aria: What will they ask, specifically?
+00:17:28 Núria: They’ll ask how we establish that a workload is what it
+claims to be. And “it presented a token” is an answer, it’s just not a
+strong one.
+00:17:40 Tariq: Is it a failing answer or a weak answer?
+00:17:44 Núria: It’s a weak answer that passes, as long as we can show
+we’ve thought about it and have a plan. What fails is if I say “we
+considered it and decided not to” with nothing behind it.
+00:17:59 Aria: So the difference is whether there’s a scheduled
+evaluation.
+00:18:04 Núria: The difference is entirely whether there’s a scheduled
+evaluation with a date on it.
+00:18:11 Tariq: That I can do easily.
+00:18:13 Núria: Then I’m not blocking. I want it written as a
+scheduled evaluation, not as a maybe.
+00:18:20 Aria: Let me make sure we’re being precise, because this
+matters for how it gets read. We are not deciding to implement
+hardware attestation. We are deciding to evaluate it at a specific
+time.
+00:18:35 Núria: Yes. And those are very different things and I’d rather
+the RFC said the honest one.
+00:18:42 Tariq: Q4 evaluation?
+00:18:44 Núria: Q4 works. That’s ahead of the February audit with room.
+00:18:50 Aria: Everyone comfortable? Zoë?
+00:18:53 Zoë: Yes. And by then the old node pool will be gone anyway,
+which removes half the objection.
+00:19:01 Aria: Right. Decision: hardware attestation is deferred to a
+scheduled Q4 evaluation, software attestation via service account
+tokens ships now, and the identity document reserves an attestation
+level field from the start.
+00:19:19 Tariq: That’s accurate.
+00:19:21 Núria: That’s what I need, yes.
+00:19:23 Aria: Núria, while you’re here, the rest of the compliance
+questions.
+00:19:28 Núria: Right. The big one is logging. If everything is
+encrypted between services, what can we still see?
+00:19:37 Tariq: The sidecar can log connection metadata. So source
+identity, destination identity, timestamp, bytes, response code.
+00:19:48 Núria: Not payloads.
+00:19:50 Tariq: Not payloads, and deliberately not, because a lot of
+those payloads have personal data in them.
+00:19:58 Núria: That’s actually better for me, not worse. My problem
+today is that I can’t tell you which service called which. I don’t
+need the contents.
+00:20:09 Aria: So this improves your position.
+00:20:12 Núria: Substantially. Right now if an auditor asks me to
+demonstrate that the reporting service can’t reach the payments
+database, my honest answer is “it shouldn’t”. With this I could show
+them.
+00:20:27 Tariq: That’s the authorisation layer though, which is out of
+scope.
+00:20:32 Núria: Hmm.
+00:20:33 Tariq: But you’d have the logs to show what actually talks to
+what, which is most of the way there.
+00:20:40 Núria: Observation without enforcement.
+00:20:43 Tariq: Yes.
+00:20:44 Núria: That’s still a big improvement. I’d want to know when
+enforcement comes.
+00:20:50 Aria: That’s RFC 043 and it’s not written yet.
+00:20:54 Núria: Is it going to be?
+00:20:56 Tariq: It is, but I’m not committing to a date in this
+meeting, because the whole reason this one is scoped narrowly is that
+I don’t want to promise both.
+00:21:07 Núria: Understood. I’d just ask that the RFC says
+authorisation is a planned follow-up rather than out of scope full
+stop, because those read very differently to an auditor.
+00:21:21 Tariq: That’s a fair wording change and it costs me nothing.
+00:21:26 Aria: Good. Retention on those connection logs?
+00:21:30 Núria: Thirteen months, same as everything else in that
+category.
+00:21:35 Zoë: How much data is that?
+00:21:37 Tariq: I did estimate this. It’s roughly, uh, forty gigabytes
+a day at current traffic if we log every connection.
+00:21:47 Zoë: Forty a day for thirteen months is about seventeen
+terabytes.
+00:21:53 Núria: That’s expensive.
+00:21:55 Tariq: It is, and I think the answer is we sample. Log every
+connection between distinct service pairs, but not every individual
+call.
+00:22:07 Núria: Does that still answer the audit question?
+00:22:10 Tariq: It answers “can A reach B”. It doesn’t answer “how
+many times did A call B on the fourteenth”.
+00:22:19 Núria: I only need the first one.
+00:22:21 Tariq: Then sampling is fine and it’s a tenth of the volume.
+00:22:26 Aria: Let’s write that as a decision too, because it’s the
+kind of thing that gets silently changed later. Connection logging
+records distinct service pairs rather than every call, at thirteen
+month retention.
+00:22:41 Núria: Agreed.
+00:22:42 Zoë: Agreed.
+00:22:44 Aria: Right, we’re at twenty three minutes and I want to talk
+about performance before we run out.
+00:22:51 Zoë: This is my other one, yeah.
+00:22:54 Aria: Go.
+00:22:55 Zoë: Every call now goes through two extra proxies. One on
+the way out, one on the way in. What’s that cost?
+00:23:04 Tariq: The published numbers for Envoy are, uh, single digit
+milliseconds at the p ninety nine. Something like two to three.
+00:23:14 Zoë: Published by whom?
+00:23:16 Tariq: [laughs] By the project.
+00:23:19 Zoë: Right. So, that’s a vendor number.
+00:23:23 Tariq: It’s a vendor number, yes.
+00:23:26 Aria: What’s our own number?
+00:23:28 Tariq: We don’t have one.
+00:23:30 Aria: Then that’s the gap, isn’t it. We’re making an
+architecture decision that touches every request in the system based
+on somebody else’s benchmark.
+00:23:41 Tariq: I mean, when you put it that way.
+00:23:44 Zoë: And our services are chattier than most. Some of our
+request paths make nine or ten internal calls.
+00:23:53 Tariq: Ten calls at three milliseconds is thirty
+milliseconds.
+00:23:58 Zoë: Thirty milliseconds added to a user-facing request. On
+some endpoints that’s a ten percent regression.
+00:24:07 Aria: So we need a real measurement before we commit.
+00:24:11 Tariq: Yes. I’ll do an overhead benchmark. Take one real
+service path, run it with and without sidecars, same load profile,
+and report the difference at p fifty, p ninety nine and p ninety nine
+point nine.
+00:24:29 Zoë: I’d want p ninety nine point nine specifically, because
+that’s where proxy behaviour usually shows up.
+00:24:37 Tariq: That’s why I said it.
+00:24:39 Aria: When can you have that?
+00:24:41 Tariq: Friday, if I can use the staging cluster on Thursday.
+00:24:46 Zoë: You can, nothing’s booked.
+00:24:48 Aria: Then the overhead benchmark is due Friday and it’s a
+blocker on approving the RFC.
+00:24:55 Tariq: I’d agree it should block.
+00:24:58 Aria: Good, because I was going to insist.
+00:25:01 Tariq: [laughs]
+00:25:03 Aria: What’s the threshold? What number makes us stop?
+00:25:08 Zoë: If it’s over five milliseconds at p ninety nine I think
+we have to redesign something.
+00:25:15 Tariq: I’d accept five as the line. Under five we proceed,
+over five we come back and talk about which services actually need it
+rather than doing all of them.
+00:25:27 Aria: That’s a good decision rule, let me write it down
+exactly. Under five milliseconds added at p ninety nine, we proceed
+as designed. Over five, we scope it to a subset of services and
+re-review.
+00:25:44 Núria: Would a subset be a problem for me?
+00:25:47 Tariq: It’d be better than nothing. If we did payments and
+identity and nothing else, that’s most of your audit surface.
+00:25:56 Núria: Then I’m fine with that as a fallback.
+00:25:59 Aria: Good. Let me read back, we’re nearly out of time.
+00:26:04 Aria: Decisions. Certificate lifetime is four hours with
+renewal at half life. Hardware attestation is deferred to a scheduled
+Q4 evaluation, with software attestation shipping now and an
+attestation level field reserved. Connection logging records distinct
+service pairs at thirteen month retention. And the RFC is blocked on
+the overhead benchmark.
+00:26:29 Tariq: All correct.
+00:26:31 Aria: Actions. Tariq revises RFC 042 with the clearer rollout
+model, the diagram, the CA availability requirement, and the
+authorisation wording. When?
+00:26:44 Tariq: Wednesday.
+00:26:46 Aria: RFC 042 revision by Wednesday. Tariq also owns the
+overhead benchmark, Friday. Zoë rehearses certificate rotation in the
+dev cluster, Tuesday, with Tariq writing the procedure.
+00:27:01 Zoë: Correct.
+00:27:02 Aria: Núria, anything from you?
+00:27:05 Núria: I’ll draft the audit narrative once the RFC’s revised,
+so I’m blocked on Wednesday. No date from me yet.
+00:27:14 Aria: That’s fine, I’ll follow up after Wednesday.
+00:27:18 Núria: Thanks.
+00:27:19 Aria: And we reconvene when the benchmark’s in. If it’s under
+five we approve asynchronously, if it’s over we book another one of
+these.
+00:27:30 Zoë: Hopefully we don’t need another one of these.
+00:27:34 Tariq: Can I ask for one thing before we finish?
+00:27:38 Aria: Quickly.
+00:27:40 Tariq: I’d like someone other than me to read the threat
+model section. Not review it, actually read it and try to poke holes.
+00:27:51 Aria: Isn’t that what this meeting was?
+00:27:54 Tariq: This meeting was about whether the design is
+operable. Nobody’s challenged whether it actually stops the attack
+I claim it stops.
+00:28:06 Núria: That’s a fair distinction and I’d noticed it.
+00:28:11 Zoë: I’m not the right person, I’d just agree with you.
+00:28:16 Tariq: You’d agree with me, yes, which is why I’m asking for
+someone else.
+00:28:22 Aria: Do you want an external review?
+00:28:25 Tariq: I’d take an internal one from someone who wasn’t
+involved. External is expensive and slow and I don’t think we’re at
+that point yet.
+00:28:37 Núria: We’re not, but we will be before the audit. I’d budget
+for an external review of whatever we actually build, in Q2.
+00:28:49 Aria: That’s worth writing down as a future requirement
+rather than a decision now.
+00:28:56 Tariq: Agreed.
+00:28:58 Aria: I’ll find you an internal reader this week. Probably
+someone from the platform security side who hasn’t been in this
+conversation at all.
+00:29:10 Tariq: That’s exactly who I want.
+00:29:13 Aria: Right. Anything else? No?
+00:29:17 Zoë: Nothing from me.
+00:29:19 Tariq: [laughs] Thanks everyone.
+00:29:22 Núria: Bye.
+00:29:23 Zoë: Bye.
+00:29:24 Aria: Thanks all. Stopping the recording.

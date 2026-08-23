@@ -1,0 +1,766 @@
+Rachel (00:00): Okay, we're recording. Is that alright with you? I
+should have asked first.
+
+Liam (00:06): Yeah, that's fine. As long as it doesn't end up on
+YouTube.
+
+Rachel (00:11): [laughs] No. It goes to me and one researcher and
+that's it.
+
+Liam (00:16): Then go for it.
+
+Rachel (00:18): Great. So, um, how's your morning been? I saw your
+calendar was pretty packed.
+
+Liam (00:25): Yeah, it's been one of those. We had a, we've got a
+warehouse system migration going on, so everything's slightly on fire
+in a controlled way.
+
+Rachel (00:36): Oh, that sounds fun.
+
+Liam (00:38): It's not. [laughs] It's genuinely not. But it's going,
+it's going okay. We're about two thirds through.
+
+Rachel (00:47): Well, thank you for making the time in the middle of
+that.
+
+Liam (00:51): No, honestly, I asked for this one. I've got things I
+want to say.
+
+Rachel (00:56): Perfect, that's the best kind. So, let me set it up
+quickly. I'm not selling you anything today, I'm not going to demo
+anything unless you ask. I want to understand how you actually work
+and where we're getting in your way.
+
+Liam (01:12): Sure.
+
+Rachel (01:13): And I especially want the annoying stuff. Like, the
+thing you complain about to your team that you'd never bother writing
+a support ticket about.
+
+Liam (01:23): Oh, I've got a list.
+
+Rachel (01:25): Perfect.
+
+Liam (01:26): I actually wrote some down when the invite came in,
+which I don't normally do, so you can tell how I'm feeling about it.
+
+Rachel (01:35): [laughs] Okay. Well, let's not start with the list.
+Let me start further back. Can you just describe your Monday? Like,
+actually, what you do.
+
+Liam (01:46): My Monday.
+
+Rachel (01:47): Yeah.
+
+Liam (01:48): Okay so. I get in about half seven, mostly because the
+traffic's horrible after eight. First thing is I look at the weekend
+numbers, because we do a lot of volume Saturday and Sunday.
+
+Rachel (02:02): What are you looking at, specifically?
+
+Liam (02:05): Transaction volume, mostly. Split by, uh, by region and
+by payment method. And then exceptions, anything that failed or got
+held.
+
+Rachel (02:16): And where do you get that?
+
+Liam (02:18): That's, uh. Okay so this is where it gets stupid.
+
+Rachel (02:23): Good, this is the bit I want.
+
+Liam (02:26): [laughs] So there's a report in your system. It's the
+transaction volume report. And it's fine, it's got the data. But I
+can't get it out in a way that's useful.
+
+Rachel (02:38): What do you do with it?
+
+Liam (02:40): I export it and I put it in a spreadsheet, and the
+spreadsheet has all the formulas that turn it into the thing my
+director actually wants to look at.
+
+Rachel (02:51): So the export is a step, not the destination.
+
+Liam (02:55): The export is never the destination. I don't think I've
+ever looked at an exported file and been done.
+
+Rachel (03:03): That's a really good line, actually.
+
+Liam (03:06): Is it? It just seems obvious to me.
+
+Rachel (03:09): It's obvious to you because you live it. It's not
+obvious to the people building the export.
+
+Liam (03:16): Well. Fair.
+
+Rachel (03:18): So tell me about the export itself.
+
+Liam (03:21): Right, so. It's JSON.
+
+Rachel (03:24): And that's a problem?
+
+Liam (03:26): It's a problem for me. It's probably lovely for a
+developer. But I don't have a developer, I've got me and a
+spreadsheet, and a spreadsheet doesn't open JSON.
+
+Rachel (03:38): Can you convert it?
+
+Liam (03:40): I can. There's a website I paste it into.
+
+Rachel (03:44): You paste your transaction data into a website.
+
+Liam (03:48): ...When you say it like that.
+
+Rachel (03:50): [laughs] I'm not judging you.
+
+Liam (03:52): You're a little bit judging me.
+
+Rachel (03:54): I'm judging us. That's a workaround you shouldn't have
+had to invent.
+
+Liam (04:00): Well, look, that's the thing. Our security team would
+have an absolute fit if they knew, and I know that, and I do it
+anyway, because the alternative is doing it by hand.
+
+Rachel (04:13): That's genuinely useful for me to hear. So, CSV?
+
+Liam (04:18): CSV. Just, please. CSV.
+
+Rachel (04:21): Let me push on that a bit though, because if I go back
+and say "he wants CSV" somebody will ship a CSV and it'll still be
+wrong.
+
+Liam (04:31): Yeah, that's, okay, yes. Because I've had that happen
+with another vendor.
+
+Rachel (04:37): What went wrong there?
+
+Liam (04:39): They shipped a CSV and the column order changed every
+time. So all my formulas broke, every single week, and I'd have to go
+in and re-point them.
+
+Rachel (04:51): So stable column order.
+
+Liam (04:53): Stable column order. And if you add a column, add it at
+the end, don't put it in the middle.
+
+Rachel (05:01): Even if that means the columns aren't in a logical
+order?
+
+Liam (05:05): I don't care about logical. I care about the same. My
+spreadsheet doesn't read the headers, it reads column F.
+
+Rachel (05:14): Right. Okay, what else about the format?
+
+Liam (05:18): Money. Please don't give me floating point money.
+
+Rachel (05:22): Say more.
+
+Liam (05:24): So the JSON has amounts as, like, decimals. And
+somewhere between your system and my spreadsheet, something rounds,
+and I end up with a total that's off by a few pence.
+
+Rachel (05:38): And that matters?
+
+Liam (05:40): It matters enormously, because the number I produce has
+to reconcile against the number finance produces. And if I'm off by
+four pence, I don't get to say "it's four pence". I have to find it.
+
+Rachel (05:55): How long does that take?
+
+Liam (05:57): The last time, uh, most of an afternoon.
+
+Rachel (06:01): For four pence.
+
+Liam (06:03): For four pence. And that's not, I want to be clear, that
+was my fault as much as anyone's, but it wouldn't have happened if the
+number was just an integer.
+
+Rachel (06:15): Integer cents.
+
+Liam (06:17): Integer whatever. Pence, cents. Give me a whole number
+and tell me what the unit is and I'll never have that problem again.
+
+Rachel (06:26): That's clear. Timestamps?
+
+Liam (06:29): Oh, timestamps. Right. So this one drove me genuinely
+mad for about a month.
+
+Rachel (06:36): Go on.
+
+Liam (06:37): The export gives me times in, I think it's the account's
+local timezone? Something like that. And we operate in three
+timezones.
+
+Rachel (06:48): So Saturday in one region isn't Saturday in another.
+
+Liam (06:52): Right, and worse, the weekend rollup was double counting
+one hour and missing another, and it took me ages to work out why,
+because it's only wrong twice a year.
+
+Rachel (07:05): Daylight saving.
+
+Liam (07:07): Daylight saving. Yeah.
+
+Rachel (07:09): So what do you want?
+
+Liam (07:11): UTC. Just UTC, in the standard format with the T and the
+Z, and I'll convert it myself. I know how to convert. What I can't do
+is un-convert something that's already been converted badly.
+
+Rachel (07:26): That's a really clean way to put it.
+
+Liam (07:29): I've had a lot of time to think about it. [laughs]
+
+Rachel (07:33): Okay, let me ask about delivery. Right now you go in
+and click export.
+
+Liam (07:39): Right now I go in and click export. Every Monday. And
+sometimes Tuesday because I forget on Monday.
+
+Rachel (07:47): What would you rather?
+
+Liam (07:49): Email it to me.
+
+Rachel (07:51): Email.
+
+Liam (07:52): Yeah, just, Monday morning, six a.m., there's a file in
+my inbox. Done. I don't have to remember, I don't have to log in.
+
+Rachel (08:02): Okay. Let me poke at that. How big is the file?
+
+Liam (08:07): Uh. It varies. A busy week, maybe, I want to say forty
+thousand rows?
+
+Rachel (08:14): So, a few megabytes.
+
+Liam (08:17): Probably, yeah.
+
+Rachel (08:19): And your email system is fine with that?
+
+Liam (08:22): ...Our email system strips attachments over ten
+megabytes.
+
+Rachel (08:27): Right.
+
+Liam (08:28): And it quarantines anything it doesn't like, and I have
+to go and release it from a portal, which is its own nightmare.
+
+Rachel (08:37): So email might not actually be what you want.
+
+Liam (08:41): No, hang on, let me think about that.
+
+Rachel (08:44): Take your time.
+
+Liam (08:46): Because you're right. If it's in email it's going to get
+caught eventually, and then it'll silently not arrive and I won't know
+until my director asks where the numbers are.
+
+Rachel (08:59): That's the failure mode that worries me too.
+
+Liam (09:03): Yeah. Okay. So what I actually want is for it to just
+appear somewhere. And email was me describing a mechanism when I
+should have been describing an outcome.
+
+Rachel (09:16): That's exactly it, yeah.
+
+Liam (09:18): Do you do webhooks?
+
+Rachel (09:20): We do webhooks.
+
+Liam (09:22): Then a webhook. And, hmm. Not with the file in it,
+right? That's, that would be a huge payload.
+
+Rachel (09:31): What would you want in it?
+
+Liam (09:33): Give me a link. A link to download the file. And then
+something on our side can grab it and drop it in the shared drive
+where the spreadsheet already lives.
+
+Rachel (09:45): Does something on your side exist?
+
+Liam (09:48): Not yet. But that's a small enough job that I can get
+one of the integration guys to do it in an afternoon. That's a very
+different ask from "build me a data pipeline".
+
+Rachel (10:01): Understood. What about the link, does it need to be
+secured?
+
+Liam (10:06): It has to be. It's transaction data. Our security people
+would want it signed, or expiring, or both.
+
+Rachel (10:15): Signed URL that expires.
+
+Liam (10:18): Signed URL that expires. And I'd want an expiry that's
+long enough that if the webhook fails and we retry an hour later, the
+link still works.
+
+Rachel (10:30): What's long enough?
+
+Liam (10:32): A day? Twenty four hours would be plenty.
+
+Rachel (10:36): Okay. Anything else in the payload?
+
+Liam (10:39): Yes, actually. Row count.
+
+Rachel (10:42): Why row count?
+
+Liam (10:44): So I can tell whether the file is complete. If the
+webhook says forty thousand rows and I download a file with twelve
+thousand rows in it, I know something went wrong. Without that I've
+just got a file and a lot of faith.
+
+Rachel (10:59): That's a good instinct. Anything else?
+
+Liam (11:03): A checksum, if that's not too much. Same reason.
+
+Rachel (11:08): Not too much at all. So: signed URL, twenty four hour
+expiry, row count, checksum.
+
+Liam (11:16): That would be, honestly, that would be perfect. That
+would save me, I don't know. An hour a week? Two?
+
+Rachel (11:25): Let me ask about the hour. What would you do with it?
+
+Liam (11:29): [laughs] Sleep.
+
+Rachel (11:31): [laughs]
+
+Liam (11:32): No, I mean. Look, the honest answer is it's not really
+about the hour. It's that the hour is on Monday morning and it's the
+thing standing between me and the actual work. So it's an hour but it
+feels like the whole morning.
+
+Rachel (11:49): That's a much better answer than the hour.
+
+Liam (11:53): I've been doing this a long time.
+
+Rachel (11:56): Can I switch topics? I want to ask about your team.
+
+Liam (12:00): Sure.
+
+Rachel (12:01): How many people are in your system?
+
+Liam (12:04): Uh, on the licence, eleven. Actually using it, maybe
+six.
+
+Rachel (12:10): What's the gap?
+
+Liam (12:12): The gap is people who need to look at one number once a
+month and don't want to learn a whole system to do it.
+
+Rachel (12:21): So they ask you.
+
+Liam (12:23): They ask me. Or they ask Fiona, who is, uh, she's my
+operations analyst, and she's very patient about it.
+
+Rachel (12:33): How often does that happen?
+
+Liam (12:35): Daily. Genuinely daily. Someone in finance wants a
+number, and it's a number that's on a screen they have access to, and
+they ask me instead.
+
+Rachel (12:47): Why do you think that is?
+
+Liam (12:49): Honestly? I think it's easier to ask a human than to
+remember where something is. I don't think that's a product problem.
+
+Rachel (12:59): It might partly be.
+
+Liam (13:01): It might partly be. But I'd be lying if I said a better
+navigation menu would fix it.
+
+Rachel (13:08): That's fair. Let me ask the money question then. If
+those five people did start using it, what happens?
+
+Liam (13:17): We'd have to talk about pricing.
+
+Rachel (13:19): Go on.
+
+Liam (13:21): So the enterprise seat pricing is, look. It's a lot per
+seat. And I can justify it for the six people who live in it. I cannot
+justify it for someone who wants to look at a dashboard once a month.
+
+Rachel (13:37): What would work?
+
+Liam (13:39): A read-only seat. Cheap or free. Someone who can look at
+things and can't change anything.
+
+Rachel (13:47): How many of those would you want?
+
+Liam (13:50): Twenty? Thirty? It's the whole finance team plus a few
+people in the regions.
+
+Rachel (13:57): And you'd pay something for them?
+
+Liam (13:59): Something, yeah. Not nothing. But it'd have to be, like,
+a tenth of a full seat. If it's a third of a full seat I'll just keep
+answering the questions myself.
+
+Rachel (14:12): That's really useful. I can't promise anything on
+pricing, that's genuinely not my area, but I'll take it back.
+
+Liam (14:21): I know. Everyone says that. [laughs]
+
+Rachel (14:24): [laughs] I know. But in this case it's true, I'm
+research, I have no power whatsoever.
+
+Liam (14:31): That's oddly refreshing.
+
+Rachel (14:34): Can I ask about the warehouse migration for a second?
+Since it's happening.
+
+Liam (14:39): Sure, though it's not really your system.
+
+Rachel (14:43): No, but I'm curious how you chose.
+
+Liam (14:46): We ran a bake-off. Three vendors, eight weeks, and we
+gave them all the same test scenario.
+
+Rachel (14:54): What decided it?
+
+Liam (14:56): Honestly, support. Two of them had basically identical
+products and one of them answered emails.
+
+Rachel (15:05): [laughs]
+
+Liam (15:06): I'm not joking, that was the deciding factor. We had a
+question during the trial and one vendor came back in forty minutes
+with an actual answer from an actual engineer.
+
+Rachel (15:19): And the others?
+
+Liam (15:21): One took three days. The other one sent me a link to a
+documentation page that didn't answer the question.
+
+Rachel (15:29): That's brutal.
+
+Liam (15:31): It's brutal but it's, it's a real signal, right? If
+you're slow during the sales process you're going to be catastrophic
+afterwards.
+
+Rachel (15:41): How do we do on that?
+
+Liam (15:43): You're fine. You're not amazing. You're fine.
+
+Rachel (15:47): I'll take fine.
+
+Liam (15:49): The thing I'd say is that the first response is always
+fast and always useless. It's a "thanks for getting in touch, we're
+looking into it". And then the actual answer takes two days.
+
+Rachel (16:03): So the fast response doesn't count.
+
+Liam (16:06): The fast response actively annoys me, because it makes
+the ticket look like it's been handled when it hasn't.
+
+Rachel (16:14): Noted, and I will pass that on to someone who can do
+something about it.
+
+Liam (16:20): Please do.
+
+Rachel (16:22): Let me go back to the export for a minute, because I
+want to check something. You said forty thousand rows on a busy week.
+
+Liam (16:31): Roughly.
+
+Rachel (16:32): Is that likely to grow?
+
+Liam (16:34): It's going to double. We're launching in two more
+regions in Q1.
+
+Rachel (16:40): So eighty thousand.
+
+Liam (16:42): Eighty, maybe more. And that's the other reason email
+was a bad idea, thinking about it.
+
+Rachel (16:50): Does the current export handle that?
+
+Liam (16:53): I don't know. It's slow now. It takes, uh, forty seconds
+to a minute? And sometimes it just doesn't come back and I have to do
+it again.
+
+Rachel (17:05): It times out.
+
+Liam (17:07): I assume so. There's no error, it just spins and then
+nothing happens.
+
+Rachel (17:14): That's worth me flagging separately, that sounds like
+a bug rather than a design question.
+
+Liam (17:21): I've never reported it because I just, I click it again
+and it usually works the second time.
+
+Rachel (17:29): Which is exactly why we don't know about it.
+
+Liam (17:32): Yeah. Sorry.
+
+Rachel (17:34): No, don't apologise, that's completely normal. That's
+why I'm here.
+
+Liam (17:40): Can I ask you something?
+
+Rachel (17:42): Please.
+
+Liam (17:43): Is any of this going to happen? Because I've done a few
+of these calls, with a few vendors, and I've never once seen the thing
+I asked for.
+
+Rachel (17:54): That's a completely fair question.
+
+Liam (17:57): I'm not trying to be difficult.
+
+Rachel (17:59): No, you're not being difficult, you're being accurate.
+Um. What I can tell you honestly is that the CSV export with the
+webhook is already something three other customers have asked for, so
+this conversation makes it much more likely, and it makes it much
+more specific.
+
+Liam (18:19): That's a more honest answer than I expected.
+
+Rachel (18:23): The read-only seat pricing I have much less confidence
+about, because that's a commercial decision and it affects revenue in
+a way an export doesn't.
+
+Liam (18:35): That's fair.
+
+Rachel (18:36): What I can commit to is that I'll come back to you and
+tell you what happened either way. Including if the answer is no.
+
+Liam (18:46): That'd be more than anyone else has done.
+
+Rachel (18:49): Right. Let me ask a couple of quick ones and then let
+you go, because I know you've got the migration.
+
+Liam (18:57): I've got about ten more minutes, it's fine.
+
+Rachel (19:00): If you could change one thing about the product
+tomorrow, what would it be?
+
+Liam (19:06): The export. Obviously. We've spent twenty minutes on it.
+
+Rachel (19:11): [laughs] Okay, what's the second thing?
+
+Liam (19:14): Second thing. Hmm. Search.
+
+Rachel (19:18): Tell me.
+
+Liam (19:19): When I search for a transaction I have to know exactly
+what I'm searching for. If I've got a partial reference number it
+finds nothing.
+
+Rachel (19:29): No partial matching.
+
+Liam (19:31): No partial matching. And customers give me partial
+reference numbers constantly, because they're reading it off a
+receipt that's been through a washing machine.
+
+Rachel (19:43): [laughs] Genuinely?
+
+Liam (19:45): I mean, metaphorically. But they misread digits all the
+time.
+
+Rachel (19:50): So you want fuzzy search.
+
+Liam (19:52): I want it to not give up. If I put in eight of the
+twelve digits, show me the four things it could be and I'll pick.
+
+Rachel (20:02): That's clear. Third thing?
+
+Liam (20:05): Third thing is smaller. When I'm on a transaction and I
+click into a customer, I lose my place. I go back and I'm at the top
+of the list again.
+
+Rachel (20:17): Oh, that's horrible.
+
+Liam (20:19): It's horrible! And it's, like, that's not a feature
+request, that's just, that's broken.
+
+Rachel (20:26): It's a bug, yeah. I'll write that one up as a bug.
+
+Liam (20:31): I'd genuinely rather have that fixed than half the
+things on the roadmap.
+
+Rachel (20:37): I believe you. Those small ones are usually the
+difference between people liking a product and tolerating it.
+
+Liam (20:46): That's exactly it. I tolerate it.
+
+Rachel (20:49): [laughs] Well, that's a low bar for me to work with.
+
+Liam (20:53): [laughs] Sorry. It's a good product, it's just, you
+know. Monday mornings.
+
+Rachel (21:00): Okay, last thing, and this is me asking a favour.
+
+Liam (21:04): Go on.
+
+Rachel (21:05): I'd like to come back to you with an interactive
+prototype of the export flow. Not a picture, something you can click.
+And I'd want twenty minutes of you actually trying to do your Monday
+with it.
+
+Liam (21:20): I can do that. When?
+
+Rachel (21:22): I'd need a bit of time to build it. Could I get it to
+you by Thursday?
+
+Liam (21:28): Thursday's fine. Thursday afternoon is better than
+morning.
+
+Rachel (21:33): Thursday afternoon. And I'll send it over ahead of
+time so you can look at it cold rather than me talking you through it.
+
+Liam (21:43): That's better, yeah. Because if you talk me through it
+I'll just agree with you.
+
+Rachel (21:49): That's exactly the problem, yeah. [laughs]
+
+Liam (21:53): One thing though. Can I have Fiona on that call?
+
+Rachel (21:57): Please, yes.
+
+Liam (21:59): Because she does more of the actual export work than I
+do these days, and she'll spot things I won't.
+
+Rachel (22:07): That's really useful, I'd much rather have her there.
+
+Liam (22:11): I'll ask her.
+
+Rachel (22:13): And separately, before Thursday, would you be able to
+send me one of your actual spreadsheets? Redacted, obviously,
+whatever you're comfortable with.
+
+Liam (22:24): I can do that. Uh, when do you need it?
+
+Rachel (22:28): Whenever suits, but earlier means the prototype is
+shaped around your real thing rather than my guess.
+
+Liam (22:36): I'll send it Monday. I'll be in the spreadsheet anyway
+doing the weekend numbers, so I'll just save a copy.
+
+Rachel (22:45): The transaction volume report spreadsheet, Monday.
+That's perfect.
+
+Liam (22:50): Assuming the export works on the first try.
+
+Rachel (22:53): [laughs] Assuming that.
+
+Liam (22:56): I'll send it Monday.
+
+Rachel (22:58): Thank you. Genuinely, this has been really useful.
+You've given me about four things I didn't know and one thing that
+might be a bug.
+
+Liam (23:08): Good. I like being useful.
+
+Rachel (23:11): Go and put out your warehouse fire.
+
+Liam (23:14): [laughs] It's not a fire, it's a controlled burn.
+
+Rachel (23:18): Sure it is.
+
+Liam (23:20): Thanks Rachel. Talk Thursday.
+
+Rachel (23:23): Talk Thursday. Bye.
+
+Liam (23:26): Oh — sorry, are you still there?
+
+Rachel (23:29): I'm still here.
+
+Liam (23:31): I've just thought of something and if I don't say it now
+I'll forget it until Thursday.
+
+Rachel (23:38): Go on.
+
+Liam (23:39): The export has a date range picker. And it defaults to
+the last thirty days.
+
+Rachel (23:47): And you want a different default?
+
+Liam (23:50): I want it to remember. Every single week I open it and
+change it to last week, and every single week it's forgotten.
+
+Rachel (23:59): Every week for three years.
+
+Liam (24:02): Every week for three years. [laughs] It's about four
+seconds. It's not a hardship. It's just, you know when something is
+tiny and it annoys you disproportionately?
+
+Rachel (24:15): That's most of my job, honestly.
+
+Liam (24:18): Well, that's the one.
+
+Rachel (24:20): Is it that you want it to remember what you picked, or
+that you want the default to be last week?
+
+Liam (24:28): Hmm. That's a good question.
+
+Liam (24:31): Remember what I picked, I think. Because Fiona uses a
+different range to me. She does month to date.
+
+Rachel (24:40): So a fixed default would just annoy one of you
+instead.
+
+Liam (24:45): Right, yeah. So, remember per person.
+
+Rachel (24:49): That's a much better answer than the one you started
+with.
+
+Liam (24:53): This is why you're good at your job and I'm not.
+
+Rachel (24:57): [laughs] You got there on your own, I just asked.
+
+Liam (25:01): Well, ask more people then.
+
+Rachel (25:04): I intend to.
+
+Rachel (25:06): Can I ask you one back, since we're both still here?
+
+Liam (25:11): Go on.
+
+Rachel (25:12): You've mentioned Fiona about four times. How much of
+what we've talked about today is actually her problem rather than
+yours?
+
+Liam (25:22): ...Most of it, probably.
+
+Rachel (25:25): That's what I was starting to think.
+
+Liam (25:28): She does the Monday export about half the time. She does
+all of the month end. And she's the one who found the four pence
+thing, actually, not me. I just had to explain it to finance.
+
+Rachel (25:43): So she's the actual user and you're the person who
+gets asked about it.
+
+Liam (25:49): That's an uncomfortably accurate description of my whole
+job.
+
+Rachel (25:55): [laughs] It's the description of most of the people I
+talk to.
+
+Liam (25:59): Which is a problem for you, isn't it. You keep
+interviewing the person with the title instead of the person doing the
+work.
+
+Rachel (26:08): It's a real problem, yes. And it's why I asked.
+
+Liam (26:13): Then talk to her separately, not just with me on the
+call. Because she'll defer to me if I'm there.
+
+Rachel (26:22): Would she be up for that?
+
+Liam (26:24): She'd love it. Genuinely. Nobody's ever asked her
+anything.
+
+Rachel (26:30): Then I'll set that up for after Thursday, so I've got
+the prototype to show her.
+
+Liam (26:37): She'll be much harder on it than I will.
+
+Rachel (26:41): Good.
+
+Liam (26:42): [laughs] Right. Now I'm going. Bye Rachel.
+
+Rachel (26:47): Bye. Thank you.

@@ -1,0 +1,558 @@
+00:00:00 Samira: Okay. Okay, I think that's it recording now. Can you all
+hear me? There's a little bit of a, like a hum on my end.
+00:00:09 Jax: Yeah, you're fine.
+00:00:10 Dave: You're good. That's probably my fan, sorry, I've got a
+build going in the background, let me kill it.
+00:00:17 Samira: No, leave it, we don't have time. Who's on?
+00:00:21 Jax: Me, obviously.
+00:00:23 Dave: Dave. And I've got the runbook open on the other screen.
+00:00:27 Samira: Ophelia said she'd be about ten minutes, she's pulling
+the numbers on how many customers this is actually touching.
+00:00:36 Jax: Do we have a sev on this yet, or are we still doing the
+thing where we argue about it for twenty minutes?
+00:00:44 Samira: I called it a sev two about six minutes ago. If checkout
+drops under eighty percent success I'll take it to a one.
+00:00:53 Jax: What is it right now?
+00:00:55 Samira: Eighty seven. And it's dropping about a point every
+four minutes, give or take.
+00:01:02 Dave: So we've got, what, half an hour?
+00:01:05 Samira: Roughly. So let's not spend it on process. Dave, you were
+on first, what have you got?
+00:01:13 Dave: Okay so. Errors started at nine forty one UTC. It's
+very consistent, it's the same thing over and over, it's a null
+dereference in the order serialiser.
+00:01:26 Jax: Do you have the actual message?
+00:01:28 Dave: Yeah, I'm reading it off the dashboard. It says type
+error, cannot read properties of undefined, and then in brackets it
+says reading street line one.
+00:01:39 Jax: Street line one. So that's the address object.
+00:01:43 Dave: That's the address object. And it's coming out of the
+address serialiser, which gets called by the order serialiser, which
+gets called from the orders controller when you list orders.
+00:01:56 Samira: So somebody's got an order with no billing address on
+it and the serialiser just assumes there's always one there.
+00:02:04 Dave: That's, yeah, that's the shape of it. The bit I don't
+get is why. Because that column is not nullable.
+00:02:12 Samira: Is it actually not nullable, or do we just sort of
+believe it's not nullable?
+00:02:18 Dave: [laughs] Fair. Let me actually look.
+00:02:22 Jax: I mean that's the whole thing though isn't it, everyone
+believes the schema until they check it.
+00:02:29 Dave: Yeah. Okay, I'm in psql. Describing the orders table.
+00:02:35 Dave: So. Billing address ID, it's a bigint, and it does say
+not null. So the column is not nullable.
+00:02:44 Jax: Then either somebody dropped the constraint, or the row
+is getting read before the address row is actually committed.
+00:02:53 Samira: The second one. That feels much more like it. That
+smells like a transaction visibility thing.
+00:03:01 Dave: Let me pull the actual bad rows and we'll know.
+00:03:06 Samira: How long is that going to take?
+00:03:08 Dave: It's a left join against addresses for anything created
+in the last forty five minutes where the address side comes back null.
+Should be quick, it's an indexed range.
+00:03:20 Jax: Famous last words.
+00:03:22 Dave: [inaudible]
+00:03:24 Samira: Say again?
+00:03:26 Dave: I said it came back already. Two hundred and eighteen
+rows.
+00:03:31 Jax: Two eighteen. Okay. Out of how many in that window?
+00:03:36 Dave: Call it nine thousand. So it's about two and a half
+percent of orders.
+00:03:42 Samira: But a hundred percent of the ones that hit the list
+endpoint fail, because it's one bad row and the whole page blows up.
+00:03:51 Dave: Right, yes. It's a map over the array, so one bad order
+takes out the entire response.
+00:03:58 Jax: That's the actual bug, by the way. Not the null address.
+The fact that one bad row can nuke the whole page.
+00:04:06 Samira: Agreed, write that down, but let's not fix it right
+now.
+00:04:11 Jax: I'm not fixing it right now. I'm just saying it out loud
+so somebody writes it down.
+00:04:17 Samira: It's written down.
+00:04:19 Dave: Okay so here's the weird part. Every one of these rows
+has a billing address ID on it. It's populated. It's just pointing at
+an address row that isn't there.
+00:04:31 Samira: So the foreign key is filled in and the target doesn't
+exist.
+00:04:36 Dave: Correct.
+00:04:37 Jax: Which means either the address got deleted after the
+order was written, or it was never committed in the first place.
+00:04:45 Samira: Do we even have a foreign key constraint on that
+column? Like an actual enforced one?
+00:04:52 Dave: Hold on. Checking.
+00:04:55 Dave: And, no. We do not. There's an index on it, which is
+probably why everyone assumed there was a constraint, but it's just an
+index.
+00:05:06 Jax: Oh, that's great. That's really great.
+00:05:09 Samira: When did that go away? Because I would have bet money
+there was one.
+00:05:15 Dave: I don't know. It might never have been there. This
+table's from before either of us joined.
+00:05:22 Jax: Okay but hang on, hang on. Even with no constraint, the
+app still has to write a bad value for this to happen. Something is
+writing an address ID that points at nothing.
+00:05:35 Samira: Or writing the ID and then rolling back the address
+insert.
+00:05:40 Jax: Yeah. That.
+00:05:42 Ophelia: Sorry, sorry, I'm here. Can you hear me? I was on
+mute for I think the last thirty seconds.
+00:05:49 Samira: We can hear you.
+00:05:51 Ophelia: Okay. Right, so, the blast radius. It's not two
+percent of customers, it's much worse than that.
+00:05:59 Samira: Go on.
+00:06:01 Ophelia: Because it's the list endpoint. So a customer only
+needs one bad order in their history and their entire orders page is
+broken. Forever, not just now.
+00:06:13 Jax: Oh no.
+00:06:14 Ophelia: Yeah. So I counted distinct customers who have at
+least one of these, and it's four thousand one hundred and something.
+Four thousand one hundred and six, I think.
+00:06:26 Samira: Out of?
+00:06:27 Ophelia: We've had about sixty thousand active this week. So,
+seven percent.
+00:06:33 Samira: Okay, that's a sev one. I'm bumping it. Jax, can you
+update the status page while we talk?
+00:06:41 Jax: Doing it now. What do you want it to say?
+00:06:44 Samira: Say we're investigating errors affecting order
+history for a subset of customers. Don't put a number on it.
+00:06:52 Jax: Yep.
+00:06:53 Ophelia: I can give you the list of affected account IDs
+afterwards for the comms.
+00:06:59 Samira: Please. Dave, keep going, why is the address not
+there.
+00:07:04 Dave: I'm looking at the write path now. So the checkout
+service does the whole thing in one transaction, it inserts the
+address, gets the ID back, inserts the order.
+00:07:16 Samira: In one transaction.
+00:07:18 Dave: In one transaction. Which should be fine.
+00:07:22 Jax: Should be.
+00:07:24 Dave: Should be. Unless something else writes an order
+without going through checkout.
+00:07:30 Samira: Does anything?
+00:07:32 Dave: I mean, the admin tool does. And there's the, uh, the
+bulk import thing. And I think there's some test hooks.
+00:07:41 Jax: Test hooks in production?
+00:07:43 Dave: They're behind a header, they're not, like, open.
+00:07:47 Jax: That's not the reassurance you think it is.
+00:07:50 Samira: Let's park it. Can you tell from the rows which path
+wrote them? Is there a source column or a created by?
+00:07:59 Dave: There's a source column. Let me group by it.
+00:08:04 Dave: Okay. All two hundred and eighteen have source set to,
+uh, it's null actually. They're all null.
+00:08:12 Samira: And what writes null source?
+00:08:15 Dave: Nothing should. Checkout sets it to web or mobile, admin
+sets it to admin, the importer sets it to import.
+00:08:24 Ophelia: The test hooks?
+00:08:26 Dave: ...The test hooks probably don't set it.
+00:08:30 Jax: There it is.
+00:08:31 Samira: Okay. Okay hold on, before we go down that road. Even
+if the test hooks are writing bad orders, why did it start at nine
+forty one this morning? Those hooks have been there for years.
+00:08:44 Dave: That's a good question.
+00:08:46 Jax: Was there a deploy?
+00:08:48 Samira: There's always a deploy.
+00:08:50 Jax: I'm looking. There's a deploy at, uh, nine thirty eight.
+Checkout service, version, I'm not going to read the whole hash, it's
+the one from the pull request about idempotency keys.
+00:09:04 Samira: Three minutes before the errors start.
+00:09:07 Dave: That's not a coincidence.
+00:09:09 Samira: It is never a coincidence. Okay. Do we roll back?
+00:09:14 Jax: My instinct is yes.
+00:09:16 Dave: My instinct is also yes but I want to say the thing
+first, which is that rolling back won't fix the four thousand
+customers who already have bad rows. It'll only stop new ones.
+00:09:29 Samira: Understood. Stopping the bleeding is still worth it.
+Jax, roll it back.
+00:09:35 Jax: Rolling back. This takes about four minutes to go through
+all the pods.
+00:09:41 Samira: Fine. While that's happening. Ophelia, is there
+anything in the customer support queue about this?
+00:09:49 Ophelia: There's, hang on. There's thirty one tickets since
+about ten o'clock that mention order history not loading. Which is a
+lot for an hour.
+00:09:59 Samira: Any of them enterprise?
+00:10:02 Ophelia: Two. I'll flag them to their CSMs.
+00:10:06 Samira: Thanks.
+00:10:07 Dave: Oh. Oh that's not good.
+00:10:10 Samira: What.
+00:10:11 Dave: Error rate just went up. Not down. Up.
+00:10:15 Jax: The rollback's only about halfway through, you're getting
+mixed versions.
+00:10:20 Dave: No, this is different. These aren't serialiser errors
+anymore. These are timeouts. Connection timeouts.
+00:10:28 Samira: From where?
+00:10:29 Dave: Everywhere. All the services. It's not just checkout.
+00:10:34 Jax: Oh, hang on, I'm looking at the database. Connections are
+pinned. We're at, uh, we're basically at max.
+00:10:43 Samira: What's max?
+00:10:44 Jax: Four hundred on the pooler. And we're at three hundred
+and ninety something.
+00:10:50 Samira: Did the rollback cause that?
+00:10:52 Jax: Restarting all the pods at once means they all reconnect
+at once, so, partly. But that should settle in thirty seconds and it's
+not settling.
+00:11:03 Dave: Something's holding connections open.
+00:11:06 Jax: Let me look at what the sessions are actually doing.
+00:11:11 Jax: Right. So most of them are idle in transaction. Not idle,
+idle in transaction. There's a difference and the difference is
+they're holding locks.
+00:11:22 Samira: How many?
+00:11:24 Jax: Of four hundred? About three ten are idle in transaction.
+00:11:29 Ophelia: Is that normal?
+00:11:31 Jax: No. Normal is like five.
+00:11:34 Samira: How long have they been sitting there?
+00:11:37 Jax: The oldest one is, uh, eleven minutes. Most are two to
+five.
+00:11:43 Dave: Eleven minutes. That's about when the rollback started.
+00:11:48 Jax: Yeah.
+00:11:49 Samira: So the rollback made it worse.
+00:11:52 Jax: The rollback made it worse.
+00:11:54 Samira: Great. Love that. Okay, options.
+00:11:58 Jax: I can kill the idle ones. There's a function for it,
+you give it the process ID and it terminates the backend. I'd do it
+for anything idle in transaction more than five minutes.
+00:12:11 Dave: Is that safe?
+00:12:12 Jax: It'll roll back whatever they were doing. Which, if
+they've been sitting there for five minutes, they weren't doing
+anything.
+00:12:20 Samira: Do it.
+00:12:21 Jax: Doing it.
+00:12:23 Ophelia: While he does that, can I ask a dumb question?
+00:12:27 Samira: There are no dumb questions, there are only questions
+that make me realise I don't understand the system either.
+00:12:34 Ophelia: [laughs] Okay. Why does an order list page open a
+transaction at all? It's a read. It's just reading.
+00:12:42 Dave: ...Huh.
+00:12:44 Samira: That's not a dumb question.
+00:12:46 Dave: That's actually a really good question. It shouldn't.
+Reads shouldn't be in an explicit transaction.
+00:12:53 Jax: Killed eleven so far. Connections are coming down.
+00:12:58 Samira: Keep going. Dave, follow Ophelia's thing.
+00:13:03 Dave: Okay so. The ORM opens a transaction if you use the
+unit of work wrapper. And the controller, uh. Yeah. The orders
+controller wraps everything in the unit of work wrapper. Including
+the list endpoint.
+00:13:19 Samira: So every list request opens a transaction.
+00:13:23 Dave: Every list request opens a transaction, and if the
+serialiser throws inside it, the transaction never gets closed,
+because the error handler doesn't roll back.
+00:13:34 Jax: Oh my god.
+00:13:35 Samira: So the null address bug leaks a connection every time
+it fires.
+00:13:41 Dave: Every single time.
+00:13:43 Samira: And we've been firing it for, what, ninety minutes.
+00:13:47 Dave: Yeah.
+00:13:48 Jax: That's why it didn't settle. It was never going to
+settle. We were leaking faster than we were recycling.
+00:13:56 Samira: Okay. That's the actual incident. Everything else is
+downstream of that.
+00:14:02 Jax: Connections are at two hundred and forty now. Still
+killing.
+00:14:07 Samira: Error rate?
+00:14:09 Dave: Coming down. Timeouts are basically gone. Still seeing
+the serialiser errors but that's expected, the rollback doesn't fix
+existing rows.
+00:14:20 Samira: Right. So we have two problems and we've only stopped
+one of them. New bad orders should stop, because the deploy's rolled
+back. But the four thousand customers with existing bad rows are still
+broken.
+00:14:35 Ophelia: Four thousand one hundred and six.
+00:14:38 Samira: Four thousand one hundred and six. Thank you. What do
+we do about them?
+00:14:43 Dave: Two options. Either we backfill the missing addresses,
+or we make the serialiser not explode when the address is missing.
+00:14:52 Jax: The second one is a one line change and it works for
+everybody immediately.
+00:14:58 Dave: It also means we show an order with a blank address,
+which, for a receipt, is arguably wrong.
+00:15:06 Samira: It's less wrong than a page that doesn't load.
+00:15:10 Dave: Yeah, okay, that's fair.
+00:15:12 Jax: And it's not permanent, we backfill afterwards.
+00:15:16 Samira: Right. So, decision, we ship the defensive fix in the
+serialiser now, today, and we treat the backfill as a follow up.
+Everyone okay with that?
+00:15:28 Jax: Yes.
+00:15:29 Dave: Yes.
+00:15:30 Ophelia: I don't have an opinion, but yes.
+00:15:33 Samira: Dave, that's yours, how fast can you get it out?
+00:15:37 Dave: Twenty minutes to write and test it, and then whatever
+the pipeline takes.
+00:15:43 Jax: Pipeline's about eighteen minutes.
+00:15:46 Dave: So call it within the hour.
+00:15:48 Samira: Do it. Jax, where are we on connections?
+00:15:52 Jax: One eighty. It's stable. I've stopped killing things,
+the rest are legitimate.
+00:15:59 Samira: Okay. Can we stop that from happening again? Like, at
+the database level, not the app level.
+00:16:07 Jax: We can set an idle in transaction timeout on the
+application role. Anything that sits in a transaction doing nothing
+for more than, I'd say thirty seconds, gets killed automatically.
+00:16:20 Dave: That would have completely prevented this.
+00:16:23 Jax: It would have turned this into a much smaller incident,
+yeah. We'd have had errors but not an outage.
+00:16:31 Samira: Any downside?
+00:16:33 Jax: There'll be a couple of long running maintenance things
+that break. The nightly reconciliation job, maybe. We'd need to give
+that role a different setting.
+00:16:44 Samira: That seems manageable. Let's do it, but not right
+now, not in the middle of an incident. Jax, you own that, staging
+first.
+00:16:54 Jax: Yep. I'll do staging today and production Wednesday, if
+that works.
+00:17:00 Samira: Wednesday's fine. What about the missing foreign key?
+00:17:05 Dave: I'd want to be careful with that. Adding a foreign key
+to a table that already has two hundred and eighteen violations will
+just fail.
+00:17:14 Samira: So we clean up first.
+00:17:16 Dave: Clean up first, then add it. And on a table that size,
+adding it takes a while, so it wants to be a maintenance window thing.
+00:17:26 Samira: Okay, that's the backfill plus the constraint, that's
+one workstream. Who owns it?
+00:17:33 Dave: I'll take it, I've got the most context.
+00:17:36 Samira: You've also got the defensive fix.
+00:17:39 Dave: The defensive fix is twenty minutes.
+00:17:41 Samira: Fine. Take both.
+00:17:44 Ophelia: Can I ask about the test hooks? Because nobody's
+come back to that and it's still sitting there.
+00:17:51 Samira: Yeah. Yeah, you're right.
+00:17:54 Dave: I looked at them while we were talking. They do write
+orders. They don't set the source column, and they don't go through
+checkout, so they don't create an address.
+00:18:06 Jax: So they've been writing broken orders this whole time?
+00:18:10 Dave: A handful, yeah. But they used to write a null address
+ID, which the serialiser handled fine, because null is falsy and the
+old code checked for it.
+00:18:22 Samira: And the new deploy changed that.
+00:18:25 Dave: The idempotency key change made it write a placeholder
+ID instead of a null. So now it's not falsy, it's a number, and the
+check passes, and then the lookup returns nothing.
+00:18:39 Jax: Oh, that's nasty.
+00:18:41 Samira: That's genuinely nasty. Okay so the test hooks are
+the source and the deploy is the trigger.
+00:18:49 Dave: Yes.
+00:18:50 Samira: Then the test hooks come out. Not disabled, out.
+00:18:55 Dave: I don't disagree but I want to check nothing depends on
+them first, because I've been burned by that.
+00:19:02 Samira: Reasonable. Who's checking?
+00:19:05 Jax: I'll do it. I can grep the integration suites and ask in
+the QA channel.
+00:19:11 Samira: By when?
+00:19:13 Jax: Wednesday? Same as the timeout thing.
+00:19:16 Samira: Let's say Wednesday for the check and we decide on
+removal after that. I don't want to commit to ripping something out
+before we know what it holds up.
+00:19:27 Jax: Agreed.
+00:19:28 Ophelia: What do I tell support? Because they're going to ask
+me in about five minutes.
+00:19:34 Samira: Tell them order history is recovering, that a fix for
+the remaining affected accounts is going out within the hour, and that
+we'll have a proper update at, uh, what time is it.
+00:19:47 Ophelia: Ten past eleven.
+00:19:49 Samira: Say midday.
+00:19:51 Ophelia: Okay. And the four thousand accounts, do they need
+individual outreach or is a status page update enough?
+00:19:59 Samira: Status page for now. If any of them are enterprise,
+their CSM should reach out personally.
+00:20:06 Ophelia: There were two. I've already flagged them.
+00:20:09 Samira: Perfect.
+00:20:11 Jax: Connections are at one forty and flat. Error rate is
+back under one percent. Checkout success is back to ninety six.
+00:20:21 Samira: Ninety six, not ninety nine?
+00:20:24 Jax: Ninety six and climbing. Give it ten minutes.
+00:20:28 Samira: Okay. I'm going to take this back down to a sev two.
+00:20:33 Dave: Sounds right.
+00:20:34 Samira: Right. Let me read back what I've got, and tell me if
+I've got it wrong.
+00:20:40 Samira: Decisions. One, we ship the defensive fix in the order
+serialiser today rather than waiting for a backfill. Two, we add an
+idle in transaction timeout on the application database role. Three,
+we don't add the foreign key until the bad rows are cleaned up.
+00:20:59 Jax: That's right.
+00:21:00 Dave: Yep.
+00:21:01 Samira: Actions. Dave has the defensive fix, out within the
+hour. Dave also has the backfill and then the foreign key, and Dave, I
+want a date on that.
+00:21:13 Dave: Backfill I can do this week. The constraint needs a
+window so, next window is the Sunday after next.
+00:21:22 Samira: Put the backfill down for Friday and we'll schedule
+the constraint separately.
+00:21:28 Dave: Friday works.
+00:21:30 Samira: Jax has the idle in transaction timeout, staging
+today and production Wednesday. Jax also checks what depends on the
+legacy test hooks by Wednesday.
+00:21:42 Jax: Correct.
+00:21:43 Samira: Ophelia's sending the affected account list to
+support and updating them at midday.
+00:21:50 Ophelia: Yep.
+00:21:51 Samira: And I'll write the root-cause analysis. I'll have a
+draft out by Friday and we'll do the review the week after.
+00:22:00 Jax: Are we doing a proper blameless one or the short form?
+00:22:05 Samira: Proper one. This had three separate contributing
+causes and I don't want to lose any of them.
+00:22:12 Dave: Can I add a fourth thing to the list, not as an action
+but just so it's in the writeup.
+00:22:19 Samira: Go on.
+00:22:20 Dave: The list endpoint failing entirely because one row is
+bad. That pattern is everywhere in that codebase. It's not just
+orders. It's invoices, it's shipments, it's, honestly probably twenty
+endpoints.
+00:22:36 Samira: That's a big piece of work.
+00:22:38 Dave: It's a big piece of work and I'm not volunteering. I
+just want it written down so that when it happens again we can point
+at the date we knew.
+00:22:48 Samira: That's fair, and slightly bleak, but fair. It's going
+in the writeup as a known risk with no owner.
+00:22:56 Jax: Honest.
+00:22:57 Samira: Anything else? Ophelia?
+00:23:00 Ophelia: No, I'm good. I'll get you that account list in ten
+minutes.
+00:23:05 Samira: Jax?
+00:23:06 Jax: One thing. We found this because a customer complained,
+not because we alerted. The connection pool saturation had no alert on
+it at all.
+00:23:17 Samira: That's true. We had no page for that.
+00:23:20 Jax: We should. Something like, if idle in transaction goes
+over fifty for more than two minutes, wake somebody up.
+00:23:29 Samira: Do you want to own that or does it go in the writeup?
+00:23:33 Jax: Put it in the writeup, I've got enough. But it's a
+genuine gap.
+00:23:38 Samira: Noted. Okay. I'm not going to stop the recording yet,
+I want us on here until the fix is actually out. Ophelia, you can drop
+if you need to.
+00:23:47 Ophelia: I'll stay, I'm just writing the support note.
+00:23:51 Samira: Dave, where are you.
+00:23:54 Dave: Writing it now. It's genuinely three lines. If the
+address is missing I return a null object instead of reading through
+it, and the caller already handles null.
+00:24:05 Samira: Are you adding a test?
+00:24:07 Dave: I'm adding a test.
+00:24:09 Samira: I had to ask.
+00:24:11 Dave: You did have to ask, that's fine.
+00:24:14 Jax: While we're waiting. Can I say something about the
+rollback.
+00:24:19 Samira: Go.
+00:24:20 Jax: We rolled back and it made things worse, and I think
+we're going to remember that as "the rollback was wrong". It wasn't
+wrong. The rollback was right. It just wasn't sufficient, and the pod
+restart happened to surface the leak faster.
+00:24:37 Samira: That's a good distinction, actually.
+00:24:40 Jax: Because if the writeup says don't roll back, that's the
+wrong lesson and somebody's going to hesitate next time.
+00:24:48 Samira: No, agreed. I'll be careful with how I word it.
+00:24:53 Dave: For what it's worth I think the rollback bought us the
+information. We wouldn't have found the connection leak today
+otherwise. We'd have found it next week at a worse time.
+00:25:05 Ophelia: Is that a real thing or is that the thing people say
+after an incident to feel better?
+00:25:12 Jax: [laughs]
+00:25:13 Samira: Bit of both.
+00:25:15 Dave: Bit of both, yeah.
+00:25:17 Ophelia: Okay, just checking.
+00:25:20 Samira: Jax, is the pool holding?
+00:25:23 Jax: One thirty five. Hasn't moved in six minutes. Idle in
+transaction is down to four, which is normal.
+00:25:32 Samira: Four. From three hundred and ten.
+00:25:35 Jax: From three hundred and ten.
+00:25:37 Samira: Okay. And checkout?
+00:25:40 Jax: Ninety eight point four.
+00:25:42 Samira: That's basically baseline.
+00:25:45 Jax: Baseline's ninety nine point one. So not quite, but the
+gap is the customers with broken order pages, which is expected until
+Dave's thing lands.
+00:25:56 Ophelia: I've got a question about that, actually, for the
+support note. Are those customers' orders okay? Like, did the orders
+actually go through, or did they lose them?
+00:26:08 Dave: Oh. Good question. The orders went through. It's only
+the reading that's broken. Nobody lost an order and nobody got double
+charged.
+00:26:18 Ophelia: Can I say that? Because that's the thing they're
+going to ask.
+00:26:23 Dave: You can say that. The order rows are all there, the
+payments are all there. It's the address join that's broken.
+00:26:31 Samira: Say it in plain language though. Don't say join.
+00:26:35 Ophelia: I was going to say "your orders are safe and were
+processed normally, this only affects viewing your order history".
+00:26:44 Samira: That's much better than anything I would have
+written.
+00:26:48 Jax: Deploy's running, by the way. Dave, did you push?
+00:26:52 Dave: Pushed about a minute ago, yeah.
+00:26:55 Jax: Okay, it's in the pipeline. Tests are green so far.
+00:27:00 Samira: How long?
+00:27:01 Jax: Eighteen minutes-ish, and then a few minutes to roll
+through the pods.
+00:27:07 Samira: Alright. I'm going to get water. Back in two minutes.
+Somebody yell if the graph does anything.
+00:27:15 Jax: [inaudible]
+00:27:17 Dave: What?
+00:27:18 Jax: Nothing, I said bring me one. She's gone.
+00:27:22 Dave: [laughs]
+00:27:24 Ophelia: How long have you two been doing this?
+00:27:27 Jax: Incidents, or working together?
+00:27:30 Ophelia: Either.
+00:27:31 Jax: Four years here. Before that I was at a payments company
+which was, uh. That was a lot of incidents.
+00:27:40 Dave: Three years for me. This is maybe my, I want to say
+fifteenth sev one?
+00:27:47 Ophelia: Does it get less stressful?
+00:27:49 Dave: Yes and no. The first hour is the same every time. But
+you stop thinking it's your fault, which helps a lot.
+00:27:58 Jax: That's a good way to put it.
+00:28:00 Dave: I stole it from someone.
+00:28:03 Samira: I'm back. What did I miss?
+00:28:06 Jax: Dave's incident philosophy.
+00:28:08 Samira: Oh good. Deploy?
+00:28:10 Jax: Eleven minutes left.
+00:28:13 Samira: Okay. Let me use the time. Ophelia, one thing I want
+to make sure we capture. You found the blast radius in about four
+minutes and that was the thing that moved this from a sev two to a sev
+one. How did you get that number so fast?
+00:28:31 Ophelia: I just had the query already? Like, I have a saved
+query for distinct customers affected by an error signature, because I
+end up writing it every single time.
+00:28:43 Samira: That should be a dashboard.
+00:28:45 Ophelia: It should be a dashboard, yes. I've said that.
+00:28:49 Samira: Who did you say it to?
+00:28:51 Ophelia: [laughs] I don't know. The void.
+00:28:55 Samira: Okay, well, now you've said it to me. Put it in the
+writeup, I'll carry it.
+00:29:01 Ophelia: Really?
+00:29:02 Samira: Yeah. If the difference between a sev two and a sev
+one is whether one specific person is awake and has a saved query,
+that's a gap and it's my problem.
+00:29:14 Jax: That's a very good line, put that in the writeup too.
+00:29:19 Samira: I'm going to.
+00:29:21 Dave: Deploy's at the last stage.
+00:29:24 Samira: Watching.
+00:29:26 Jax: Pods are cycling. First one's up.
+00:29:30 Dave: I'm hitting the endpoint on one of the affected
+accounts. Ophelia, give me one of the IDs from your list.
+00:29:38 Ophelia: Uh, take the second one. I'll paste it in the chat.
+00:29:43 Dave: Got it. Hitting it now.
+00:29:47 Dave: Two hundred. It loads. The order with the missing
+address shows up with a blank address block but the page renders.
+00:29:57 Samira: That's the outcome we wanted.
+00:30:00 Jax: Error rate just fell off a cliff. We're at, uh, zero
+point one percent, which is baseline noise.
+00:30:09 Samira: Checkout?
+00:30:10 Jax: Ninety nine point one. That's baseline exactly.
+00:30:15 Samira: Okay. We're recovered. I'm going to call it and drop
+the sev entirely, and everything else is follow up work.
+00:30:24 Dave: Agreed.
+00:30:25 Jax: Agreed.
+00:30:26 Samira: Ophelia, send your update now rather than waiting for
+midday, and say resolved rather than recovering.
+00:30:34 Ophelia: Sending.
+00:30:36 Samira: Thank you all. Genuinely, that was a good call, we
+went from no idea to root cause in about fifteen minutes.
+00:30:45 Jax: We went from no idea to a different root cause in about
+fifteen minutes.
+00:30:51 Samira: [laughs] Yes. Fine. Two root causes.
+00:30:56 Dave: Three, if you count the missing foreign key.
+00:31:00 Samira: Don't.
+00:31:01 Dave: Okay.
+00:31:03 Ophelia: Thanks everyone. Sorry I was late.
+00:31:06 Samira: You were the most useful person on this call, don't
+apologise. The transaction question was the whole thing.
+00:31:14 Ophelia: [laughs] I genuinely didn't know what I was asking.
+00:31:19 Jax: That's usually how it goes.
+00:31:22 Samira: Alright. Stopping the recording.

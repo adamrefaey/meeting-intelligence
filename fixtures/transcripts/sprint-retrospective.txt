@@ -1,0 +1,538 @@
+[00:00:00] Nina: Okay. Recording's on. Hello everyone.
+[00:00:04] Leo: Hello.
+[00:00:05] Mei: Hi.
+[00:00:06] Carlos: Hey.
+[00:00:07] Kofi: [inaudible]
+[00:00:09] Nina: Kofi, you're breaking up a bit.
+[00:00:12] Kofi: Sorry, can you hear me now?
+[00:00:15] Nina: Yeah, that's better.
+[00:00:17] Kofi: I'm on the train. I'll be in and out.
+[00:00:20] Nina: That's fine. If you drop, just come back.
+[00:00:24] Mei: Is the train the one where it goes through the tunnel
+for ten minutes?
+[00:00:29] Kofi: [laughs] Yes. So I'll disappear around, uh, quarter
+past.
+[00:00:35] Nina: Noted. Right, sprint twenty three retro. Same format,
+what went well, what didn't, what do we change.
+[00:00:44] Leo: Can we do the middle one first?
+[00:00:47] Nina: Why?
+[00:00:48] Leo: Because we always do what went well first and by the
+time we get to the real stuff everyone's tired and we rush it.
+[00:00:57] Carlos: That's true, actually.
+[00:00:59] Mei: That's very true.
+[00:01:00] Nina: Okay, sure, let's flip it. What didn't go well.
+[00:01:05] Leo: CI.
+[00:01:06] Carlos: CI.
+[00:01:07] Mei: CI.
+[00:01:08] Nina: [laughs] Okay. Well, that was unanimous.
+[00:01:12] Kofi: I was going to say CI.
+[00:01:14] Nina: Everyone says CI. Say what specifically, because "CI
+is bad" isn't actionable.
+[00:01:21] Carlos: It's slow.
+[00:01:22] Nina: How slow?
+[00:01:23] Carlos: Eighteen minutes.
+[00:01:25] Mei: Eighteen if it passes.
+[00:01:26] Leo: [crosstalk]
+[00:01:27] Leo: Eighteen if it passes, and thirty five if you have to
+run it twice, which you usually do.
+[00:01:34] Nina: What was it before?
+[00:01:36] Carlos: Six.
+[00:01:37] Nina: Six to eighteen.
+[00:01:39] Carlos: Six to eighteen.
+[00:01:40] Nina: When did that happen?
+[00:01:42] Mei: It was the twelfth.
+[00:01:44] Nina: You're very sure about that.
+[00:01:46] Mei: I'm sure about it because I remember it being fine on
+the Friday and horrible on the Monday.
+[00:01:53] Leo: The Playwright suite went into the main pipeline on
+the twelfth.
+[00:01:58] Carlos: That's it, yeah.
+[00:01:59] Mei: [crosstalk]
+[00:02:00] Nina: So the end-to-end tests tripled the pipeline.
+[00:02:04] Leo: The end-to-end tests tripled the pipeline.
+[00:02:07] Kofi: And to be clear, I put them there, so.
+[00:02:11] Nina: Nobody's blaming you.
+[00:02:13] Kofi: I know. I'm just saying it out loud so nobody has to
+be polite about it.
+[00:02:19] Mei: [laughs]
+[00:02:20] Leo: And they're good tests. That's the annoying part.
+[00:02:24] Carlos: They caught the checkout thing.
+[00:02:26] Kofi: They caught two real bugs in three weeks.
+[00:02:30] Nina: So we don't want to delete them.
+[00:02:33] Carlos: God, no.
+[00:02:34] Mei: No.
+[00:02:35] Nina: Okay. So the problem isn't the tests, it's that they
+run in the wrong place at the wrong time.
+[00:02:43] Leo: Yes. That's exactly it.
+[00:02:46] Nina: Alright, hold that, I want to come back to it. What
+else didn't go well?
+[00:02:52] Mei: Reviews were slow.
+[00:02:54] Nina: How slow?
+[00:02:55] Mei: I had a pull request open for four days.
+[00:02:59] Carlos: I had one open for six.
+[00:03:01] Leo: Six?
+[00:03:02] Carlos: Six. And then it got approved with, like, one
+comment that said "looks good".
+[00:03:09] Mei: Which is worse, honestly.
+[00:03:11] Carlos: Which is much worse! If you're going to take six
+days at least tell me something.
+[00:03:18] Nina: Why did it take six days?
+[00:03:20] Carlos: Because it was a big pull request.
+[00:03:23] Nina: How big?
+[00:03:24] Carlos: Uh. About nine hundred lines?
+[00:03:28] Leo: Oof.
+[00:03:29] Carlos: I know. I know.
+[00:03:31] Nina: Why was it nine hundred lines?
+[00:03:34] Carlos: Because I batched it.
+[00:03:36] Nina: Why did you batch it?
+[00:03:38] Carlos: Because—
+[00:03:39] Mei: Oh.
+[00:03:40] Carlos: —because of CI, yeah. Because every push is
+eighteen minutes so I stopped pushing small things.
+[00:03:48] Leo: I do that too.
+[00:03:49] Mei: I definitely do that.
+[00:03:51] Kofi: Everyone does that.
+[00:03:53] Nina: Okay, hang on. Say that chain again slowly, because I
+think that's the actual finding of this retro.
+[00:04:01] Carlos: CI is slow, so I don't want to push often, so I
+batch changes, so my pull requests get big, so reviews take longer.
+[00:04:12] Nina: And?
+[00:04:13] Carlos: And the reviews are worse, because nobody actually
+reads nine hundred lines.
+[00:04:19] Leo: Nobody reads nine hundred lines. That's just true.
+[00:04:23] Mei: I've reviewed nine hundred line pull requests. What I
+actually do is read the first two hundred lines properly and then
+skim.
+[00:04:33] Carlos: Yeah, that's what I do.
+[00:04:35] Kofi: Same.
+[00:04:36] Nina: So slow CI is producing worse code review.
+[00:04:41] Leo: It's producing worse code, arguably.
+[00:04:44] Nina: That's a hell of a chain from one config change.
+[00:04:48] Kofi: It's a bit depressing.
+[00:04:50] Nina: It's not depressing, it's useful. That's a real
+causal chain and none of us saw it until just now.
+[00:04:58] Mei: Can I add a link to the chain?
+[00:05:01] Nina: Go on.
+[00:05:02] Mei: The two-reviewer policy. Because a nine hundred line
+pull request needs two people to look at it, and finding two people
+who both have an hour is much harder than finding one.
+[00:05:16] Leo: That's true.
+[00:05:17] Carlos: My six day one was waiting on the second reviewer
+for four of the six days.
+[00:05:24] Nina: When did we bring in the two-reviewer policy?
+[00:05:28] Leo: After the outage. In August.
+[00:05:31] Nina: And has it caught anything?
+[00:05:34] Mei: ...I don't know.
+[00:05:36] Leo: I genuinely don't know.
+[00:05:38] Carlos: I can't think of a case where the second reviewer
+found something the first one didn't.
+[00:05:45] Kofi: I can, actually. Mine, in October. Leo caught a thing
+that Mei had missed.
+[00:05:52] Mei: Oh, the migration one?
+[00:05:54] Kofi: The migration one.
+[00:05:55] Mei: Yeah, okay, that was a good catch.
+[00:05:58] Nina: So one in four months.
+[00:06:00] Kofi: That we can remember.
+[00:06:02] Nina: That we can remember, sure. Is one catch worth it?
+[00:06:07] Leo: Depends what it caught.
+[00:06:09] Kofi: It would have dropped a column with data in it.
+[00:06:13] Carlos: Okay, that's worth it.
+[00:06:15] Mei: That's definitely worth it.
+[00:06:17] Nina: [laughs] Well, that was a short debate.
+[00:06:20] Leo: But that's a migration. That's not every pull request.
+[00:06:25] Nina: Say more.
+[00:06:26] Leo: I mean, the second reviewer earned their keep on a
+database migration. Do I need two reviewers on a copy change?
+[00:06:36] Mei: No.
+[00:06:37] Carlos: Obviously not.
+[00:06:38] Nina: So the policy could be risk-based rather than
+blanket.
+[00:06:43] Leo: Yeah. Two reviewers for migrations, auth, payments,
+anything touching money or data. One for everything else.
+[00:06:53] Nina: Does anyone object to that?
+[00:06:55] Mei: How do we decide what's in the list?
+[00:06:58] Leo: Path-based. If it touches these directories, you need
+two.
+[00:07:03] Carlos: You can enforce that in the code owners file.
+[00:07:07] Kofi: That's actually easy.
+[00:07:09] Nina: Kofi, how easy?
+[00:07:11] Kofi: An hour? It's a config file.
+[00:07:14] Nina: Okay, hold that thought too, I've got two things
+parked now.
+[00:07:19] Mei: Can I raise the flaky tests?
+[00:07:22] Nina: Yes, please, that was on my list.
+[00:07:25] Mei: The database integration tests fail randomly, and I
+mean genuinely randomly, maybe one run in five.
+[00:07:34] Carlos: It's more than one in five.
+[00:07:36] Mei: Is it?
+[00:07:37] Carlos: I counted last week. I had eleven runs and four
+failures, and every one of them passed on retry.
+[00:07:45] Leo: Four out of eleven is horrific.
+[00:07:48] Nina: And they always pass on retry?
+[00:07:51] Carlos: Always. I have never once had one of those failures
+turn out to be real.
+[00:07:58] Kofi: That's the worst possible property.
+[00:08:01] Nina: Why?
+[00:08:02] Kofi: Because it trains you to hit retry without looking.
+So the day it's a real failure, we'll retry it and it'll pass by
+chance and we'll ship a bug.
+[00:08:14] Mei: That already happened.
+[00:08:16] Nina: When?
+[00:08:17] Mei: The rounding thing in November. It failed in CI, twice
+actually, and both times somebody retried and it went green.
+[00:08:27] Leo: I did not know that.
+[00:08:29] Mei: I only found out afterwards when I looked at the
+history.
+[00:08:34] Nina: That's a really important thing to have surfaced,
+thank you.
+[00:08:39] Carlos: So the flakiness isn't just annoying, it's actively
+hiding failures.
+[00:08:45] Kofi: It's worse than having no tests, at that point.
+[00:08:49] Leo: I wouldn't go that far.
+[00:08:51] Kofi: I would. No tests means you know you're not covered.
+Flaky tests means you think you are.
+[00:08:59] Nina: [laughs] That's going in my notes.
+[00:09:02] Nina: Does anyone know why they're flaky?
+[00:09:05] Mei: Shared database state, I assume?
+[00:09:08] Carlos: It's shared state. They all run against the same
+database and they don't clean up properly.
+[00:09:16] Leo: They run in parallel too, don't they?
+[00:09:19] Carlos: They run in parallel, which is why it's random. If
+two tests that touch the same table happen to land at the same time,
+one of them fails.
+[00:09:31] Nina: Can we not run them in parallel?
+[00:09:34] Carlos: Then they take nine minutes instead of two.
+[00:09:38] Mei: Which makes the CI problem worse.
+[00:09:41] Nina: Everything comes back to CI.
+[00:09:44] Leo: Everything comes back to CI.
+[00:09:46] Kofi: I'm about to go into the tunnel.
+[00:09:49] Nina: Say your thing first then.
+[00:09:51] Kofi: My thing is that the right fix is a database per test
+worker, not serialising them. It's a bit of setup work but then
+they're properly isolated and they stay parallel.
+[00:10:05] Carlos: That's the right fix, yeah.
+[00:10:07] Kofi: Okay, I'm going, bye—
+[00:10:10] Nina: And he's gone.
+[00:10:12] Mei: [laughs]
+[00:10:13] Leo: Impeccable timing.
+[00:10:15] Nina: Right, while he's in the tunnel. What else?
+[00:10:19] Carlos: The design handoff.
+[00:10:21] Mei: Oh, yes.
+[00:10:22] Nina: Go on.
+[00:10:23] Carlos: So we get designs in Figma, and then we build them
+in Tailwind, and the gap between those two things is entirely manual
+and it's entirely me squinting at a spacing value.
+[00:10:38] Leo: The spacing thing drives me mad.
+[00:10:41] Carlos: Because Figma will say twenty two pixels, and our
+scale doesn't have twenty two, it has twenty and twenty four.
+[00:10:50] Mei: So you pick one.
+[00:10:52] Carlos: So I pick one, and then design review says it's
+wrong, and we have a five message thread about two pixels.
+[00:11:01] Nina: How often?
+[00:11:02] Carlos: Every single component.
+[00:11:05] Leo: It's not just spacing, it's colours too. There are
+about forty greys in that file and we have nine.
+[00:11:14] Nina: Is that a design problem or an engineering problem?
+[00:11:18] Mei: It's a "nobody owns the boundary" problem.
+[00:11:22] Nina: That's a good way to put it.
+[00:11:24] Carlos: What I actually want is for the Figma file to use
+our tokens. So when it says spacing, it says spacing-five, not twenty
+two pixels.
+[00:11:36] Leo: Does Figma do that?
+[00:11:38] Carlos: Figma does that. It's variables. It's been a
+feature for a while.
+[00:11:44] Mei: Have we asked them to?
+[00:11:46] Carlos: I've mentioned it.
+[00:11:48] Nina: Mentioned it to who?
+[00:11:50] Carlos: ...In a thread.
+[00:11:52] Nina: [laughs] Okay, so no.
+[00:11:55] Carlos: So no. Not properly.
+[00:11:58] Nina: Right, that's an action then, and it's a
+conversation, not a ticket.
+[00:12:04] Carlos: I'll talk to Priya.
+[00:12:06] Nina: When?
+[00:12:07] Carlos: She's back Monday. So Tuesday?
+[00:12:11] Nina: Tuesday. Carlos takes the Figma to Tailwind token
+mismatch to Priya on Tuesday.
+[00:12:19] Carlos: Yep.
+[00:12:20] Mei: Can I say a thing that's not a problem?
+[00:12:23] Nina: We haven't got to that section yet but go on.
+[00:12:27] Mei: It's related. The thing that made this sprint bearable
+was pairing. Leo and I paired for two days on the notification stuff
+and it was the fastest either of us has worked in months.
+[00:12:41] Leo: It was really good.
+[00:12:43] Nina: What made it good?
+[00:12:45] Leo: No code review. Like, the review happened as we wrote
+it, so there was no four day gap at the end.
+[00:12:54] Mei: And no batching, because we didn't care about CI, we
+just ran the tests locally as we went.
+[00:13:02] Nina: Huh. So pairing routes around both of the problems we
+just found.
+[00:13:08] Carlos: That's an interesting observation.
+[00:13:11] Leo: I don't think we should conclude "everyone should pair
+all the time" though.
+[00:13:17] Mei: God, no. Two days was great, five days would have
+killed me.
+[00:13:23] Leo: [laughs] Yeah.
+[00:13:24] Nina: Noted, and I'll write it as an observation rather
+than a proposal.
+[00:13:30] Kofi: I'm back.
+[00:13:31] Nina: Welcome back.
+[00:13:33] Kofi: What did I miss?
+[00:13:34] Mei: Design tokens and pairing.
+[00:13:37] Kofi: Cool.
+[00:13:38] Nina: Alright, let's do what went well properly, and then
+changes. Quick round. Leo.
+[00:13:45] Leo: Pairing, which we said. And the incident on Thursday
+went well, actually. Twenty minutes from alert to fix.
+[00:13:54] Nina: That's good. Mei.
+[00:13:56] Mei: Pairing. And the new onboarding doc, whoever wrote
+that, it's excellent.
+[00:14:03] Kofi: That was me.
+[00:14:04] Mei: It's excellent.
+[00:14:06] Kofi: [laughs] Thank you.
+[00:14:08] Nina: Carlos.
+[00:14:09] Carlos: Uh. Honestly nothing springs to mind, which is
+maybe its own finding.
+[00:14:16] Nina: That's an honest answer.
+[00:14:18] Carlos: It was a slog. Nothing was terrible, it was just
+all a bit slow and heavy.
+[00:14:25] Leo: That's a fair description of the whole sprint.
+[00:14:29] Nina: Kofi.
+[00:14:30] Kofi: The end-to-end tests, controversially.
+[00:14:34] Mei: [laughs]
+[00:14:35] Kofi: No, look, they cost us a lot of time and they also
+caught two real bugs. Both of those things are true and I don't want
+the retro to only remember the first one.
+[00:14:48] Nina: That's fair and I'll write both.
+[00:14:51] Nina: Okay. Changes. Let's do the CI one, because it's
+underneath everything else.
+[00:14:58] Leo: The obvious move is to take the end-to-end tests off
+the pull request pipeline.
+[00:15:04] Kofi: And run them where?
+[00:15:06] Leo: On merge to main. Or nightly.
+[00:15:09] Kofi: Nightly means you find out the next day, which for a
+bug that's already merged is not great.
+[00:15:17] Carlos: On merge is better. You find out within twenty
+minutes of merging.
+[00:15:23] Mei: But by then it's in main.
+[00:15:26] Leo: It's in main but it's not deployed. We deploy twice a
+day, so there's a window.
+[00:15:33] Nina: What if we did a subset on the pull request and the
+full suite on merge?
+[00:15:39] Kofi: That's what I'd want. There's maybe six tests that
+cover the critical paths.
+[00:15:46] Carlos: Checkout, login, and search.
+[00:15:49] Kofi: Checkout, login, search, and the two admin ones.
+[00:15:54] Nina: How long would those six take?
+[00:15:57] Kofi: Two, three minutes.
+[00:15:59] Nina: So the pipeline goes from eighteen to about nine.
+[00:16:04] Kofi: Nine or ten, yeah.
+[00:16:06] Mei: That's still not six.
+[00:16:08] Nina: No, but it's not eighteen.
+[00:16:11] Leo: The rest of the gap is the unit tests, which have also
+grown.
+[00:16:16] Carlos: And they're not parallelised at all.
+[00:16:19] Nina: Are they not?
+[00:16:20] Carlos: One worker. Single-threaded. On an eight core
+runner.
+[00:16:26] Leo: Really?
+[00:16:27] Carlos: Really. I looked at it last month and then got
+distracted.
+[00:16:32] Nina: What would parallelisation get us?
+[00:16:35] Carlos: If it scales even half decently, four minutes down
+to one or two.
+[00:16:41] Kofi: That's free money.
+[00:16:43] Carlos: It's mostly free. The tests would need to not share
+state, which, given the conversation we just had about the database
+tests, is not guaranteed.
+[00:16:56] Mei: [laughs] Ah.
+[00:16:58] Nina: So the parallelisation and the flaky test fix are the
+same piece of work.
+[00:17:04] Carlos: They're adjacent. Same root cause, shared state.
+[00:17:09] Nina: Okay. Who wants what?
+[00:17:12] Kofi: I'll do the smoke tests. Splitting out the six
+critical path ones and wiring the full suite to run on merge. That's
+mine, I made the mess.
+[00:17:24] Nina: When?
+[00:17:25] Kofi: Uh. It's not hard, it's mostly pipeline config. End
+of next week?
+[00:17:32] Nina: Can you do Thursday?
+[00:17:34] Kofi: Thursday's tight but yes, if nothing else lands on
+me.
+[00:17:39] Nina: Kofi owns splitting out the smoke tests, Thursday.
+[00:17:44] Kofi: Yep.
+[00:17:45] Carlos: I'll take the parallelisation.
+[00:17:48] Nina: Of the unit tests?
+[00:17:50] Carlos: Unit test parallelisation, yes. And I'll find out
+how much shared state we've actually got while I'm in there.
+[00:17:59] Nina: Same day? Thursday?
+[00:18:01] Carlos: Thursday for the parallelisation, yes.
+[00:18:05] Nina: Good. And the flaky database integration tests, which
+is the bigger one.
+[00:18:11] Mei: I'll take those.
+[00:18:13] Nina: You sure? That's the hardest of the three.
+[00:18:16] Mei: I want them. They've cost me more time than anything
+else this sprint and I'd like to be the one who kills them.
+[00:18:25] Leo: [laughs] Fair enough.
+[00:18:27] Nina: What's the approach?
+[00:18:29] Mei: Kofi's one. A database per test worker.
+[00:18:33] Kofi: Happy to help if you get stuck, I've done it before.
+[00:18:38] Mei: I'll take you up on that.
+[00:18:40] Nina: When can you have it?
+[00:18:42] Mei: Friday. And I mean Friday properly, not Friday and
+then it slips.
+[00:18:48] Nina: Mei owns fixing the flaky database integration tests
+by Friday.
+[00:18:54] Mei: Yep.
+[00:18:55] Nina: And the code owners change for the two-reviewer
+policy. Kofi said an hour.
+[00:19:02] Kofi: I've got two things now.
+[00:19:04] Leo: I'll do it. It's a config file, I can do it between
+other things.
+[00:19:10] Nina: Do you need a date?
+[00:19:12] Leo: Not really. It'll be done this week.
+[00:19:15] Nina: Fine. But we need to agree the list of paths first,
+and I don't want to do that here because it'll take twenty minutes.
+[00:19:24] Leo: I'll propose a list and put it in the channel.
+[00:19:29] Mei: That works.
+[00:19:30] Nina: Good. Anything else anyone wants to change?
+[00:19:34] Carlos: Can we do something about review turnaround
+directly? Because all of this is indirect.
+[00:19:41] Nina: What would you want?
+[00:19:43] Carlos: I don't know. A rule? Like, review within twenty
+four hours.
+[00:19:49] Leo: I'd struggle with that.
+[00:19:51] Carlos: Why?
+[00:19:52] Leo: Because some days I've got four hours of meetings and
+a broken deployment. A rule doesn't create time.
+[00:20:01] Mei: What if it's not a rule but it's visible? Like, we
+just see how long things have been waiting.
+[00:20:09] Carlos: A dashboard.
+[00:20:11] Mei: A very small dashboard. Or honestly just a bot that
+posts "these three pull requests have been open more than two days"
+every morning.
+[00:20:22] Leo: I'd respond to that. I wouldn't respond to a rule.
+[00:20:27] Kofi: I'd respond to that too.
+[00:20:29] Nina: Does that exist already?
+[00:20:31] Carlos: There's a thing in the marketplace, I think.
+[00:20:35] Nina: Can somebody spend twenty minutes finding out?
+[00:20:39] Carlos: I'll look.
+[00:20:40] Nina: Okay, but let's be honest about whether the smaller
+pull requests fix this on their own first. If the changes we just
+agreed work, review time should drop without a bot.
+[00:20:54] Mei: That's a good point.
+[00:20:56] Nina: So let's leave the bot until next retro and see if we
+still need it.
+[00:21:02] Carlos: I'm fine with that.
+[00:21:04] Leo: Agreed.
+[00:21:05] Nina: Right. Let me read back. Kofi splits the smoke tests
+out onto the pull request pipeline with the full suite on merge,
+Thursday. Carlos does unit test parallelisation, Thursday. Mei fixes
+the flaky database integration tests, Friday. Leo proposes the
+two-reviewer path list this week. Carlos talks to Priya about the
+Figma to Tailwind tokens on Tuesday.
+[00:21:33] Carlos: Correct.
+[00:21:34] Mei: Correct.
+[00:21:35] Leo: Yep.
+[00:21:36] Kofi: Yep.
+[00:21:37] Nina: And the thing I'm taking away, which I want to say
+out loud, is that we came in here with five separate complaints and
+four of them were the same complaint.
+[00:21:49] Leo: That's true.
+[00:21:50] Nina: Slow CI made pull requests big, big pull requests
+made reviews slow, slow reviews made people batch more. And the flaky
+tests made everyone retry without looking, which is how a real
+failure got through in November.
+[00:22:08] Mei: When you put it in one sentence it's quite bad.
+[00:22:12] Nina: [laughs] It is quite bad. But it's also one problem
+rather than five, which is better news than it sounds.
+[00:22:21] Carlos: That's a nicer way to end it.
+[00:22:24] Nina: I try. Anything else? We've got eight minutes.
+[00:22:29] Mei: I've got one and I've been sitting on it for two
+retros.
+[00:22:34] Nina: Then definitely say it.
+[00:22:37] Mei: We don't have a definition of done.
+[00:22:40] Leo: We do, it's on the wiki.
+[00:22:43] Mei: Is it? What does it say?
+[00:22:46] Leo: ...I don't know what it says.
+[00:22:49] Carlos: [laughs]
+[00:22:50] Mei: Right. That's my point.
+[00:22:53] Nina: What's the actual problem it causes?
+[00:22:56] Mei: The problem is that "done" means different things to
+different people and we only find out at the end.
+[00:23:04] Mei: I shipped the notification thing and I thought it was
+done, and then Carlos asked where the docs were.
+[00:23:12] Carlos: Which was a reasonable question.
+[00:23:15] Mei: It was completely reasonable! And I hadn't written
+any, because in my head docs weren't part of it.
+[00:23:23] Leo: I'd have assumed docs too.
+[00:23:26] Kofi: I wouldn't have.
+[00:23:28] Nina: There you go. That's three of us and two answers.
+[00:23:33] Mei: And it's not just docs. It's whether there's
+monitoring, whether it's behind a flag, whether anyone's told support.
+[00:23:43] Carlos: Support is the one we always miss.
+[00:23:46] Kofi: We always miss support.
+[00:23:49] Nina: Okay, so what would you want?
+[00:23:52] Mei: A short list. Genuinely short, like five things, on
+the pull request template so you can't avoid seeing it.
+[00:24:01] Leo: A checklist in the template is easy to ignore.
+[00:24:06] Mei: It's easy to ignore and it's still better than a wiki
+page nobody's read.
+[00:24:12] Leo: That's fair.
+[00:24:14] Carlos: Can I push on something though? Because I think
+there's a risk here.
+[00:24:20] Nina: Go on.
+[00:24:21] Carlos: If the list is five things and one of them is docs,
+then every copy change needs a doc update, and people will start
+ticking boxes without thinking.
+[00:24:34] Mei: So it needs to be conditional.
+[00:24:37] Carlos: Which makes it longer, and then nobody reads it.
+[00:24:42] Kofi: This is the same shape as the two-reviewer thing.
+Blanket rules are easy to write and wrong, risk-based rules are right
+and hard to write.
+[00:24:54] Nina: That's a good observation, actually. Twice in one
+retro.
+[00:24:59] Mei: Then let's do it the same way. The checklist asks "did
+you change behaviour a customer can see", and if yes you get the
+longer list.
+[00:25:11] Leo: That I'd support.
+[00:25:13] Carlos: Yeah, that works.
+[00:25:15] Nina: Who writes it?
+[00:25:17] Mei: I'll draft it, but I've got the flaky tests.
+[00:25:21] Nina: After the flaky tests then. There's no rush on this
+one, it's been broken for a year.
+[00:25:28] Mei: [laughs] Fine.
+[00:25:30] Nina: Anything else? Kofi, you still at the station?
+[00:25:35] Kofi: I'm fine. I've got one small thing.
+[00:25:39] Nina: Go.
+[00:25:40] Kofi: Can we stop doing the retro at four thirty on a
+Friday?
+[00:25:45] Mei: Oh, god, yes.
+[00:25:47] Leo: Yes.
+[00:25:48] Carlos: I've wanted to say that for months.
+[00:25:51] Nina: [laughs] Why has nobody said this?
+[00:25:55] Kofi: Because it feels like a complaint about a meeting
+rather than a real thing.
+[00:26:01] Mei: It is a real thing though. By four thirty on a Friday
+I'm useless, and this is the meeting where we're supposed to think.
+[00:26:11] Leo: And it means anything we agree gets started on Monday
+after a weekend of forgetting it.
+[00:26:18] Nina: That last part is a genuinely good argument and I
+hadn't thought of it.
+[00:26:24] Carlos: Wednesday?
+[00:26:26] Kofi: Wednesday's good. Middle of the sprint, everyone's
+awake.
+[00:26:31] Nina: Wednesday it is. I'll move it.
+[00:26:34] Mei: That might be the highest impact change of the whole
+retro.
+[00:26:39] Nina: [laughs] Don't say that, I've got five actions
+written down.
+[00:26:44] Carlos: It's not a competition.
+[00:26:47] Nina: It's a bit of a competition.
+[00:26:50] Nina: Okay. Thanks everyone, that was a good one.
+[00:26:54] Leo: Thanks Nina.
+[00:26:55] Mei: Bye.
+[00:26:56] Carlos: See you.
+[00:26:57] Kofi: Bye.
+[00:26:58] Nina: Stopping the recording.

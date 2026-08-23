@@ -1,0 +1,505 @@
+[00:00] Victoria: Are we recording? Somebody tell me we're recording,
+because last quarter we weren't and I had to reconstruct the whole
+thing from memory.
+[00:09] Kiran: It's recording. There's a banner.
+[00:12] Victoria: Thank you. Right. Q1 budget review. We've got fifty
+minutes and I'd like to be done in forty.
+[00:21] Arthur: That would be a first.
+[00:23] Victoria: It would be a first, Arthur, thank you. Who's not
+here?
+[00:28] Chloe: Rina's dialling in from the airport, she said she might
+be in and out.
+[00:34] Victoria: Airport audio. Wonderful.
+[00:37] Rina: I can hear you. I'm in a lounge, it's fine, I'll mute
+when I'm not talking.
+[00:44] Victoria: Perfect. Okay. Let me set the frame, because I want
+everyone thinking the right way for the next forty minutes.
+[00:53] Victoria: We have a ceiling. The ceiling is one point two
+million for Q1 across the four functions in this room. The requests
+that came in total one point three eight.
+[01:06] Arthur: So we're a hundred and eighty over.
+[01:09] Victoria: We're a hundred and eighty thousand over. Which
+means this is not a meeting where everybody presents and I approve.
+This is a meeting where things get cut, and I would much rather they
+get cut by the four of you than by me.
+[01:26] Kiran: That's ominous.
+[01:28] Victoria: It's meant to be slightly ominous.
+[01:31] Chloe: Can I ask, is the one point two firm or is it a
+starting position?
+[01:37] Victoria: It's firm. I asked. The answer was no, and it was
+the kind of no where asking again would be a mistake.
+[01:47] Chloe: Understood.
+[01:48] Victoria: Right. Kiran, you're the biggest number, let's start
+with you.
+[01:54] Kiran: Sure. So the headline is the GPU cluster, which is the
+three hundred and fifty thousand pound budget line, and I know
+that's the one everyone's been talking about.
+[02:06] Victoria: It's the one I've been talking about, certainly.
+[02:10] Kiran: Right, so, the ask is three fifty for eight H100s, and
+that's capital, not cloud.
+[02:18] Arthur: Why not cloud? Genuine question, not a gotcha.
+[02:23] Kiran: Because we've run the numbers both ways. Cloud for the
+same capacity, at the utilisation we're actually seeing, is about
+forty one thousand a month.
+[02:35] Arthur: So it pays back in, what, nine months.
+[02:39] Kiran: Eight and a half. And after that it's ours for another
+two and a half years.
+[02:45] Chloe: What's utilisation actually look like? Because I
+remember the last cluster we bought sat idle.
+[02:53] Kiran: That's a fair hit and I'll take it. That was the
+inference boxes in 2023 and they were at about twenty percent for the
+first six months.
+[03:04] Victoria: What's different?
+[03:06] Kiran: Two things. One, this is training, not inference, and
+training jobs queue. We've got a queue right now. There are people
+waiting eleven hours for a slot on the shared cluster.
+[03:20] Victoria: Eleven hours.
+[03:22] Kiran: Eleven hours at peak, yeah. And the second thing is
+we'd share it with the research team, so it's not just my
+utilisation, it's ours plus theirs.
+[03:34] Arthur: Has research agreed to that or is that your
+assumption?
+[03:39] Kiran: ...That's mostly my assumption.
+[03:42] Arthur: Right.
+[03:43] Kiran: No, that's a fair challenge. I've talked to Deepa about
+it informally and she was positive but there's no commitment.
+[03:53] Victoria: Get the commitment. Because if research doesn't use
+it, the utilisation case halves and we're back to the 2023 problem.
+[04:03] Kiran: That's fair, I'll get it in writing.
+[04:07] Victoria: What's the lead time on the hardware?
+[04:10] Kiran: That's the other thing. It's fourteen to sixteen weeks
+right now.
+[04:16] Chloe: Sixteen weeks means it lands in Q2.
+[04:20] Kiran: It lands at the very end of Q1 if we order in the next
+two weeks, and Q2 if we don't.
+[04:28] Victoria: So the decision is time sensitive, which I notice
+was not in the paper you sent me.
+[04:35] Kiran: It was in the appendix.
+[04:37] Victoria: Nothing in an appendix has ever been read by anyone,
+Kiran.
+[04:42] Kiran: [laughs] Noted.
+[04:44] Arthur: Can I raise the legal thing?
+[04:47] Victoria: Go on.
+[04:48] Arthur: Anything over two fifty in capital needs a legal
+review of the purchase agreement, and legal's turnaround is currently
+about three weeks.
+[04:59] Kiran: Three weeks?
+[05:00] Arthur: They're down two people.
+[05:02] Kiran: Then that eats the whole window.
+[05:05] Arthur: It eats most of it, yes.
+[05:08] Victoria: Can it run in parallel? Can legal review the
+agreement while we finalise the vendor?
+[05:15] Arthur: It can if we're only talking to one vendor. If it's an
+RFP with three, they'd have to review three agreements and they won't.
+[05:26] Victoria: Kiran, is it an RFP or have you already chosen?
+[05:31] Kiran: We've effectively chosen. There's really only two
+suppliers who can deliver in the window and one of them we've bought
+from before.
+[05:41] Victoria: "Effectively chosen" is going to be a problem in the
+audit, isn't it, Arthur.
+[05:47] Arthur: It's going to be a problem, yes. Anything over two
+fifty needs a documented competitive process.
+[05:55] Kiran: Even if the outcome's obvious?
+[05:58] Arthur: Especially if the outcome's obvious. The process is
+there to demonstrate the outcome was obvious.
+[06:06] Victoria: So we need an RFP, quickly, and it needs to be real.
+[06:12] Kiran: How quick can an RFP be?
+[06:15] Arthur: If you write a tight spec and give them a week to
+respond, you can close it in ten days. It's not the RFP that's slow,
+it's people writing vague specs and then arguing about the responses.
+[06:30] Kiran: I can write a tight spec.
+[06:32] Victoria: Then do. When can I see it?
+[06:36] Kiran: Wednesday.
+[06:37] Victoria: The GPU cluster RFP goes out Wednesday. Arthur, can
+you get legal to start on the standard terms before the responses come
+back?
+[06:48] Arthur: I can ask them to pre-review our template, which is
+most of the work. Then it's just the vendor-specific bits.
+[06:57] Victoria: Do that.
+[06:59] Arthur: Yep.
+[07:00] Victoria: So, conditionally, the three hundred and fifty
+thousand pound budget for the cluster is approved, subject to legal
+review and subject to Deepa confirming research will use it. Kiran,
+does that work?
+[07:15] Kiran: That works.
+[07:16] Victoria: But that's three fifty of a one point two million
+ceiling gone in seven minutes, so everybody else should be nervous.
+[07:25] Chloe: I am nervous.
+[07:27] Victoria: Kiran, what else is in yours?
+[07:30] Kiran: Headcount. Four machine learning engineers.
+[07:34] Victoria: At?
+[07:35] Kiran: Fully loaded, about a hundred and ninety each, but
+they'd start staggered so the Q1 cost is more like two hundred and
+sixty total.
+[07:46] Victoria: And in Q2?
+[07:48] Kiran: Q2 it's the full run rate. Seven sixty annualised.
+[07:54] Victoria: That's the number that matters. This meeting is
+about Q1 but I'm not going to approve a Q1 number that commits us to a
+Q2 number I haven't seen.
+[08:06] Arthur: That's the right way to look at it, for what it's
+worth.
+[08:11] Victoria: Thank you, Arthur, I've been doing this a while.
+[08:14] Arthur: [laughs]
+[08:16] Kiran: Can I make the case for four rather than three?
+[08:20] Victoria: You can, and I'll tell you now I'm probably going to
+say three.
+[08:26] Kiran: Then let me make it anyway. The four roles are two on
+training infrastructure, one on evaluation, and one on data quality.
+The data quality one is the one that always gets cut and it's the one
+that always turns out to matter.
+[08:44] Chloe: Why does it always get cut?
+[08:47] Kiran: Because it's the least glamorous and it's the hardest
+to show impact for in a quarter.
+[08:54] Victoria: What happens if you don't get it?
+[08:57] Kiran: What happens is the same thing that happened last year,
+which is that the other three spend about a third of their time on
+data quality, badly, and resent it.
+[09:09] Rina: Sorry, can I come in?
+[09:11] Victoria: Please.
+[09:12] Rina: That's the same argument I make about sales operations
+every quarter and I've lost it every quarter, so I have some
+sympathy.
+[09:22] Victoria: Noted, and I hear the pattern.
+[09:26] Victoria: Kiran, I'm going to approve three, and I'm going to
+tell you which three: the two on training infrastructure and the one
+on data quality.
+[09:37] Kiran: Not evaluation?
+[09:39] Victoria: Not evaluation, because you told me the queue is the
+bottleneck and evaluation doesn't shorten the queue. And because you
+just argued data quality is the one that matters, so I'd look silly
+cutting it.
+[09:54] Kiran: [laughs] That's fair. I'd rather have those three than
+any other three.
+[09:59] Victoria: Good. Three machine learning engineers approved.
+Which saves us about sixty five in Q1.
+[10:07] Arthur: Sixty five, yes.
+[10:09] Victoria: So we're a hundred and fifteen over. Chloe.
+[10:14] Chloe: Right. My big one is the two frontend contractors.
+[10:19] Victoria: How much?
+[10:20] Chloe: Eighty for the quarter, both of them, six months each
+starting January.
+[10:26] Victoria: What are they for?
+[10:28] Chloe: The design system migration. We've got about four
+hundred components on the old library and we need them all moved
+before we can ship the new navigation.
+[10:40] Victoria: What happens if they start in April instead of
+January?
+[10:45] Chloe: Then the navigation ships in Q3 rather than Q2.
+[10:50] Victoria: Is that fatal?
+[10:52] Chloe: It's not fatal. It's annoying. The navigation work is
+blocking two other things and they'd all slide.
+[11:01] Victoria: Which two things?
+[11:03] Chloe: The mobile web experience and the onboarding rework.
+[11:08] Rina: The onboarding rework is in my Q2 number.
+[11:12] Chloe: I know. I know it is.
+[11:15] Victoria: Say more, Rina.
+[11:17] Rina: We've got a conversion assumption in the Q2 forecast
+that depends on the new onboarding. If that slides to Q3, the forecast
+slides.
+[11:29] Victoria: By how much?
+[11:31] Rina: I'd have to model it properly. Off the top of my head,
+a couple of hundred thousand of pipeline, not revenue.
+[11:40] Victoria: Pipeline, not revenue.
+[11:42] Rina: Pipeline. The revenue impact in Q2 is probably small,
+it's Q3 where it'd show.
+[11:50] Victoria: Okay, so it's real but it's not this quarter.
+[11:55] Chloe: Can I propose something?
+[11:57] Victoria: Please.
+[11:58] Chloe: Give me one contractor in January and one in April.
+That's forty rather than eighty in Q1, and the migration takes longer
+but it doesn't stop.
+[12:11] Victoria: Does one person actually make progress or do you
+need two for it to work?
+[12:17] Chloe: One makes progress. It's genuinely parallelisable work,
+it's four hundred independent components.
+[12:26] Victoria: Then that's a good compromise and I'll take it.
+[12:30] Arthur: That's forty saved.
+[12:32] Victoria: Seventy five over. Chloe, what else?
+[12:36] Chloe: Tooling renewals, which are non-negotiable, about
+thirty. And the design conference, which is twelve.
+[12:45] Victoria: What's the conference for?
+[12:47] Chloe: Six people, three days. It's mostly for the team, it's
+been a rough year and it's the thing they've asked for.
+[12:57] Victoria: I'm not going to cut a twelve thousand pound morale
+line to solve a hundred and eighty thousand pound problem. Keep it.
+[13:07] Chloe: Thank you.
+[13:08] Victoria: Don't thank me, it's twelve thousand pounds. Arthur.
+[13:13] Arthur: Mine's mostly boring. Audit fees are up eighteen
+percent, that's contractual. Insurance renewal is up, that's the
+market. The only discretionary line is the finance system upgrade,
+which is ninety.
+[13:29] Victoria: Tell me about the ninety.
+[13:31] Arthur: We're on a version that goes out of support in
+October.
+[13:36] Victoria: October's not Q1.
+[13:38] Arthur: October's not Q1, but the implementation is four to
+five months and it can't start in the middle of year end close.
+[13:48] Victoria: So it's January or it's June.
+[13:51] Arthur: It's January or it's June, and June means we're
+cutting it very fine.
+[13:57] Victoria: What happens if we go out of support?
+[14:00] Arthur: No security patches. Which for a finance system is,
+uh. It's the sort of thing that turns up in an audit finding.
+[14:11] Victoria: Noor's team would have opinions.
+[14:14] Arthur: Noor's team would have extremely strong opinions.
+[14:18] Victoria: Then it's not really discretionary, is it.
+[14:22] Arthur: It's discretionary in the sense that I could not do
+it. It's not discretionary in the sense that not doing it is a real
+option.
+[14:32] Victoria: Keep it. But Arthur, I want to know why this is the
+first time I'm hearing about an October end-of-support date in a
+January budget meeting.
+[14:44] Arthur: That's a completely fair question and the answer is
+that it was on a slide in October and nobody, including me, connected
+it to the budget cycle.
+[14:56] Victoria: Right. Well. Let's have a list of every system's
+end-of-support date somewhere I can see it.
+[15:05] Arthur: I'll build one.
+[15:07] Victoria: Thank you. Rina, you're up, and you're the last one,
+and we're seventy five over.
+[15:14] Rina: I know. And I'm going to make it worse before I make it
+better.
+[15:19] Victoria: Go on.
+[15:20] Rina: My ask is four EMEA account executives. That's two
+hundred and forty in Q1 including ramp.
+[15:29] Victoria: That's a big number for a quarter where we're over.
+[15:34] Rina: It is. But it's the number that generates the Q3 and Q4
+revenue, so cutting it is the most expensive saving on this list.
+[15:45] Victoria: Make the case.
+[15:47] Rina: EMEA pipeline is up sixty percent year on year and we
+have three people covering it. Our average time to first response on
+an EMEA inbound is four days.
+[15:59] Arthur: Four days?
+[16:00] Rina: Four days. In a region where we're competing against
+people with local teams.
+[16:07] Victoria: What's the ramp on an account executive?
+[16:11] Rina: Five to six months to full productivity. So somebody
+hired in January is producing in June.
+[16:20] Victoria: Which is why cutting it is expensive.
+[16:23] Rina: Which is exactly why cutting it is expensive. Every
+month I don't hire is a month pushed into next year.
+[16:32] Victoria: Can you do it with three?
+[16:35] Rina: I can do it with three. I'd rather have four.
+[16:39] Victoria: What's the difference in outcome?
+[16:42] Rina: Three covers UK, DACH and Nordics. Four would let me put
+someone on France and Southern Europe, which we currently don't cover
+at all.
+[16:54] Victoria: We don't cover France at all?
+[16:57] Rina: We take inbound. We don't do anything proactive.
+[17:02] Victoria: How much inbound?
+[17:04] Rina: It's about eleven percent of EMEA pipeline with no
+effort at all, which is why I think it's worth a person.
+[17:13] Victoria: That's a good argument.
+[17:15] Rina: I know it's a good argument, it's why I saved it.
+[17:19] Victoria: [laughs] Alright. Here's my problem. Three is sixty
+saved, which gets us to fifteen over, and fifteen I can absorb. Four
+leaves us seventy five over and I have nowhere left to go.
+[17:35] Rina: Unless somebody else moves.
+[17:37] Victoria: Unless somebody else moves. Does anybody want to
+volunteer?
+[17:43] Chloe: [laughs] Not really.
+[17:46] Rina: Can I volunteer something of my own?
+[17:49] Victoria: You can.
+[17:50] Rina: The outbound agency. It's forty five a quarter and I
+genuinely cannot show you what it produces.
+[17:59] Victoria: How long have we been paying it?
+[18:02] Rina: Two and a half years.
+[18:04] Arthur: Forty five a quarter for two and a half years is,
+what, four hundred and fifty thousand.
+[18:11] Rina: Yes.
+[18:12] Victoria: And you can't show me what it produces.
+[18:16] Rina: I can show you activity. I can show you meetings booked.
+What I can't show you is a single closed deal I'd attribute to them,
+and I've looked.
+[18:28] Victoria: Why has nobody cut this?
+[18:31] Rina: Honestly? Because it's forty five thousand and every
+quarter there's a bigger fire.
+[18:38] Victoria: That's the most honest thing anyone's said today.
+[18:42] Rina: [laughs]
+[18:44] Victoria: Right. Cut it. And Rina, that's a genuinely good
+piece of work, volunteering your own line.
+[18:52] Rina: I'd rather spend it on a person.
+[18:55] Victoria: So would I. So: outbound agency spend is frozen and
+reallocated. That's forty five back.
+[19:04] Arthur: Which means four account executives leaves us thirty
+over rather than seventy five.
+[19:11] Victoria: Thirty over. Hmm.
+[19:14] Rina: Is thirty absorbable?
+[19:16] Victoria: Thirty is absorbable but it's not free, and I don't
+want to spend all my flexibility in the first meeting of the quarter.
+[19:26] Victoria: I'm going to say three account executives, not four.
+[19:31] Rina: Okay.
+[19:32] Victoria: And here's why, and I want you to hear the reason
+rather than just the answer. It's not the money. It's that you told me
+five to six months to ramp, and you also told me time to first
+response is four days. If I give you a fourth person, response time
+doesn't improve until June. If you fix the routing, it improves in
+February.
+[19:57] Rina: That's, yeah. That's a reasonable challenge.
+[20:02] Victoria: Is there a routing fix?
+[20:04] Rina: There's a routing fix. It's not free either but it's
+much cheaper than a person.
+[20:11] Victoria: Then let's find out what it costs before we hire a
+fourth person to compensate for it.
+[20:18] Rina: I'll come back with that.
+[20:20] Victoria: And France?
+[20:22] Rina: France waits. Which I don't love.
+[20:26] Victoria: I don't love it either. Put it top of the list for
+Q2 and I'll fight for it then.
+[20:33] Rina: I'll hold you to that.
+[20:35] Victoria: Please do. Arthur, where does that leave us?
+[20:39] Arthur: Let me add up. Cluster three fifty, three engineers
+instead of four, one contractor instead of two, agency frozen, three
+account executives. That's, uh. One point one eight five.
+[20:56] Victoria: Under the ceiling.
+[20:58] Arthur: Fifteen thousand under.
+[21:00] Victoria: I'll take fifteen under. Anything I've missed?
+[21:05] Chloe: What about the Q4 ARR target? That was on the agenda.
+[21:10] Victoria: It was, thank you. Rina, twenty five percent.
+[21:15] Rina: Twenty five is aggressive with three account executives
+rather than four.
+[21:21] Victoria: Is it undoable?
+[21:23] Rina: It's doable. It's aggressive. I'd want it understood
+that it assumes the routing fix lands and it assumes the onboarding
+rework isn't delayed past Q3.
+[21:36] Chloe: Which it now might be, given I've got one contractor.
+[21:41] Rina: Right. So those two things are linked and I want that
+written down, because in October somebody's going to ask me why I
+missed and I want the answer to already be on paper.
+[21:54] Victoria: That's a completely reasonable thing to ask for and
+I'll make sure it's in the minutes. The Q4 ARR target is twenty five
+percent, with two stated dependencies.
+[22:07] Rina: Thank you.
+[22:09] Victoria: Right, let me recap, and please correct me, because
+we've moved a lot of numbers around.
+[22:16] Victoria: The GPU cluster is approved at three hundred and
+fifty thousand, conditional on legal review and on research
+committing to shared use. We're hiring three machine learning
+engineers, not four, and the fourth is deferred rather than declined.
+[22:35] Kiran: Deferred rather than declined, thank you for the
+distinction.
+[22:40] Victoria: One frontend contractor starts in January, the
+second is deferred to April. The finance system upgrade goes ahead in
+January because October end-of-support makes it non-optional.
+Marketing outbound agency spend is frozen and the money reallocated.
+Three EMEA account executives rather than four, with France deferred
+to Q2. And the Q4 ARR target is twenty five percent.
+[23:08] Arthur: That's all correct.
+[23:10] Chloe: Correct.
+[23:11] Rina: Correct.
+[23:12] Kiran: Correct.
+[23:13] Victoria: Actions, then. Kiran gets the RFP out Wednesday and
+gets Deepa's commitment in writing. Kiran, when for Deepa?
+[23:24] Kiran: I'll have it by Wednesday too, it's a conversation not
+a project.
+[23:30] Victoria: Good. Arthur pre-briefs legal on the standard terms
+and builds the end-of-support list.
+[23:38] Arthur: When do you want the list?
+[23:40] Victoria: Whenever, it's not urgent, it's just embarrassing
+that it doesn't exist.
+[23:46] Arthur: [laughs] I'll do it this month.
+[23:49] Victoria: Rina comes back with the routing fix cost, and
+Rina, I want the revised quota model on Monday, because the account
+executive number changed and the quota assumptions move with it.
+[24:03] Rina: Monday's tight but yes. Revised quota model Monday.
+[24:09] Victoria: And Arthur, the thing I actually need most. A
+revised cash flow forecast reflecting all of this, because the cluster
+is capital and it lands in a single month, and I need to know what
+that does to us.
+[24:24] Arthur: When?
+[24:25] Victoria: Friday.
+[24:26] Arthur: Friday's doable. Cash flow forecast Friday, reflecting
+the capital purchase timing.
+[24:34] Victoria: Thank you. Chloe, anything from you?
+[24:38] Chloe: Just the contractor start dates to sort out, which is
+mine to do.
+[24:44] Victoria: Fine. Anything else from anyone?
+[24:48] Rina: They're boarding my flight.
+[24:50] Victoria: [laughs] Then go. Thank you Rina.
+[24:54] Rina: Thanks all. Bye.
+[24:56] Kiran: One thing before we close.
+[24:59] Victoria: Go.
+[25:00] Kiran: If the benchmark comes back and the cluster's lead time
+has slipped past sixteen weeks, do I come back to you or do I just
+take it?
+[25:11] Victoria: Come back to me. If it slips into Q2, the capital
+lands in a different quarter and Arthur's forecast changes, so it's
+not a decision you can absorb.
+[25:23] Arthur: Please come back to me too.
+[25:26] Kiran: Understood.
+[25:27] Victoria: Anything else?
+[25:29] Chloe: There's one thing I nearly didn't raise.
+[25:33] Victoria: Those are usually the ones.
+[25:36] Chloe: It's the design system migration again, but it's not a
+budget question, it's a scope question.
+[25:44] Victoria: Go on.
+[25:45] Chloe: Four hundred components is the number I gave you. But
+about a hundred and forty of those are used on exactly one screen.
+[25:55] Arthur: So they're not really a system.
+[25:58] Chloe: They're not really a system, no. They're one-offs that
+ended up in the library because someone put them there.
+[26:07] Victoria: So do they need migrating?
+[26:10] Chloe: That's my question. If we migrate them, it's the full
+four hundred. If we delete them and rebuild those screens properly
+later, it's two hundred and sixty and it's much faster.
+[26:26] Victoria: What's the risk of deleting?
+[26:29] Chloe: Somebody's using one of them somewhere I haven't found.
+[26:34] Kiran: Can you tell? Programmatically?
+[26:37] Chloe: Mostly. There's a tool that finds usages. It's not
+perfect because some of them get referenced dynamically.
+[26:47] Kiran: How many are dynamic?
+[26:49] Chloe: I'd guess under ten.
+[26:52] Kiran: Then check those ten by hand and delete the rest.
+[26:57] Chloe: That's roughly what I'd want to do. I wanted to say it
+out loud in front of people rather than just do it, because deleting
+a hundred and forty things unilaterally felt like the kind of decision
+that comes back at me in March.
+[27:14] Victoria: [laughs] That's a very sensible instinct.
+[27:19] Arthur: For the record I'd rather people deleted more things.
+[27:24] Victoria: Noted, Arthur, the man who has never deleted a
+spreadsheet in his life.
+[27:30] Arthur: [laughs] That's completely unfair and entirely true.
+[27:36] Victoria: Chloe, do it. And write down what you deleted so
+there's a record.
+[27:42] Chloe: That I can do.
+[27:44] Victoria: Does that change your contractor need?
+[27:48] Chloe: It might mean one contractor is genuinely enough,
+actually. Two hundred and sixty components at the rate we've been
+going is about five months for one person.
+[27:59] Victoria: So the April hire might not be needed at all.
+[28:04] Chloe: I don't want to promise that. But I'd say it's now
+possible rather than obviously not.
+[28:12] Victoria: I'll take possible. Come back to me in March and
+we'll decide then rather than assuming.
+[28:20] Chloe: Fine.
+[28:21] Victoria: Anything else? Kiran?
+[28:24] Kiran: One thing, and it's a warning rather than an ask.
+[28:29] Victoria: Go.
+[28:30] Kiran: If the cluster is approved and it lands at the end of
+Q1, we'll need somewhere to put it.
+[28:38] Arthur: What does that mean?
+[28:40] Kiran: It means the rack space and the power. Our current
+facility is at about eighty five percent on power.
+[28:49] Victoria: Is eight cards a lot of power?
+[28:52] Kiran: Eight cards plus the chassis is enough that I want to
+check rather than assume.
+[28:59] Arthur: Is there a cost?
+[29:01] Kiran: If we need a power upgrade, it's tens of thousands, not
+hundreds. But it's also a lead time, and it might be a longer lead
+time than the hardware.
+[29:14] Victoria: That's exactly the kind of thing that turns up in
+week fifteen of a sixteen week wait.
+[29:21] Kiran: Which is why I'm saying it now.
+[29:24] Victoria: Good. Check it before the RFP goes out, not after.
+[29:30] Kiran: I'll check it this week.
+[29:33] Victoria: And Arthur, if there's a facilities cost, it comes
+out of the cluster budget, not from somewhere else. I don't want a
+three fifty approval that quietly becomes four hundred.
+[29:47] Arthur: Understood.
+[29:49] Kiran: That's fair.
+[29:51] Victoria: Anything else? No? Good.
+[29:55] Arthur: Thirty minutes. Under your forty.
+[29:59] Victoria: I said forty and I meant it. Thanks all.
+[30:04] Chloe: Bye.
+[30:05] Kiran: Thanks.
+[30:06] Victoria: Stopping the recording.

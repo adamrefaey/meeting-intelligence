@@ -1,0 +1,2068 @@
+[00:00:00] Maya: — think it's going. Is it going? It says recording.
+[00:00:05] Alex: There's a red thing in the corner.
+[00:00:08] Maya: Then we're recording. Hello everyone.
+[00:00:12] Maya: We'll give it another two minutes because I can see
+people still joining. There's about, uh, three hundred and forty of
+you and the number's still going up.
+[00:00:24] Alex: While we wait, can everyone mute? There's someone
+with a very loud keyboard.
+[00:00:31] Maya: [laughs] There's always someone with a very loud
+keyboard.
+[00:00:36] Sarah: I think that might be me, sorry.
+[00:00:39] Alex: It's fine, just mute when you're not talking.
+[00:00:43] Maya: Okay, so, housekeeping while people arrive. This is
+the quarterly business review. It's long. It's three hours with two
+breaks, and I know that's a lot, and I've had feedback about it, and
+we're going to talk about the format at the end.
+[00:01:01] Maya: Breaks are at roughly the hour and roughly the two
+hour mark. Get up, walk around, I genuinely mean it.
+[00:01:11] Maya: Questions go in the channel and I'll pull them in at
+the end of each section rather than interrupting. If something's
+urgent, unmute and say so.
+[00:01:23] Maya: Right, that's four hundred people, let's go.
+[00:01:28] Maya: Agenda. Finance first, because David has a hard stop
+at eleven. Then sales, then marketing, then a break. Then product and
+engineering. Then a break. Then support, people, and we've got a
+customer joining us for twenty minutes near the end.
+[00:01:48] Maya: David, over to you.
+[00:01:51] David: Thanks Maya. Can everyone see my screen?
+[00:01:55] Lisa: We can see your inbox.
+[00:01:58] David: [laughs] Of course you can. Hang on.
+[00:02:02] David: Right. Is that the deck?
+[00:02:05] Lisa: That's the deck.
+[00:02:07] David: Great. So, Q3. Headline is we finished at a hundred
+and four percent of plan on revenue, and about six percent under on
+costs, which means the bottom line is quite a lot better than
+forecast.
+[00:02:24] David: Revenue was fourteen point two million for the
+quarter. Plan was thirteen point seven.
+[00:02:32] David: The half million of overperformance is almost
+entirely two deals that we expected in Q4 and got in Q3. Which is
+great, and I want to flag it clearly, because it means Q4 has a
+slightly emptier top of funnel than it looks.
+[00:02:52] Ravi: Can I jump in on that?
+[00:02:54] David: Please.
+[00:02:55] Ravi: It's not quite pulled forward. Both of those were
+always Q3 deals in our forecast, it's finance's model that had them in
+Q4.
+[00:03:07] David: That's a fair correction.
+[00:03:09] Ravi: I'm not being defensive, I just don't want the
+narrative to be "sales borrowed from Q4", because we didn't.
+[00:03:18] David: No, and that's a real difference. Let me restate.
+Two deals closed in Q3 that finance had modelled in Q4. Sales had them
+in Q3 all along. So the gap is in our modelling, not in the pipeline.
+[00:03:36] Ravi: That's accurate, thank you.
+[00:03:39] Maya: That's a good example of the thing we said we'd do
+more of, which is correcting each other in the room rather than in a
+thread afterwards.
+[00:03:49] David: Right. Costs. We came in at eleven point one against
+a plan of eleven point eight.
+[00:03:57] David: About four hundred of that underspend is hiring. We
+planned twenty two hires and made fourteen.
+[00:04:06] Lisa: Is that a good thing or a bad thing?
+[00:04:09] David: Financially it's a good thing. Operationally I think
+it's a bad thing and Sarah will say so in about an hour.
+[00:04:18] Sarah: I will say so, yes.
+[00:04:20] David: [laughs] The other three hundred is infrastructure,
+and that's the interesting one, so let me spend a minute on it.
+[00:04:30] David: We budgeted about nine hundred thousand for cloud
+for the quarter. We spent six hundred and forty.
+[00:04:38] Kevin: That's mostly the preview environments thing.
+[00:04:42] David: It is mostly the preview environments thing, and
+Kevin, do you want to tell that story, because it's yours and it's
+better told by you.
+[00:04:52] Kevin: Sure, and it's slightly embarrassing so I'll do it
+quickly.
+[00:04:57] Kevin: So we spin up a preview environment for every pull
+request. Full stack, own database, own everything. It's genuinely
+great for review, you click a link and you see the change running.
+[00:05:14] Kevin: And when the pull request closes, a webhook fires
+and tears the environment down.
+[00:05:21] Kevin: The webhook stopped working in February.
+[00:05:25] Lisa: February?
+[00:05:26] Kevin: February. And it didn't error, it returned a two
+hundred. It just returned a two hundred and did nothing, because the
+authentication token had expired and the error handling swallowed it.
+[00:05:41] Tomas: Oh no.
+[00:05:42] Kevin: Yeah. So we had preview environments that had been
+running since February. Some of them for eight months.
+[00:05:52] David: How many?
+[00:05:53] Kevin: Four hundred and thirty at the peak.
+[00:05:57] Lisa: Four hundred and thirty!
+[00:06:00] Kevin: Four hundred and thirty environments, each with a
+database, most of them for pull requests that had been merged and
+forgotten about half a year ago.
+[00:06:11] David: And the cost?
+[00:06:13] Kevin: About nineteen thousand a month at the peak. And
+we'd been accumulating since February, so the total is somewhere
+around a hundred and fifty thousand over the eight months.
+[00:06:27] Maya: A hundred and fifty thousand.
+[00:06:29] Kevin: A hundred and fifty thousand. On environments that
+nobody used, for changes that had already shipped.
+[00:06:37] Alex: How did we find it?
+[00:06:39] Kevin: Somebody was looking for a completely unrelated
+thing and asked why there were so many databases.
+[00:06:47] Ravi: [laughs] That's how it always is.
+[00:06:50] Kevin: It really is.
+[00:06:52] David: To be fair to Kevin, the reason it didn't show up in
+my reporting is that cloud spend was still inside budget the whole
+time. It just wasn't going down the way it should have.
+[00:07:06] Kevin: Right, we were growing into it.
+[00:07:09] David: We were growing into a number that was being eaten
+by garbage. And that's a genuine gap in how I report costs, which is
+that I report against budget rather than against expectation.
+[00:07:24] Maya: Say more about that, because I think it's the useful
+bit.
+[00:07:29] David: So if I tell you "cloud is at ninety percent of
+budget", that sounds fine. But if the expectation was seventy percent
+and it's ninety, that's a signal, and my report doesn't show it.
+[00:07:45] Maya: So you want a forecast line, not just a budget line.
+[00:07:50] David: I want a forecast line. I'll build one.
+[00:07:54] Kevin: And on our side, we now alert on environment count.
+If there are more than fifty preview environments alive, somebody gets
+a message.
+[00:08:06] Lisa: Is fifty the right number?
+[00:08:08] Kevin: Fifty is roughly two days of normal pull request
+volume, so yes, for now.
+[00:08:16] David: And the webhook?
+[00:08:18] Kevin: Fixed, and it now fails loudly. If teardown fails we
+get an alert rather than a two hundred.
+[00:08:26] Maya: Good. Right, sorry David, I derailed you.
+[00:08:31] David: No, that was the interesting part of the finance
+section, honestly.
+[00:08:36] David: [laughs] Let me do the boring parts fast. Cash
+position is twenty eight months of runway at current burn. Gross
+margin is seventy three percent, up from seventy one.
+[00:08:51] David: Net revenue retention is a hundred and sixteen.
+[00:08:56] Ravi: That's the number I care about most and it's the best
+it's been.
+[00:09:02] David: It's the best it's been. And it's driven by
+expansion rather than by price increases, which is the healthier
+version.
+[00:09:12] David: Right, Q4 outlook. We're forecasting fifteen point
+one, which is a plan of fifteen point four, so we're guiding slightly
+under.
+[00:09:24] Maya: Why under?
+[00:09:26] David: Because of the EMEA hiring delay. We planned four
+account executives and we've hired two, and ramp is five months, so
+the Q4 contribution isn't there.
+[00:09:39] Ravi: That's the right read.
+[00:09:41] Maya: Is that recoverable?
+[00:09:43] Ravi: Not in Q4. It's a Q1 and Q2 recovery.
+[00:09:48] David: Which is why I'd rather guide fifteen one and beat
+it than guide fifteen four and explain a miss.
+[00:09:57] Maya: Agreed. Questions for David before he drops? He's got
+a hard stop.
+[00:10:03] Tomas: I've got one. What's our exposure to the currency
+thing?
+[00:10:09] David: On revenue, about thirty percent of our contracts
+are in euros or pounds. On costs, most of our people costs are in
+pounds and most of our cloud costs are in dollars.
+[00:10:24] David: So a strong dollar hurts us on costs and helps us on
+the pounds side of revenue. Net it's roughly a wash, and we've
+modelled a five percent move either way and it's about two hundred
+thousand on the year.
+[00:10:41] Tomas: That's smaller than I expected.
+[00:10:44] David: It's smaller than most people expect. We're not
+hedging because at that size it costs more than it saves.
+[00:10:53] Maya: Anything else? No? David, go to your meeting.
+[00:10:58] David: Thank you all. I'll be back for the last hour.
+[00:11:02] Maya: Right. Ravi, sales.
+[00:11:05] Ravi: Thanks. Let me share.
+[00:11:08] Ravi: Can you see that?
+[00:11:10] Maya: Yep.
+[00:11:11] Ravi: Okay. So the quarter. Closed won was fourteen point
+two, which David already said, so I won't repeat the number.
+[00:11:21] Ravi: What I want to talk about is where it came from,
+because the mix has changed a lot and I don't think everyone's
+noticed.
+[00:11:31] Ravi: A year ago, roughly sixty percent of new revenue came
+from new logos and forty percent from expansion. This quarter it's
+thirty eight new and sixty two expansion.
+[00:11:47] Lisa: That's a big shift.
+[00:11:49] Ravi: It's a big shift, and it's mostly good, but it's got a
+sting in it.
+[00:11:56] Ravi: The good part is that expansion revenue is cheaper to
+acquire and it's a sign that people who buy us actually use us.
+[00:12:06] Ravi: The sting is that new logo acquisition has genuinely
+slowed, and if I'm honest with myself, expansion is partly masking
+that.
+[00:12:18] Maya: What's driving the slowdown?
+[00:12:21] Ravi: Three things, and they're different sizes.
+[00:12:25] Ravi: The biggest one is that our win rate against the two
+main competitors has dropped from about forty five percent to about
+thirty six.
+[00:12:36] Alex: Since when?
+[00:12:38] Ravi: It started slipping in Q1 and it's got steadily
+worse.
+[00:12:44] Maya: Do we know why?
+[00:12:46] Ravi: Partly. I've read every loss reason for the last two
+quarters, which was a genuinely miserable weekend.
+[00:12:55] Ravi: [laughs] The top reason, by a long way, is
+integrations. Specifically, they have connectors we don't have.
+[00:13:05] Tomas: Which ones?
+[00:13:07] Ravi: The three that come up over and over are the two big
+CRM systems and one specific data warehouse.
+[00:13:16] Lisa: We have a CRM integration.
+[00:13:19] Ravi: We have one. They have both. And in about a third of
+these deals the customer uses the one we don't have.
+[00:13:29] Tomas: That's fixable.
+[00:13:31] Ravi: It's very fixable, which is why it's frustrating.
+[00:13:36] Maya: Tomas, is that on the roadmap?
+[00:13:39] Tomas: It's on the roadmap. It's not on the roadmap for
+this quarter, and after hearing that number I think it should be.
+[00:13:49] Maya: Let's come back to it in the product section rather
+than deciding it now.
+[00:13:55] Tomas: Agreed.
+[00:13:56] Ravi: The second reason is pricing, and it's more subtle.
+[00:14:01] Ravi: We're not losing on price. We lose on price
+structure. Our pricing is per seat, and a lot of these buyers want to
+give access to a lot of people who barely use it.
+[00:14:16] Kevin: The read-only user thing.
+[00:14:19] Ravi: The read-only user thing. It comes up constantly.
+Every single enterprise deal has a conversation about it.
+[00:14:29] Maya: What do they want?
+[00:14:31] Ravi: A cheap or free tier for people who only look. And
+right now my answer is "you can have a full seat at full price", which
+means the customer just doesn't give those people access.
+[00:14:47] Lisa: Which is bad for us too, because those people never
+become users.
+[00:14:53] Ravi: It's terrible for us. Every person who doesn't get a
+seat is a person who never advocates for us internally.
+[00:15:03] Maya: Is anyone working on that?
+[00:15:06] Ravi: It's a pricing decision, not a product decision, so
+it needs David and me and probably you.
+[00:15:14] Maya: Then let's book that separately. It's too big for
+this meeting and too important to squeeze in.
+[00:15:22] Ravi: Agreed, and I'll set it up.
+[00:15:25] Ravi: Third reason is us. We're slow.
+[00:15:29] Maya: Slow how?
+[00:15:31] Ravi: Time from first contact to proposal is averaging
+nineteen days. Our competitors are doing it in under a week, according
+to the customers who tell us.
+[00:15:44] Alex: Why nineteen days?
+[00:15:46] Ravi: Because of security review, mostly. Any deal over a
+certain size triggers a security questionnaire and those take eleven
+days on average to turn around.
+[00:15:59] Kevin: Eleven days?
+[00:16:01] Ravi: Eleven days.
+[00:16:02] Kevin: That's, uh. That's not a technical constraint,
+that's a queue.
+[00:16:08] Ravi: It's entirely a queue. It's one person and they've
+got other work.
+[00:16:14] Maya: What would fix it?
+[00:16:16] Ravi: Honestly, most of those questionnaires ask the same
+forty questions. If we had a maintained answer library, most of them
+would be a day rather than eleven.
+[00:16:29] Alex: Does that not exist?
+[00:16:31] Ravi: There's a spreadsheet from 2023.
+[00:16:34] Alex: [laughs]
+[00:16:35] Ravi: I'm not joking. It's a spreadsheet from 2023 and
+about a third of the answers are wrong now.
+[00:16:44] Maya: Right, that's a concrete thing. Who owns it?
+[00:16:48] Ravi: It should be security, but it's really a shared
+thing.
+[00:16:53] Maya: Let's park it for the people section, because it's a
+capacity question.
+[00:16:59] Ravi: Fine.
+[00:17:00] Ravi: Let me do pipeline. Q4 pipeline is twenty two
+million against a fifteen point four target, so coverage is about one
+point four times.
+[00:17:13] Maya: Is that enough?
+[00:17:15] Ravi: It's thin. Healthy is two and a half to three times.
+One point four means everything has to close.
+[00:17:24] Maya: That's concerning.
+[00:17:26] Ravi: It is concerning, and it's the thing I'd point at if
+you asked me what keeps me up.
+[00:17:33] Ravi: But I'd add that our late-stage pipeline is much
+healthier than our early-stage. So Q4 is probably fine and Q1 is the
+one I'd worry about.
+[00:17:47] Maya: What fixes early-stage?
+[00:17:50] Ravi: Marketing, mostly, which is Lisa's section, so I'll
+let her defend herself.
+[00:17:57] Lisa: [laughs] Thanks.
+[00:18:00] Ravi: [laughs] No, genuinely, it's not a criticism. Our
+inbound is fine. Our outbound is the problem and outbound is shared.
+[00:18:11] Ravi: Last thing from me is quotas.
+[00:18:14] Ravi: We're going into Q1 with a different team shape,
+because we've got two account executives instead of four in EMEA, and
+we've got two new people ramping in North America.
+[00:18:28] Ravi: So the quota model I built in September doesn't
+really apply anymore.
+[00:18:34] Maya: What are you going to do?
+[00:18:36] Ravi: Rebuild it. I need to redo sales quotas properly
+against the actual team, and I'd rather do that now than in January
+when people are already selling against a number.
+[00:18:50] Maya: When can you have it?
+[00:18:52] Ravi: Friday.
+[00:18:53] Maya: This Friday?
+[00:18:55] Ravi: This Friday. It's mostly done, I've been avoiding
+finishing it because it means telling two people their number's going
+up.
+[00:19:05] Maya: [laughs] Right. Sales quotas rebuilt by Friday.
+[00:19:10] Ravi: Yep.
+[00:19:11] Maya: Questions for Ravi?
+[00:19:14] Sarah: I've got one. On the win rate drop, how much of that
+is the competitors getting better versus us getting worse?
+[00:19:24] Ravi: That's a really good question and I've thought about
+it a lot.
+[00:19:29] Ravi: I think it's about two thirds them and one third us.
+They've both shipped a lot in the last year, particularly on
+integrations, and we've shipped a lot too but on different things.
+[00:19:45] Sarah: Different things meaning?
+[00:19:47] Ravi: We've been making the product better for people who
+already use it. They've been making it easier to buy.
+[00:19:56] Tomas: That's a very sharp way to put it.
+[00:20:00] Ravi: It's not a criticism of the roadmap. The retention
+numbers say the roadmap worked. It's just that we optimised one thing
+and they optimised another.
+[00:20:13] Maya: And now we need both.
+[00:20:15] Ravi: Now we need both, yeah.
+[00:20:18] Kevin: Can I ask about the security questionnaire thing
+again?
+[00:20:23] Maya: Quickly.
+[00:20:24] Kevin: If it's eleven days and it's one person, how many
+deals are actually sitting in that queue right now?
+[00:20:32] Ravi: Right now? Six.
+[00:20:35] Kevin: Six deals worth how much?
+[00:20:38] Ravi: About one point eight million.
+[00:20:41] Kevin: One point eight million sitting behind one person
+with a spreadsheet from 2023.
+[00:20:48] Ravi: [laughs] Yes. When you say it like that.
+[00:20:52] Maya: That's a good framing to carry into the people
+section, actually. Let's keep going.
+[00:20:59] Maya: Lisa, marketing.
+[00:21:02] Lisa: Thanks. And I'll start by agreeing with Ravi, which
+he wasn't expecting.
+[00:21:08] Ravi: I wasn't.
+[00:21:10] Lisa: Outbound is not working and it's my problem.
+[00:21:14] Lisa: Let me give the numbers. Inbound generated four point
+one million of pipeline this quarter, which is up eighteen percent
+year on year and I'm genuinely happy with it.
+[00:21:28] Lisa: Outbound generated six hundred thousand. Last year it
+was one point four million.
+[00:21:36] Maya: So it's halved.
+[00:21:38] Lisa: It's more than halved.
+[00:21:40] Maya: What happened?
+[00:21:42] Lisa: A few things. The agency we use has got worse, which
+I'll come to. Email deliverability across the whole industry has got
+harder. And we lost the two people who were best at it.
+[00:21:58] Alex: Who were they?
+[00:22:00] Lisa: Two sales development reps who both got promoted into
+account executive roles, which is a good thing that had a bad
+consequence.
+[00:22:11] Ravi: And I took both of them, so that's on me.
+[00:22:15] Lisa: It's not on you, they earned it. But we didn't
+backfill, so the function halved.
+[00:22:23] Maya: Why didn't we backfill?
+[00:22:26] Lisa: Because of the hiring freeze in Q2, and then when it
+lifted I prioritised a product marketer instead.
+[00:22:35] Maya: Was that the wrong call?
+[00:22:37] Lisa: With hindsight, yes. At the time it was defensible
+because we had a launch coming.
+[00:22:44] Lisa: But I'd say I made it too quietly. I made a trade-off
+and I didn't tell anyone I was making it, so nobody could disagree
+with me.
+[00:22:56] Maya: That's a useful reflection.
+[00:22:59] Lisa: On the agency. We pay them forty five thousand a
+quarter and I cannot show you what it produces.
+[00:23:08] Ravi: I've been saying that for a year.
+[00:23:11] Lisa: You have, and I defended them for most of that year,
+and I now agree with you.
+[00:23:18] Maya: What changed?
+[00:23:20] Lisa: I did the attribution properly. Which I should have
+done a year ago.
+[00:23:26] Lisa: They booked a hundred and forty meetings this year.
+Of those, eleven became opportunities. Of those eleven, one closed.
+[00:23:38] Maya: One.
+[00:23:39] Lisa: One. Worth thirty one thousand.
+[00:23:43] David: [inaudible]
+[00:23:45] Maya: David, you're back?
+[00:23:47] David: Sorry, my meeting ended early, and I heard a number
+that made a noise come out of me.
+[00:23:54] Lisa: [laughs] It's a hundred and eighty thousand a year
+for one thirty one thousand pound deal, yes.
+[00:24:02] David: Right.
+[00:24:03] Lisa: So I'm cutting it. That's decided, it's not a
+proposal.
+[00:24:08] Maya: Good.
+[00:24:09] Lisa: And I want to put that money into two sales
+development reps instead, which is roughly the same cost and I'd own
+the outcome directly.
+[00:24:20] Ravi: I'd much rather have that.
+[00:24:23] Maya: Sarah, is that possible?
+[00:24:25] Sarah: It's possible. It's two more roles in a hiring
+pipeline that's already the constraint, which we'll talk about.
+[00:24:34] Lisa: Understood.
+[00:24:36] Lisa: Let me do the rest quickly. Website conversion is up,
+from two point one to two point eight percent, which is the single
+biggest thing we did this quarter and nobody noticed because it's
+boring.
+[00:24:52] Alex: What did you change?
+[00:24:54] Lisa: We removed the mandatory phone number field from the
+demo request form.
+[00:25:00] Alex: That's it?
+[00:25:01] Lisa: That's it. That's the whole change.
+[00:25:05] Alex: [laughs] Thirty percent lift from deleting a field.
+[00:25:10] Lisa: Thirty three percent. And we'd had that field for
+four years because someone in sales asked for it in 2021.
+[00:25:20] Ravi: Was it me?
+[00:25:22] Lisa: It was not you. I checked, because I wanted it to be
+you.
+[00:25:27] Ravi: [laughs]
+[00:25:29] Lisa: Content did well. The engineering blog is now our
+second biggest source of inbound, which surprised me.
+[00:25:38] Kevin: Really?
+[00:25:39] Lisa: Really. The post your team wrote about the migration
+has had forty thousand views and generated eleven demo requests.
+[00:25:50] Kevin: Huh. I'll tell them, they'll be pleased.
+[00:25:54] Lisa: Please do, and please write more, because it's the
+cheapest acquisition channel we have by a factor of about ten.
+[00:26:03] Kevin: The constraint there is time, not willingness.
+[00:26:07] Lisa: I know. I'll take what I can get.
+[00:26:11] Lisa: Last thing, the conference. We're doing the big one
+in March and I need to know by the end of this month whether we're
+taking a booth, because prices go up.
+[00:26:23] Maya: How much?
+[00:26:24] Lisa: Sixty thousand for the booth, plus about forty for
+everything else. So a hundred.
+[00:26:31] Maya: What did we get last year?
+[00:26:33] Lisa: Two hundred and ten thousand in closed revenue that
+we can attribute, over about nine months.
+[00:26:41] Maya: So it pays back.
+[00:26:43] Lisa: It pays back, but slowly, and the attribution is
+softer than I'd like.
+[00:26:49] David: I'd say do it. Two to one over nine months on a
+hundred thousand is fine, and the brand effect isn't in that number.
+[00:26:59] Maya: Then do it. Lisa, book it.
+[00:27:02] Lisa: Will do.
+[00:27:04] Maya: Questions for Lisa?
+[00:27:06] Tomas: Just one. On the engineering blog, is there anything
+we can do to make it easier for engineers to write?
+[00:27:15] Lisa: Yes, and I've been meaning to offer it. I'll do the
+editing. If someone gives me a rough draft with the technical content
+right, I'll make it readable and I'll handle publishing.
+[00:27:30] Kevin: That removes about eighty percent of the friction,
+honestly.
+[00:27:35] Lisa: Then let's do that.
+[00:27:37] Maya: Good. Right, we're at twenty seven minutes past,
+which is roughly on schedule. Let's break for ten minutes.
+[00:27:47] Maya: Back at, let's say, quarter to. Get a coffee.
+[00:27:52] Alex: Should we stop the recording for the break?
+[00:27:56] Maya: Probably. Can you?
+[00:27:58] Alex: I'll pause it.
+[00:28:00] Maya: Great. Back in ten.
+[00:38:02] Maya: — and we're back. Hopefully.
+[00:38:06] Alex: Recording's on.
+[00:38:08] Maya: Good. Right, is everyone back? It looks like about
+three hundred and ten, so we've lost some people, which is normal.
+[00:38:19] Maya: Tomas, product.
+[00:38:22] Tomas: Thanks. Let me get my screen up.
+[00:38:26] Tomas: Uh. It's asking me to allow screen recording. One
+second.
+[00:38:32] Sarah: Every time.
+[00:38:34] Tomas: Every single time, and I've done this call every
+quarter for two years.
+[00:38:40] Tomas: There we go. Can you see it?
+[00:38:43] Maya: Yep.
+[00:38:44] Tomas: Right. So, what we shipped. Three big things and
+about forty small ones.
+[00:38:52] Tomas: The big three were the reporting redesign, the
+permissions rework, and the mobile web experience.
+[00:39:01] Tomas: Reporting redesign is the one I'm happiest with.
+Usage is up sixty percent on the reporting section and the support
+tickets about reporting are down about seventy percent.
+[00:39:16] Alex: Seventy percent is enormous.
+[00:39:19] Tomas: It is, and it's mostly because the old one had a
+concept called a "view" that nobody understood, including me, and we
+deleted it.
+[00:39:31] Maya: [laughs]
+[00:39:32] Tomas: I'm serious. The single highest impact thing we did
+this quarter was removing a feature.
+[00:39:40] Tomas: Permissions rework was necessary and boring.
+Nobody's noticed, which is the correct outcome for a permissions
+change.
+[00:39:51] Kevin: If they'd noticed it would have been very bad.
+[00:39:55] Tomas: If they'd noticed we'd be in a different meeting.
+[00:39:59] Tomas: Mobile web is the one I want to talk about, because
+it didn't go well.
+[00:40:05] Maya: Go on.
+[00:40:06] Tomas: We shipped it three weeks late, and the thing we
+shipped is smaller than what we said we'd ship.
+[00:40:14] Tomas: We cut offline support and we cut push
+notifications.
+[00:40:19] Maya: Why?
+[00:40:20] Tomas: Two reasons. One is that we underestimated it, which
+is the boring reason and it's partly on me for the estimate.
+[00:40:30] Tomas: The other is more interesting, which is that we
+discovered about six weeks in that our API doesn't work well for a
+mobile client.
+[00:40:41] Kevin: It's too chatty.
+[00:40:43] Tomas: It's far too chatty. Loading the main screen makes
+fourteen API calls.
+[00:40:50] Alex: Fourteen?
+[00:40:51] Kevin: Fourteen, and on a bad mobile connection that's four
+or five seconds before anything renders.
+[00:41:00] Tomas: So we ended up building a compatibility layer that
+batches them, which was not in the plan and took three weeks.
+[00:41:10] Maya: Is that reusable?
+[00:41:12] Kevin: It's the beginning of the API v3 work, actually.
+Which is a silver lining.
+[00:41:19] Tomas: It's a genuine silver lining. We were going to have
+to do that anyway and now a third of it exists.
+[00:41:27] Maya: What's the state of mobile web now?
+[00:41:30] Tomas: It works. Adoption is lower than I hoped, about
+eight percent of sessions.
+[00:41:37] Lisa: Is that bad?
+[00:41:39] Tomas: I predicted fifteen. So it's bad relative to my
+prediction, which might mean my prediction was wrong rather than the
+product.
+[00:41:50] Maya: How would you tell?
+[00:41:52] Tomas: Honestly, the way to tell is to ask people, and we
+haven't done that yet properly.
+[00:41:59] Tomas: Which brings me to the thing I want to say about the
+whole quarter, which is that we shipped a lot and learned very little.
+[00:42:09] Maya: Say more.
+[00:42:11] Tomas: We did almost no customer research. We did four
+customer calls in three months. Last year we were doing four a week.
+[00:42:22] Maya: What happened?
+[00:42:24] Tomas: We got busy shipping. And research is the thing that
+gets cut, because it never has a deadline.
+[00:42:33] Ravi: I can help with that. I can get you in front of
+customers very easily, that's the one thing I have a lot of.
+[00:42:42] Tomas: I know, and I should have asked.
+[00:42:45] Maya: Let's make that concrete rather than warm. Ravi, can
+you get Tomas a standing slot?
+[00:42:53] Ravi: I'll put two customer calls a week in his calendar
+and he can cancel them if he doesn't want them.
+[00:43:01] Tomas: That's exactly the right mechanism, because the
+default flips.
+[00:43:07] Maya: Good.
+[00:43:08] Tomas: Right, roadmap. Q4 and into Q1.
+[00:43:13] Tomas: The reporting work continues, that's about a third
+of the team. API v3 is the big one. And then there's the integrations
+question that Ravi raised, which I want to talk about now.
+[00:43:29] Maya: Go.
+[00:43:30] Tomas: So Ravi says we're losing a third of competitive
+deals partly on integrations. That's a big number and I believe it.
+[00:43:41] Tomas: Building the two missing connectors is maybe eight
+weeks of one team.
+[00:43:47] Maya: That doesn't sound like much.
+[00:43:50] Tomas: It isn't much. The problem is that it's eight weeks
+that comes out of API v3, and API v3 unblocks about six other things.
+[00:44:03] Kevin: And makes the connectors easier to build.
+[00:44:07] Tomas: And makes the connectors much easier to build. If we
+do v3 first, the connectors are three weeks instead of eight.
+[00:44:17] Ravi: But that's three weeks starting in, what, March?
+[00:44:22] Tomas: Realistically, March.
+[00:44:24] Ravi: So the connectors land in April either way, or they
+land in January if we do them first.
+[00:44:32] Tomas: Roughly, yes.
+[00:44:34] Maya: So it's three months of competitive losses against a
+delay to a platform investment.
+[00:44:42] Tomas: That's the trade, and I genuinely don't know the
+answer.
+[00:44:47] Ravi: Can I put a number on my side of it?
+[00:44:50] Tomas: Please.
+[00:44:51] Ravi: A third of competitive deals, at our current rate, is
+about eight deals a quarter. Average deal size is ninety thousand. So
+call it seven hundred thousand a quarter of exposure.
+[00:45:07] Ravi: We won't win all eight with connectors. Maybe half.
+So three to four hundred thousand a quarter.
+[00:45:16] Tomas: That's a fair estimate and it's higher than I was
+carrying in my head.
+[00:45:22] Maya: Kevin, what's your view?
+[00:45:25] Kevin: My view is that doing the connectors on the old API
+means building them twice, because they'll need rewriting for v3.
+[00:45:35] Tomas: That's true.
+[00:45:37] Kevin: But building something twice is not the worst
+outcome in the world if the first version earns four hundred thousand
+a quarter.
+[00:45:46] Maya: That's a surprisingly commercial answer from you.
+[00:45:50] Kevin: [laughs] I contain multitudes.
+[00:45:54] Tomas: Okay, can I propose a middle thing?
+[00:45:58] Maya: Go on.
+[00:45:59] Tomas: We build one connector now, not both. The CRM one,
+because that's the one that comes up most. We accept it'll be rewritten
+for v3. And we keep v3 on track.
+[00:46:15] Ravi: One is much better than none.
+[00:46:18] Tomas: And it's four weeks rather than eight, so the damage
+to v3 is a month rather than two.
+[00:46:26] Maya: Does that hold the v3 date?
+[00:46:29] Kevin: It moves it about three weeks. Which is survivable.
+[00:46:34] Maya: Then let's do that. One connector, the CRM one, and
+v3 slips three weeks.
+[00:46:41] Tomas: Agreed.
+[00:46:42] Ravi: Agreed, and thank you for taking it seriously.
+[00:46:47] Tomas: It was a good argument, well made, with a number in
+it. That's how you get things onto a roadmap.
+[00:46:55] Maya: Right. Anything else on product?
+[00:46:58] Tomas: One thing, which is a request rather than an update.
+[00:47:03] Tomas: We've got a lot of people making product decisions
+who've never watched a customer use the product. And I'd like to fix
+that.
+[00:47:14] Tomas: So I'm going to run a thing where anyone, from any
+team, can sit in on a customer call. No participation required, just
+watch.
+[00:47:26] Lisa: I'd come to that.
+[00:47:28] Sarah: I'd come to that.
+[00:47:30] Tomas: Good. I'll set it up once Ravi's booked the slots.
+[00:47:35] Maya: Excellent. Kevin, engineering.
+[00:47:39] Kevin: Right. I'll try to be quick because we're twenty
+minutes behind.
+[00:47:44] Maya: We're fifteen behind, and there's slack in the
+second half.
+[00:47:49] Kevin: Okay. So. Three things: reliability, the platform
+migration, and people.
+[00:47:57] Kevin: Reliability first. We had two significant incidents
+this quarter. One in October, one in November.
+[00:48:06] Kevin: Total customer-facing downtime was a hundred and
+forty minutes, which against a quarter is about ninety nine point
+eight nine percent availability.
+[00:48:18] Maya: What's our target?
+[00:48:20] Kevin: Ninety nine point nine. So we missed it.
+[00:48:24] Kevin: Not by much, but we missed it, and I'd rather say
+that clearly than round it.
+[00:48:31] Maya: What were they?
+[00:48:33] Kevin: Both connection pool exhaustion. Both caused by a
+slow query. Different queries, same failure mode.
+[00:48:43] Alex: Isn't that the same as the March one?
+[00:48:46] Kevin: It's the same as the March one, yes, and that's the
+uncomfortable part.
+[00:48:52] Kevin: We fixed the March one narrowly. We indexed the
+query and added a test and moved on. We didn't fix the class.
+[00:49:02] Maya: What's the class?
+[00:49:04] Kevin: Any single slow query can consume the entire shared
+connection pool and take down every service that uses that database.
+[00:49:14] Kevin: Three products, one pool.
+[00:49:17] Maya: And the fix?
+[00:49:19] Kevin: Split the pool by service, so a bad query in
+reporting can only take down reporting. It's about a quarter of work
+and it's started.
+[00:49:31] Kevin: In the meantime we've added a timeout that kills
+anything holding a connection too long, which converts an outage into
+a degradation.
+[00:49:42] Maya: Is that in production?
+[00:49:44] Kevin: It's in staging. Production next week.
+[00:49:48] Sarah: Can I ask something about the incidents?
+[00:49:52] Kevin: Sure.
+[00:49:53] Sarah: Who was on call for both of them?
+[00:49:57] Kevin: ...The same person for both, actually.
+[00:50:01] Sarah: That's what I thought.
+[00:50:03] Kevin: Yeah. That's a fair thing to raise.
+[00:50:07] Sarah: I'm not raising it as a criticism of the rota. I'm
+raising it because that person has now had two very bad nights in a
+quarter and I don't think anyone's checked in.
+[00:50:20] Kevin: I checked in after the second one. I did not check
+in after the first one.
+[00:50:27] Sarah: Right.
+[00:50:28] Kevin: And I know what you're going to say, which is that
+checking in after the second one is too late.
+[00:50:36] Sarah: I wasn't going to say it that harshly, but yes.
+[00:50:41] Kevin: No, it's fair. We've got no process for it, it's
+just whether I remember.
+[00:50:48] Maya: Is that something you two can sort out offline?
+[00:50:52] Sarah: We can. I've got a simple version, it's a check-in
+after any out-of-hours page, and it's automatic rather than depending
+on a manager noticing.
+[00:51:05] Kevin: I'd take that.
+[00:51:07] Maya: Good. Keep going Kevin.
+[00:51:10] Kevin: Platform migration. We said Q3 and we finished it
+three weeks into Q4, so we were late.
+[00:51:19] Maya: Why?
+[00:51:20] Kevin: The honest answer is that we discovered two systems
+that we didn't know depended on the old thing.
+[00:51:29] Alex: How do you not know that?
+[00:51:32] Kevin: Because nobody wrote it down and the people who
+built them left.
+[00:51:37] Kevin: One of them was a reporting job that runs monthly.
+So it wasn't in any trace we looked at, because we looked for two
+weeks and it only runs on the first.
+[00:51:51] Tomas: Oh, that's brutal.
+[00:51:53] Kevin: It's genuinely brutal, and I don't have a great
+answer for how we'd have found it, other than waiting a month.
+[00:52:02] Maya: Is there a systemic fix?
+[00:52:05] Kevin: Partly. We've now got a service catalogue that
+requires an owner and a list of dependencies before anything can be
+deployed.
+[00:52:16] Kevin: That fixes it going forward. It doesn't fix the
+things that already exist.
+[00:52:23] Maya: How many of those are there?
+[00:52:26] Kevin: We've catalogued about seventy percent of our
+services. The remaining thirty percent are the old ones, which is
+exactly the wrong way round.
+[00:52:38] Lisa: [laughs] It always is.
+[00:52:41] Kevin: Right, the good news on the migration. It's done,
+and the numbers are better than we promised.
+[00:52:49] Kevin: Deploy time went from twenty six minutes to four.
+Rollback went from about fifteen minutes and a lot of praying to
+under a minute.
+[00:53:01] Maya: That's a big change.
+[00:53:03] Kevin: It's the biggest single improvement to how it feels
+to work here that we've made in two years, and it's invisible to
+customers, which is why it's hard to justify.
+[00:53:17] Maya: Was it worth being three weeks late?
+[00:53:20] Kevin: Yes, unambiguously.
+[00:53:23] Maya: Then let's say that clearly in the writeup, because
+otherwise the only thing anyone remembers is "the migration was late".
+[00:53:33] Kevin: I'd appreciate that.
+[00:53:35] Kevin: Last thing from me is capacity, and it overlaps with
+Sarah's section so I'll be brief.
+[00:53:43] Kevin: We planned eleven engineering hires and made six.
+[00:53:48] Maya: Same story as everywhere else.
+[00:53:51] Kevin: Same story. And the effect is that we're running
+about eighteen percent under the capacity the roadmap assumes.
+[00:54:01] Tomas: Which is why my estimates were wrong, partly.
+[00:54:05] Kevin: Partly, yes. Though I'd say your estimates were also
+wrong.
+[00:54:10] Tomas: [laughs] Thanks.
+[00:54:12] Kevin: [laughs] Both things are true.
+[00:54:15] Kevin: And the last thing, which is the one I need a
+decision on eventually but not today, is the GPU cluster.
+[00:54:24] Maya: Go on.
+[00:54:25] Kevin: We've got a queue for training jobs. People are
+waiting eleven hours at peak for a slot on the shared cluster.
+[00:54:34] Maya: Eleven hours?
+[00:54:36] Kevin: Eleven at peak. Average is more like three.
+[00:54:41] Maya: What's the ask?
+[00:54:43] Kevin: Three hundred and fifty thousand of capital for
+eight cards. It pays back against cloud in about eight and a half
+months.
+[00:54:53] David: I've seen the numbers and they're sound. My concern
+is timing, not the case.
+[00:55:00] Kevin: Lead time is fourteen to sixteen weeks, so if we
+want it in Q1 we have to order in the next fortnight.
+[00:55:09] David: And anything over two fifty needs a documented
+competitive process, which means an actual RFP.
+[00:55:18] Kevin: Which I've been told, and which I'm doing.
+[00:55:22] Maya: When?
+[00:55:23] Kevin: The GPU cluster RFP goes out Wednesday.
+[00:55:28] Maya: Good. And the decision comes back to this group?
+[00:55:33] David: It comes to me and Maya. It doesn't need four
+hundred people.
+[00:55:38] Maya: [laughs] Agreed.
+[00:55:40] Maya: Questions for Kevin? There are a few in the channel,
+let me read them.
+[00:55:47] Maya: First one. "Why do we keep having the same incident?"
+[00:55:52] Kevin: I answered that, but the short version is we fixed
+the instance and not the class, and we're fixing the class now.
+[00:56:02] Maya: Second. "Is the on-call rota sustainable with six
+fewer engineers than planned?"
+[00:56:10] Kevin: No.
+[00:56:11] Maya: That's a short answer.
+[00:56:13] Kevin: It's a short answer because it's a short question
+and the answer is genuinely no.
+[00:56:20] Kevin: We've got nine people in the rota. Healthy is
+twelve. Nine means you're on call every ninth week, which sounds fine,
+but two of those nine are also the only people who understand two
+critical systems, so in practice they get called regardless.
+[00:56:41] Sarah: That's the bit that worries me most in this whole
+meeting, honestly.
+[00:56:47] Kevin: Me too.
+[00:56:48] Maya: What would fix it?
+[00:56:50] Kevin: Three more engineers, or fewer critical systems. And
+I can't do the second one quickly.
+[00:56:58] Maya: Sarah, that's yours.
+[00:57:01] Sarah: It's mine and I'll come to it.
+[00:57:04] Maya: Third question, and it's a good one. "The engineering
+blog generated eleven demo requests. Does that mean writing is a
+better use of an engineer's time than coding?"
+[00:57:18] Kevin: [laughs] That's a hostile question dressed as a
+neutral one.
+[00:57:24] Lisa: I didn't write it, for the record.
+[00:57:27] Kevin: [laughs] I know you didn't.
+[00:57:30] Kevin: Look, sometimes yes. A day of writing that produces
+eleven demo requests is probably worth more than a day of most
+features.
+[00:57:41] Kevin: But it doesn't scale linearly. If everyone wrote
+blog posts all the time we'd have no product and nothing to write
+about.
+[00:57:52] Lisa: And the reason those posts work is that they're
+written by people who did the work. Which means the work has to
+happen first.
+[00:58:02] Kevin: Right.
+[00:58:03] Maya: Good answer. Okay, we're at fifty eight minutes and
+we've got support and people to go before the break.
+[00:58:12] Maya: Let me flip the order. Alex, do support now, and
+we'll take the break after, and then Sarah opens the second half.
+[00:58:22] Alex: Works for me.
+[00:58:24] Sarah: Fine by me.
+[00:58:26] Alex: Right. Support. I'll do the numbers and then the
+thing I actually want to talk about.
+[00:58:34] Alex: Ticket volume was up thirty eight percent year on
+year. Headcount was flat.
+[00:58:41] Maya: Flat?
+[00:58:42] Alex: Flat. We had two people leave, we backfilled both, so
+net zero.
+[00:58:49] Alex: First response time averaged eleven hours against a
+published target of four.
+[00:58:56] Maya: That's a long way off.
+[00:58:58] Alex: It's a long way off. Resolution time is actually
+fine, it's four point two days against a target of five. It's the
+first response that's broken.
+[00:59:11] Tomas: Why is first response worse than resolution?
+[00:59:15] Alex: Because when we get to a ticket we deal with it
+properly. The problem is the queue, not the handling.
+[00:59:23] Alex: And I'd rather have that shape than the opposite,
+which is fast useless replies and slow resolutions.
+[00:59:32] Ravi: The fast useless reply is genuinely worse. Customers
+tell me that.
+[00:59:38] Alex: Right, and that's the thing I want to talk about.
+[00:59:43] Alex: We have an auto-acknowledgement. It fires within a
+minute and it says we've received your ticket and we'll be in touch.
+[00:59:53] Alex: And I want to kill it.
+[00:59:55] Maya: Why?
+[00:59:56] Alex: Because it makes the ticket look answered when it
+isn't, and it makes our first response metric look better than
+reality, and customers have told us explicitly that it annoys them.
+[01:00:11] Ravi: I've had two customers mention it unprompted.
+[01:00:15] Alex: The counter-argument is that some customers want to
+know we got it. Which is real.
+[01:00:23] Maya: What would you replace it with?
+[01:00:26] Alex: Something honest. "We've got your ticket. Based on
+current volume you'll hear from a person within about eight hours." A
+real number, updated automatically.
+[01:00:40] Lisa: That's much better.
+[01:00:42] Alex: And if the number is embarrassing, that's a reason to
+fix the number, not to hide it.
+[01:00:49] Maya: I like that a lot. Do it.
+[01:00:52] Alex: I need engineering for the dynamic number.
+[01:00:56] Kevin: How dynamic? Because "current queue depth divided by
+throughput" is about a day's work.
+[01:01:04] Alex: That's all I need.
+[01:01:06] Kevin: Then we'll do it. Put it in my queue and I'll find
+someone.
+[01:01:11] Alex: The other thing is the SLA itself.
+[01:01:15] Alex: We publish four hours. We hit eleven. That's not a
+stretch goal, that's a fiction, and my team is measured against it
+every week.
+[01:01:26] Maya: What's realistic?
+[01:01:28] Alex: With current headcount, eight hours. With three more
+people, four is genuinely achievable.
+[01:01:36] Maya: And you want a decision either way.
+[01:01:39] Alex: I want a decision either way, because right now
+we're failing against a number nobody believes and it's corrosive.
+[01:01:48] Maya: That's fair. What do you need from me?
+[01:01:52] Alex: Let me produce a proper SLA report with the actual
+distribution, not just the average, and a recommendation. Then you
+decide.
+[01:02:03] Maya: When can you have it?
+[01:02:05] Alex: Tuesday.
+[01:02:06] Maya: The SLA report by Tuesday. Good.
+[01:02:10] Alex: One more thing and then I'm done.
+[01:02:13] Alex: About twenty percent of our tickets aren't support
+tickets. They're engineering tickets that arrive in our queue, sit
+there looking bad, and get escalated by us to a channel where we hope
+someone notices.
+[01:02:29] Kevin: There's no route from support to on-call, is that
+what you mean?
+[01:02:34] Alex: There's no route. It's me typing in a channel.
+[01:02:39] Kevin: I genuinely thought there was one.
+[01:02:42] Alex: There isn't. There's been a request in for it since
+September.
+[01:02:48] Kevin: September.
+[01:02:49] Alex: September.
+[01:02:51] Kevin: Right, that's embarrassing. I'll find an owner this
+week.
+[01:02:56] Alex: Thank you.
+[01:02:58] Maya: Good. Right, that's an hour and three minutes. Let's
+break for fifteen this time, because it's a long one.
+[01:03:07] Maya: Back at twenty past. Alex, pause the recording.
+[01:03:12] Alex: Pausing.
+[01:18:14] Maya: — okay, we're back. Sarah, you're up.
+[01:18:19] Sarah: Thanks. And I'm going to start with the thing that's
+been running underneath every section so far.
+[01:18:27] Sarah: We planned forty two hires across the company. We
+made twenty six.
+[01:18:33] Maya: Sixteen short.
+[01:18:35] Sarah: Sixteen short. And that shortfall is why David's
+costs are under, why Kevin's on-call rota is thin, why Alex's queue is
+long, and why Lisa's outbound halved.
+[01:18:50] Sarah: So when we say "we underspent", what we mean is "we
+didn't do something we said we'd do".
+[01:18:58] David: That's a fair characterisation and I'd back it.
+[01:19:03] Maya: Why sixteen short?
+[01:19:05] Sarah: Three reasons and they're very different sizes.
+[01:19:10] Sarah: The biggest one, by a lot, is recruiting capacity.
+We have one recruiter. One. Covering engineering, sales, marketing,
+support and everything else.
+[01:19:24] Ravi: One?
+[01:19:25] Sarah: One. Her name's Dani and she's excellent and she is
+one person.
+[01:19:32] Maya: How did that happen?
+[01:19:34] Sarah: We had two. One left in April and I didn't backfill
+because we were in the hiring freeze at the time.
+[01:19:43] Sarah: And then the freeze lifted and I prioritised
+filling the roles we already had open over filling the role that
+fills roles.
+[01:19:54] Kevin: Oh, that's a trap.
+[01:19:56] Sarah: It's a complete trap and I walked into it. It's the
+same shape as not sharpening the saw.
+[01:20:04] Maya: Is that fixed?
+[01:20:06] Sarah: Two recruiters start in January. It took me too long
+to see it.
+[01:20:12] Sarah: Second reason is that our process is slow. Median
+time from application to offer is thirty four days.
+[01:20:21] Tomas: What's good?
+[01:20:23] Sarah: Under twenty. And the delay isn't in decisions, it's
+in scheduling.
+[01:20:30] Sarah: We lost four candidates in Q3 who accepted somewhere
+else while waiting for us to schedule a final round.
+[01:20:39] Kevin: Four?
+[01:20:40] Sarah: Four that we know about. Two of them were engineers
+you interviewed.
+[01:20:46] Kevin: Right, that's on me as much as anyone. I know I'm
+slow to schedule.
+[01:20:52] Sarah: Everyone's slow to schedule. That's why it's a
+process problem rather than a person problem.
+[01:21:00] Sarah: Third reason is compensation, and it's smaller than
+people assume. We lost three candidates on money out of about forty
+offers.
+[01:21:12] Maya: That's actually fine.
+[01:21:14] Sarah: That's fine. Our bands are competitive. It's not the
+problem, even though it's the thing people always guess.
+[01:21:23] Maya: So what are you doing about the pipeline?
+[01:21:26] Sarah: Two recruiters in January, as I said. And weekly
+hiring pipeline reviews starting Monday, so hiring managers can see
+where their roles are without asking me.
+[01:21:40] Kevin: That would help a lot, honestly.
+[01:21:43] Sarah: It's not sophisticated. It's a meeting and a shared
+view. But right now the information lives in my head and that's the
+bottleneck.
+[01:21:55] Maya: Weekly hiring pipeline reviews from Monday. Good.
+[01:22:00] Sarah: Right, the big one. The operating model.
+[01:22:04] Sarah: We're going remote-first from the first of February.
+Formally, as a policy, not as a temporary thing that keeps getting
+extended.
+[01:22:16] Maya: Do you want to say what it means, because I think
+people hear different things.
+[01:22:22] Sarah: Yes. So the remote-first policy means the default is
+remote. Meetings are designed for people who aren't in a room.
+Decisions don't happen in a corridor in London.
+[01:22:37] Sarah: It doesn't mean we're closing offices. London and
+Austin both stay.
+[01:22:43] Sarah: And it doesn't mean anyone can live anywhere,
+because of tax and employment law, and I want to be honest about that
+rather than discover it later.
+[01:22:56] Maya: What's the constraint?
+[01:22:58] Sarah: We can employ people directly in fourteen
+countries. Outside those we'd need an employer of record, which works
+but costs about fifteen percent more, so it's case by case.
+[01:23:14] Lisa: Is the list published?
+[01:23:16] Sarah: Not yet. And that's a genuine failure, because
+people are making life decisions and asking each other in channels.
+[01:23:26] Maya: When can it be out?
+[01:23:28] Sarah: Monday. Same day as the pipeline reviews. I'll
+publish the remote-first policy document and the country list
+together.
+[01:23:39] Maya: Good.
+[01:23:40] Sarah: There's a piece of this I want to flag because I
+think it'll be the hardest part.
+[01:23:47] Sarah: Remote-first only works if the written culture is
+good. And ours isn't, particularly.
+[01:23:55] Sarah: We make a lot of decisions verbally, in meetings
+like this one, and the record of them is a recording that nobody
+watches.
+[01:24:06] Tomas: That's very true.
+[01:24:08] Sarah: So if we go remote-first without fixing that, what
+we'll actually have is the same culture with worse access to it.
+[01:24:19] Maya: What do you want?
+[01:24:21] Sarah: Decisions written down, in a findable place, with a
+date and a person attached.
+[01:24:29] Kevin: We have that for engineering. It's not perfect but
+it exists.
+[01:24:35] Sarah: You have it for engineering and it's the best of any
+function, and I'd like to copy it.
+[01:24:42] Kevin: I'll show you how it works. It's genuinely just a
+folder and a template and a rule that you can't argue about a decision
+that isn't written down.
+[01:24:54] Sarah: That last rule is the whole thing, isn't it.
+[01:24:58] Kevin: That last rule is the whole thing.
+[01:25:01] Maya: Let's do that across all functions. Sarah, own it,
+Kevin, help.
+[01:25:07] Sarah: Happy to.
+[01:25:09] Sarah: Right, the last thing from me is attrition, and it's
+mixed.
+[01:25:15] Sarah: We lost eleven people this year. That's about nine
+percent annualised, which against the industry is good.
+[01:25:24] Sarah: But four of them were in the last quarter, and three
+of those four were people we'd have fought to keep.
+[01:25:33] Maya: Do we know why?
+[01:25:35] Sarah: Two of them said the same thing in exit interviews,
+which is that they couldn't see a path to the next level.
+[01:25:44] Sarah: Not money. Not their manager. Not burnout.
+Progression.
+[01:25:50] Maya: And what's our answer to that?
+[01:25:53] Sarah: Our answer is currently a levelling framework that
+stops at senior and then becomes, essentially, vibes.
+[01:26:02] Kevin: That's accurate.
+[01:26:04] Sarah: Above senior there's no written definition of what
+staff means or what principal means, so the answer to "what do I need
+to do" is whatever your manager thinks that day.
+[01:26:18] Tomas: And it's different per manager.
+[01:26:21] Sarah: It's completely different per manager, which is the
+worst possible property for a progression system.
+[01:26:29] Maya: Are you fixing it?
+[01:26:31] Sarah: I'm working on it, and I'm deliberately not giving
+a date, because the last time we announced a date for a levelling
+framework we missed it by nine months and that made everything worse.
+[01:26:46] Maya: That's a reasonable position and I'll back you on
+not giving a date.
+[01:26:52] Sarah: Thank you. I'd rather be quiet and then deliver
+than announce and slip again.
+[01:27:00] Maya: Questions for Sarah? There's a lot in the channel.
+[01:27:05] Maya: First. "Does remote-first mean my team can stop doing
+the Tuesday in-office day?"
+[01:27:12] Sarah: If your team decides that, yes. Anchor days are a
+team decision, not a company mandate.
+[01:27:21] Sarah: But I'd push back gently, which is that the teams
+who do them well seem happier, and the ones who dropped them seem
+more disconnected. That's an impression, not data.
+[01:27:36] Maya: Second. "Will there be a relocation budget for people
+who want to move?"
+[01:27:43] Sarah: No. And I want to be clear rather than vague. We're
+not funding relocations. If you move, that's your choice and your
+cost.
+[01:27:55] Sarah: What we will do is keep your salary the same rather
+than adjusting it down for a cheaper location, which is the thing
+people actually worry about.
+[01:28:07] Lisa: That's a big deal, actually.
+[01:28:10] Sarah: It's a bigger deal than a relocation budget and it
+costs us more, so I'd rather spend it there.
+[01:28:18] Maya: Third. And this one's spiky. "Sixteen roles short is
+a leadership failure. Who's accountable?"
+[01:28:27] Sarah: Me.
+[01:28:28] Maya: That's a short answer too.
+[01:28:31] Sarah: It's my function and it's my call not to backfill
+the recruiter, which is the single biggest cause. So, me.
+[01:28:41] Maya: I'd add that I approved that call, so it's both of
+us.
+[01:28:47] Sarah: I appreciate that but I don't want to share it, it
+was my recommendation.
+[01:28:53] Maya: [laughs] Well, we can argue about who's more
+responsible later.
+[01:28:59] Sarah: One thing I would say, though, is that the question
+assumes the shortfall is only bad, and I'd push on that slightly.
+[01:29:09] Sarah: We didn't lower the bar. We could have hit forty two
+by hiring people we weren't sure about, and I've seen what that costs
+eighteen months later.
+[01:29:22] Kevin: That's true, and the six we hired in engineering are
+all good.
+[01:29:28] Sarah: So the failure is capacity, not standards, and
+they're different failures with different fixes.
+[01:29:37] Maya: That's a fair distinction. Last one. "Are we doing
+the summer party?"
+[01:29:44] Sarah: [laughs] Yes. June. It's booked.
+[01:29:48] Maya: Excellent, that's the question that always gets the
+most votes.
+[01:29:54] Sarah: It's genuinely always that question.
+[01:29:58] Maya: Right. We're at an hour and thirty, and we've got a
+guest, so let me set that up.
+[01:30:06] Maya: We've had feedback for about a year that these
+meetings are very internal. Lots of numbers about customers and very
+little from customers.
+[01:30:18] Maya: So we've invited one. Liam is VP of Operations at one
+of our design partner accounts, he's been a customer for three years,
+and he has agreed to come and be honest with us.
+[01:30:33] Maya: Liam, are you there?
+[01:30:36] Liam: I'm here. Can you hear me?
+[01:30:39] Maya: We can. Thank you for doing this.
+[01:30:43] Liam: No, thank you for asking. I was slightly surprised
+you did.
+[01:30:48] Maya: [laughs] Why surprised?
+[01:30:51] Liam: Because most vendors want to talk at me, not have me
+talk at four hundred of their staff.
+[01:30:58] Maya: Well, let's see how we feel in twenty minutes.
+[01:31:02] Liam: [laughs] Right.
+[01:31:04] Maya: I've asked Liam not to be polite. So, Liam, first
+question. What do we do well?
+[01:31:12] Liam: Genuinely? The product does what it says. That sounds
+like faint praise and it isn't.
+[01:31:20] Liam: We've bought a lot of software and a lot of it does
+about seventy percent of what the salesperson said. Yours does what
+it says it does.
+[01:31:33] Ravi: That's good to hear.
+[01:31:35] Liam: And the reliability is fine. We've had, I think, two
+outages that I noticed in three years, and both were short.
+[01:31:45] Kevin: That's better than our internal numbers suggest,
+which is interesting.
+[01:31:51] Liam: Well, I only notice if it's during my working hours
+and I'm trying to do something. So take that for what it's worth.
+[01:32:01] Kevin: No, that's a genuinely useful data point. Our
+availability number counts everything, and yours counts what you
+experienced.
+[01:32:12] Maya: Right. What do we do badly?
+[01:32:15] Liam: How long have you got?
+[01:32:17] Maya: [laughs] We've got about eighteen minutes.
+[01:32:21] Liam: Okay. The big one, and it's been the big one for
+three years, is getting data out.
+[01:32:29] Liam: Every Monday I export a transaction volume report,
+and I put it in a spreadsheet, and the spreadsheet is what my director
+actually looks at.
+[01:32:41] Tomas: What's wrong with the export?
+[01:32:44] Liam: It's JSON.
+[01:32:46] Tomas: And that's bad because?
+[01:32:48] Liam: Because a spreadsheet doesn't open JSON. So I convert
+it.
+[01:32:54] Tomas: How?
+[01:32:55] Liam: There's a website I paste it into.
+[01:32:59] Kevin: Oh no.
+[01:33:00] Liam: [laughs] I know. I know exactly what that sounds
+like.
+[01:33:06] Liam: And to be clear, our security team would be furious
+if they knew, and I do it anyway, every week, because the alternative
+is doing it by hand.
+[01:33:18] Maya: That's a very useful thing for four hundred people to
+hear.
+[01:33:23] Liam: I think that's the thing I'd most want to land,
+honestly. When you make something hard, people don't stop doing it.
+They do it badly somewhere you can't see.
+[01:33:37] Tomas: That's going on a wall somewhere.
+[01:33:40] Liam: [laughs]
+[01:33:42] Tomas: Can I ask what you'd actually want? Because if I go
+back and say "he wants CSV", somebody will ship a CSV and it'll still
+be wrong.
+[01:33:53] Liam: That's exactly what happened with another vendor, so,
+good instinct.
+[01:34:00] Liam: They shipped a CSV where the column order changed
+every time, so all my formulas broke every week.
+[01:34:09] Tomas: So stable column order.
+[01:34:11] Liam: Stable column order, and if you add a column, add it
+at the end. Don't insert it in the middle because it's more logical.
+[01:34:22] Tomas: Even though that's uglier.
+[01:34:24] Liam: I don't care about logical. I care about the same. My
+spreadsheet reads column F, it doesn't read the header.
+[01:34:34] Tomas: Understood. What else?
+[01:34:37] Liam: Money as whole numbers. Don't give me decimals,
+because something between your system and mine rounds, and then I'm
+off by four pence and I have to spend an afternoon finding it.
+[01:34:53] David: Four pence?
+[01:34:55] Liam: Four pence. And I can't say "it's four pence"
+because it has to reconcile with what finance produces.
+[01:35:04] David: [laughs] No, I understand completely. That's my
+world.
+[01:35:10] Liam: And timestamps in UTC. Not local. I know how to
+convert to local. I can't un-convert something that's already been
+converted badly.
+[01:35:23] Tomas: That's a very clear list.
+[01:35:26] Liam: I've had three years to think about it.
+[01:35:30] Maya: What about how it's delivered?
+[01:35:33] Liam: Right, so I said email at first, when your researcher
+asked me. And then she asked one good question and I changed my mind
+in about thirty seconds.
+[01:35:46] Tomas: What was the question?
+[01:35:48] Liam: She asked how big the file was. And it's a few
+megabytes, and our email system strips attachments over ten, and
+quarantines things it doesn't like.
+[01:36:01] Liam: So email would work until it silently didn't, and I'd
+find out when my director asked where the numbers were.
+[01:36:11] Tomas: So what do you want instead?
+[01:36:14] Liam: A webhook. Not with the file in it, that'd be a huge
+payload. Just a link.
+[01:36:21] Liam: And then something on our side downloads it and drops
+it in the shared drive.
+[01:36:28] Kevin: Do you have something on your side?
+[01:36:31] Liam: Not yet. But that's an afternoon of work for one of
+our integration people, which is a very different ask from "build me a
+data pipeline".
+[01:36:43] Kevin: What would you want in the payload?
+[01:36:46] Liam: A signed URL that expires, because it's transaction
+data. Twenty four hours is plenty.
+[01:36:54] Liam: A row count, so I can tell whether the file's
+complete. And a checksum if that's not too much trouble.
+[01:37:03] Kevin: Why the row count?
+[01:37:05] Liam: Because otherwise I've got a file and a lot of faith.
+If it says forty thousand rows and I download twelve thousand, I know
+something went wrong.
+[01:37:17] Kevin: That's a good instinct, and honestly it's a better
+spec than most internal ones I get.
+[01:37:25] Liam: [laughs] Well, I've been burned.
+[01:37:28] Tomas: Can I ask you something slightly awkward?
+[01:37:32] Liam: Go on.
+[01:37:33] Tomas: You've been a customer three years and this is a
+fairly small piece of work. Why hasn't it happened?
+[01:37:41] Liam: I mean, you'd know better than me.
+[01:37:44] Tomas: I do know, actually, and I'd rather say it out loud.
+It hasn't happened because it's an export, and exports never win a
+prioritisation conversation against a feature.
+[01:37:59] Liam: That sounds right.
+[01:38:01] Tomas: And the reason is that we measure features by
+adoption, and an export has terrible adoption numbers because five
+percent of users touch it.
+[01:38:13] Liam: But that five percent is the person who renews the
+contract.
+[01:38:19] Ravi: [laughs] Say that again, louder.
+[01:38:22] Liam: I'm the person who renews the contract, and I spend
+my Monday morning pasting your data into a website.
+[01:38:31] Maya: That's the most expensive sentence in this meeting.
+[01:38:36] Tomas: It genuinely is.
+[01:38:38] Maya: Tomas, what happens now?
+[01:38:41] Tomas: It goes into the quarter. I'm not going to pretend I
+need to think about it.
+[01:38:47] Liam: I'd believe that more if there was a date.
+[01:38:51] Tomas: [laughs] Fair.
+[01:38:53] Kevin: Can I propose something concrete? Rather than
+promising a ship date in a meeting.
+[01:39:00] Maya: Go on.
+[01:39:01] Kevin: Liam, would you sit down with two of our engineers
+and walk through exactly what you'd build on your side? Not us
+presenting to you, you showing us your Monday.
+[01:39:15] Liam: Yes, happily. That'd be much more useful than a
+roadmap conversation.
+[01:39:22] Kevin: Then let's do a webhook integration walkthrough with
+Liam and two engineers on Thursday, and we build against what we see
+rather than what we assume.
+[01:39:35] Liam: Thursday afternoon works. Mornings are bad.
+[01:39:40] Kevin: Thursday afternoon.
+[01:39:42] Maya: Good. That's the kind of commitment I like, because
+it's this week and it's specific.
+[01:39:50] Maya: Liam, what else? We've got about eight minutes.
+[01:39:55] Liam: Two more things and one is nicer than the other.
+[01:40:00] Liam: The unkind one is support. Your first response is
+always fast and always useless.
+[01:40:08] Alex: [laughs] Yeah.
+[01:40:10] Liam: It's an automatic thing that says you're looking into
+it. And then the actual answer takes two days.
+[01:40:19] Liam: And the automatic one is worse than nothing, because
+it makes the ticket look handled.
+[01:40:26] Alex: Liam, you'll be pleased to know we spent ten minutes
+on that exact thing about forty minutes ago and I'm killing it.
+[01:40:36] Liam: Oh, good.
+[01:40:38] Alex: Can I ask you what you'd want instead?
+[01:40:41] Liam: An honest estimate. Even a bad one. "You'll hear from
+someone in eight hours" is fine. It's the pretending that's annoying.
+[01:40:52] Alex: That's almost exactly what we proposed, which is
+reassuring.
+[01:40:58] Liam: [laughs] Then I'll shut up about it.
+[01:41:01] Maya: And the nicer thing?
+[01:41:03] Liam: The nicer thing is your support people themselves.
+Once you get to a human, they're excellent.
+[01:41:11] Liam: There's a woman called Priyanka who has, on two
+separate occasions, understood my problem better than I did.
+[01:41:20] Alex: I'll tell her. She'll be delighted.
+[01:41:23] Liam: Please do. She once rewrote my question back at me
+and I realised I'd been asking the wrong thing for a week.
+[01:41:33] Alex: That's the job at its best, honestly.
+[01:41:37] Maya: Any questions for Liam from the group? There are a
+few in the channel.
+[01:41:43] Maya: First one. "What would make you leave?"
+[01:41:47] Liam: Blunt.
+[01:41:48] Maya: We did say be honest, so it goes both ways.
+[01:41:53] Liam: Honestly, not much, and that's not flattery, it's
+inertia. Switching costs are enormous and I'd need a strong reason.
+[01:42:05] Liam: The realistic scenario is that a competitor turns up
+with the integrations we need and something that makes my Monday
+easier, and my director asks why we're not looking at it.
+[01:42:20] Ravi: That's exactly the deal we keep losing.
+[01:42:24] Liam: Well. There you go.
+[01:42:27] Maya: Second question. "What's one thing we do that you
+think we don't realise is unusual?"
+[01:42:34] Liam: Oh, that's a good question.
+[01:42:37] Liam: Your release notes. They're written like a person
+wrote them for another person. Most release notes are a list of ticket
+titles.
+[01:42:49] Lisa: That's mine, thank you.
+[01:42:52] Liam: I read them. I don't read anyone else's.
+[01:42:57] Lisa: That's genuinely made my quarter.
+[01:43:00] Maya: Third. "Do you feel like a partner or a customer?"
+[01:43:06] Liam: Mostly a customer, if I'm honest.
+[01:43:10] Liam: The partner language gets used a lot and the
+behaviour is mostly vendor behaviour. Which is fine! I'm not offended.
+[01:43:21] Liam: But today is the first time in three years I've been
+in a room like this, so.
+[01:43:28] Maya: That's a fair hit and I'll take it.
+[01:43:31] Liam: I'd say the researcher call I did was the closest.
+She asked what I wanted and then told me honestly which bits were
+likely and which weren't. That's rare.
+[01:43:46] Maya: Good, we'll do more of that.
+[01:43:49] Maya: Liam, thank you. Genuinely. That was more useful than
+most of our internal analysis.
+[01:43:57] Liam: My pleasure. And, look, I've been quite critical, so
+let me end by saying we renewed for two years in June and I
+recommended it.
+[01:44:09] Maya: That means a lot.
+[01:44:11] Liam: Fix the export and I'll recommend it louder.
+[01:44:15] Maya: [laughs] Understood. Thursday.
+[01:44:19] Liam: Thursday. Bye everyone.
+[01:44:22] Kevin: Thanks Liam.
+[01:44:24] Maya: Right. Reactions? Because I think that was the most
+valuable twenty minutes we've had in one of these.
+[01:44:33] Tomas: I want to say something and it's uncomfortable.
+[01:44:37] Maya: Go on.
+[01:44:38] Tomas: Everything he asked for is on a list somewhere. All
+of it. The CSV, the webhooks, the column ordering, all of it is in our
+backlog and has been for years.
+[01:44:53] Tomas: So the problem isn't that we don't know. It's that
+knowing isn't enough to move anything.
+[01:45:01] Ravi: That's the bit that gets me too.
+[01:45:04] Tomas: And I don't think the fix is "listen to customers
+more". We listen constantly. The fix is something about how small
+unglamorous things get prioritised.
+[01:45:19] Kevin: Can I offer a mechanism rather than a principle?
+[01:45:23] Maya: Please.
+[01:45:24] Kevin: Every quarter, each team takes one thing off the
+"we've known about this for years" list and just does it. Not
+prioritised against features. Just done, because it's shameful.
+[01:45:40] Lisa: A shame budget.
+[01:45:42] Kevin: [laughs] A shame budget, yes.
+[01:45:45] Tomas: I actually really like that.
+[01:45:48] Maya: I like it too, and I like that it's small enough to
+survive contact with a busy quarter.
+[01:45:56] Maya: Let's try it for one quarter and see.
+[01:46:00] Sarah: Can non-engineering teams do it too?
+[01:46:04] Maya: I'd say yes. Everyone's got a list like that.
+[01:46:09] Sarah: Mine's the country list, which I've now committed to
+publishing on Monday anyway.
+[01:46:16] Maya: [laughs] Then that one's already spent.
+[01:46:20] Alex: Mine's the auto-acknowledgement.
+[01:46:23] Lisa: Mine's the 2023 security questionnaire spreadsheet.
+[01:46:28] Ravi: Oh, please, yes.
+[01:46:30] Lisa: I'll take it. It's not really mine but nobody else is
+going to.
+[01:46:36] Maya: That's how most good things happen, honestly.
+[01:46:41] Maya: Right. We're at an hour forty six. We've got about
+thirty five minutes and there's a lot in the question channel, so let
+me work through it.
+[01:46:53] Maya: And I'd rather we ran slightly over and answered
+things than finished on time and didn't.
+[01:47:01] Maya: First one, and it's got a lot of votes. "Are we
+profitable?"
+[01:47:07] David: Not yet, and we're not trying to be this year.
+[01:47:12] David: We're burning about four hundred thousand a month
+against twenty eight months of runway. The plan gets us to breakeven
+in early 2028.
+[01:47:24] David: If we wanted to be profitable next quarter we could
+be, by stopping all hiring and cutting marketing. It'd be a bad trade
+at this growth rate.
+[01:47:37] Maya: Second. "How do we compare to the competition on
+price?"
+[01:47:43] Ravi: We're mid-market on list price and we discount less
+than they do.
+[01:47:49] Ravi: So we often look more expensive in a first
+conversation and end up similar by the end.
+[01:47:57] Ravi: The structural problem isn't the price, it's the
+per-seat model, which we talked about earlier.
+[01:48:05] Maya: Third. "Why did the platform migration take so long
+and what did we get?"
+[01:48:12] Kevin: We covered it, but the short version is: three weeks
+late because of two undocumented dependencies, and what we got was
+deploys going from twenty six minutes to four and rollbacks from
+fifteen minutes to under one.
+[01:48:29] Kevin: Which is invisible to customers and enormous for us.
+[01:48:34] Maya: Fourth, and this is a good one. "We've talked about
+sixteen missing hires for two hours. Is anyone actually going to do
+anything different, or will we have this conversation again in
+April?"
+[01:48:49] Sarah: That's a completely fair question.
+[01:48:52] Sarah: The thing that's different is two recruiters
+starting in January, which is a structural change rather than an
+intention.
+[01:49:02] Sarah: The thing that isn't different is the interview
+scheduling problem, and that one does depend on people changing
+behaviour, and I'd be lying if I said I was confident.
+[01:49:16] Kevin: Can I make that concrete for engineering at least?
+[01:49:20] Sarah: Please.
+[01:49:21] Kevin: I'll hold two hours a week that are only for
+interviews. Blocked, permanent, and if there's no interview I get two
+hours back, which is a nice problem.
+[01:49:35] Tomas: I'll do the same.
+[01:49:37] Sarah: If every hiring manager did that it would genuinely
+fix it.
+[01:49:43] Maya: Then let's ask every hiring manager to. Sarah, put
+that in the pipeline review.
+[01:49:50] Sarah: Will do.
+[01:49:51] Maya: Fifth. "What happened to the four people who left?"
+[01:49:57] Sarah: All four resigned. Three went to other companies,
+one left for family reasons. Nobody was pushed.
+[01:50:06] Sarah: And two of the three cited progression, which is why
+the levelling framework matters.
+[01:50:14] Maya: Sixth. And it's spiky, which is fine. "Leadership
+keeps saying 'that's fair' and then nothing changes. What's actually
+different after today?"
+[01:50:26] Maya: I'll take that one.
+[01:50:28] Maya: The honest answer is that most of what we've said
+today is talk, and the test is what's on a calendar.
+[01:50:37] Maya: So let me read out only the things with a date, and
+you can hold us to those and ignore the rest.
+[01:50:45] Maya: Ravi rebuilds the sales quota model by Friday.
+Kevin's GPU cluster RFP goes out Wednesday. Alex has the SLA report by
+Tuesday. Sarah publishes the remote-first policy and the country list
+on Monday, and starts weekly hiring pipeline reviews the same day.
+Kevin runs the webhook integration walkthrough with Liam on Thursday.
+[01:51:12] Maya: Six things, five days, named people.
+[01:51:17] Maya: If, in three weeks, those haven't happened, then the
+question is right and I'd want it asked again louder.
+[01:51:26] Alex: Can we publish that list somewhere?
+[01:51:29] Maya: Yes. In fact that's a good example of Sarah's written
+culture point. I'll put it in the decisions folder with a date on each
+one.
+[01:51:41] Sarah: Thank you.
+[01:51:44] Maya: Seventh question. "Why do we do three hour meetings?"
+[01:51:50] Maya: [laughs] I did say we'd talk about the format.
+[01:51:55] Maya: Honestly, because it grew. It was ninety minutes two
+years ago and every quarter someone needed ten more minutes.
+[01:52:05] Lisa: Can I make a suggestion?
+[01:52:08] Maya: Please.
+[01:52:09] Lisa: Half of what we did today was numbers being read out.
+The numbers could be a document that people read beforehand.
+[01:52:19] David: I'd support that. My section was twenty minutes and
+about fifteen of it was reading a slide.
+[01:52:28] Tomas: The valuable parts were the arguments. The
+connectors versus API decision, the Liam conversation, the thing about
+support tickets.
+[01:52:40] Maya: So: numbers in writing beforehand, meeting for
+decisions and discussion.
+[01:52:47] Kevin: The risk is nobody reads it.
+[01:52:50] Lisa: The risk is nobody reads it, yes. But right now
+nobody remembers it either, so I'm not sure we're worse off.
+[01:53:00] Maya: [laughs] That's a good point.
+[01:53:03] Sarah: You could open with fifteen minutes of silent
+reading. Some companies do that.
+[01:53:10] Ravi: I've been somewhere that did that. It felt strange
+for about one meeting and then it was obviously better.
+[01:53:19] Maya: Really?
+[01:53:20] Ravi: Really. Because everyone's actually read it, so the
+discussion starts from the same place.
+[01:53:28] Maya: Let's try it next quarter. Documents out three days
+before, fifteen minutes of reading at the start, and then two hours
+instead of three.
+[01:53:40] Alex: I'd take that trade.
+[01:53:42] Maya: Right, eighth question. "The engineering blog is our
+second biggest inbound channel. Why isn't writing part of anyone's
+job?"
+[01:53:53] Kevin: Because it's nobody's job and everybody's optional
+extra, which means it happens when someone's between things.
+[01:54:03] Lisa: I offered to do the editing, which removes most of
+the friction.
+[01:54:09] Kevin: And that genuinely helps. But the deeper thing is
+that if I put "write a blog post" in someone's quarter, it competes
+with shipping, and shipping wins.
+[01:54:22] Maya: What if it were explicit? Like, one post per team per
+quarter, and it counts as delivery.
+[01:54:31] Kevin: Then it'd happen. Things that are counted happen.
+[01:54:36] Lisa: I'd take four posts a quarter very happily.
+[01:54:41] Kevin: Let's say one per team per quarter and see if it
+survives a busy month.
+[01:54:47] Maya: Ninth. "Is the mobile web experience going to get the
+cut features?"
+[01:54:54] Tomas: Offline support, probably not this year. Push
+notifications, I'd like to, and it depends on API v3.
+[01:55:04] Tomas: And I want to be careful about promising, because I
+promised those two things in October and then cut them.
+[01:55:13] Maya: Tenth. "What's the plan if Q4 misses?"
+[01:55:18] David: We're guiding fifteen point one against a plan of
+fifteen four, so in a sense we've already said we expect to miss the
+plan.
+[01:55:29] David: If we miss the guide as well, which would be about
+a million light, it doesn't change anything structural. Runway goes
+from twenty eight months to twenty six.
+[01:55:42] David: It'd change the Q1 hiring pace, which is the lever I
+would pull first.
+[01:55:49] Ravi: And I'd want to be clear that a Q4 miss would be
+about deal timing, not demand. The pipeline conversion is fine, it's
+the coverage that's thin.
+[01:56:03] Maya: Eleventh. This one's for me. "You've been CEO for
+eighteen months. What have you got wrong?"
+[01:56:12] Maya: Oh, that's a good one, and I'd like to answer it
+properly rather than do the fake humility thing.
+[01:56:20] Maya: Two things.
+[01:56:22] Maya: The first is the conference announcement. I pushed
+for three things on the slide when we had capacity for one and a half,
+and Tomas has spent a quarter absorbing that, and Dan in sales has
+told customers something that wasn't true.
+[01:56:41] Maya: That's a straightforward error and it came from
+wanting the announcement to feel bigger.
+[01:56:49] Maya: The second is slower and I'm less sure about it.
+[01:56:54] Maya: I think I've been too willing to accept "that's
+fair" as the end of a conversation. Someone raises a problem, I agree
+it's a problem, everyone feels heard, and nothing has a date on it.
+[01:57:11] Maya: The question earlier about that was pointed and it
+was correct.
+[01:57:17] Sarah: For what it's worth, that's a pattern rather than
+just you.
+[01:57:23] Maya: It might be a pattern I've made comfortable, though.
+[01:57:28] Maya: Anyway. That's my honest answer.
+[01:57:32] Alex: That's more than most people would say.
+[01:57:36] Maya: Twelfth. "Will the recording be available?" Yes, and
+a written summary tomorrow.
+[01:57:44] Maya: Thirteenth. "Can we get better coffee in the London
+office?"
+[01:57:50] Maya: [laughs] Sarah?
+[01:57:52] Sarah: The machine is broken and the part is on order. It
+has been on order for five weeks.
+[01:58:00] Lisa: Five weeks!
+[01:58:02] Sarah: I chase it weekly. I have a recurring reminder. It
+is genuinely the most persistent unresolved item I own.
+[01:58:12] Kevin: Is that your shame budget item?
+[01:58:15] Sarah: [laughs] It might have to be.
+[01:58:19] Maya: Fourteenth, and this one's substantial. "Three
+products share one database connection pool. Why?"
+[01:58:28] Kevin: Because they were one product when it was built, and
+we split the product without splitting the data.
+[01:58:37] Kevin: Which is the most common architecture story there
+is, honestly.
+[01:58:43] Kevin: And it's what makes one slow query into a
+company-wide outage rather than a single product outage.
+[01:58:52] Maya: And splitting it is the quarter of work you
+mentioned.
+[01:58:57] Kevin: Splitting the pool is a quarter. Splitting the
+actual database would be a year and I'm not proposing it.
+[01:59:06] Tomas: Is splitting the pool enough?
+[01:59:09] Kevin: It converts a total outage into a partial one. It
+doesn't stop the slow query.
+[01:59:17] Kevin: The thing that stops the slow query is the check we
+talked about in the postmortem, where a build fails if a query plan
+does a sequential scan on a big table.
+[01:59:31] Maya: Is that being built?
+[01:59:33] Kevin: Not yet, because it needs a database with realistic
+data volume, and staging has forty thousand rows where production has
+a hundred and ninety million.
+[01:59:47] David: Is that expensive to fix?
+[01:59:50] Kevin: It's mostly a privacy problem, not a cost problem.
+We'd need a sanitised copy of production, refreshed regularly.
+[02:00:01] Sarah: That sounds like it needs a legal conversation more
+than an engineering one.
+[02:00:07] Kevin: It does, and that's why it's been sitting there for
+a year with no owner.
+[02:00:14] Maya: Then let me own the legal conversation, because
+that's a thing I can actually unblock.
+[02:00:22] Kevin: That would genuinely help.
+[02:00:25] Maya: Fifteenth. "Are we going to do anything about
+meetings generally, not just this one?"
+[02:00:33] Sarah: I've got a small proposal that I haven't socialised,
+so treat it as a thought.
+[02:00:40] Sarah: No recurring meeting survives a quarter without
+being re-justified. Every quarter they all expire and you have to
+actively recreate the ones you want.
+[02:00:53] Lisa: That's quite aggressive.
+[02:00:56] Sarah: It is. But recurring meetings only ever accumulate.
+Nobody ever deletes one.
+[02:01:04] Tomas: I'd try it.
+[02:01:06] Kevin: I'd try it for one quarter.
+[02:01:09] Maya: Let's do it in Q1 and see what survives.
+[02:01:14] Maya: Sixteenth. "What's the one thing each leader is most
+worried about?" That's a nice one to end the questions on. Quick
+round. David.
+[02:01:26] David: That we're modelling growth that assumes hiring we
+haven't proven we can do.
+[02:01:33] Maya: Ravi.
+[02:01:34] Ravi: Early-stage pipeline for Q1. Q4 is fine, Q1 is thin.
+[02:01:41] Maya: Lisa.
+[02:01:42] Lisa: That I cut the agency and the two sales development
+reps don't get hired, and then we have no outbound at all.
+[02:01:52] Sarah: That's a fair worry and I'd hold it too.
+[02:01:56] Maya: Tomas.
+[02:01:57] Tomas: That we keep shipping and keep not learning. Four
+customer calls in a quarter is the number that bothers me most in my
+own section.
+[02:02:08] Maya: Kevin.
+[02:02:09] Kevin: The on-call rota. Nine people, two of whom get
+called regardless because they're the only ones who understand two
+systems.
+[02:02:20] Maya: Sarah.
+[02:02:21] Sarah: Progression. Because it's the reason people left and
+it's the one I can't fix quickly.
+[02:02:29] Maya: Alex.
+[02:02:30] Alex: That we decide the SLA number and then don't resource
+it, and my team spends another quarter failing against something
+they can't hit.
+[02:02:41] Maya: That's a fair thing to put on the record.
+[02:02:45] Maya: And mine is that we've had four good quarters and
+good runs make organisations slow. Everything's fine, nobody pushes,
+and eighteen months later you're behind and can't point at when it
+happened.
+[02:03:02] Maya: Right. That's two hours and three minutes.
+[02:03:07] Maya: Before we close, I want to do the thing we never do,
+which is name specific people who did specific things.
+[02:03:16] Maya: Kevin's team on the migration. Three weeks late and
+it halved our deploy time and made rollback something you can do
+without praying. That was the biggest quality of life change we've
+made in two years.
+[02:03:33] Maya: Lisa, for deleting a form field and getting a thirty
+three percent conversion lift, and for doing the agency attribution
+properly even though it made your own decision look bad.
+[02:03:47] Lisa: [laughs] Thanks.
+[02:03:49] Maya: Alex, for wanting to kill a metric that makes his own
+team's numbers look better. That's rare and I noticed.
+[02:04:00] Maya: Ravi, for reading two quarters of loss reasons over a
+weekend, which is genuinely miserable work, and turning it into the
+clearest argument in this meeting.
+[02:04:13] Maya: Tomas, for saying "we shipped a lot and learned very
+little" out loud in front of four hundred people.
+[02:04:22] Maya: Sarah, for answering "who's accountable" with "me"
+without a paragraph in front of it.
+[02:04:30] Maya: David, for flagging that his own reporting has a gap
+in it rather than waiting for someone else to find it.
+[02:04:39] Maya: And Priyanka in support, who Liam named specifically,
+and who isn't on this call because she's working the queue right now.
+[02:04:50] Alex: I'll make sure she sees it.
+[02:04:53] Maya: Please do.
+[02:04:55] Maya: Right. We said we'd finish at two hours and we're
+past it, but there are still nineteen questions in the channel and I
+said I'd rather run over than not answer them.
+[02:05:07] Maya: So I'm going to stay on for as long as it takes. If
+you need to drop, drop, it's recorded.
+[02:05:16] Maya: Anyone who wants to leave, this is a good moment.
+[02:05:21] Alex: About sixty people just left.
+[02:05:24] Maya: [laughs] That's fair enough.
+[02:05:27] Maya: Right. Open floor. I'll read them but if you want to
+unmute and ask directly, please do, it's better.
+[02:05:36] Maya: First. "What's our AI strategy?"
+[02:05:41] Maya: Tomas, that's probably you and Kevin.
+[02:05:45] Tomas: It's a fair question and I want to answer it
+carefully, because the honest answer isn't very exciting.
+[02:05:54] Tomas: We use machine learning in three places in the
+product. Anomaly detection on transactions, the search ranking, and
+the categorisation thing.
+[02:06:06] Tomas: All three are real and all three predate the current
+enthusiasm by years.
+[02:06:14] Maya: And the new stuff?
+[02:06:16] Tomas: We've got two experiments. One is a natural language
+query interface for reporting, which is genuinely promising. The other
+is automatic ticket triage for support, which is less promising than I
+hoped.
+[02:06:33] Alex: Can I say why on the triage one?
+[02:06:37] Tomas: Please.
+[02:06:38] Alex: It's about eighty percent accurate, which sounds
+good. But the twenty percent it gets wrong are disproportionately the
+urgent ones, because urgent tickets are written badly by stressed
+people.
+[02:06:55] Kevin: Oh, that's an interesting failure mode.
+[02:06:59] Alex: So it works best on the tickets we least need help
+with, and worst on the ones where a mistake actually costs us.
+[02:07:09] Tomas: Which is a useful thing to have found out for three
+weeks of work rather than three months.
+[02:07:17] Maya: Is there a strategy above the individual projects?
+[02:07:22] Tomas: I'd say our strategy is that we're not building
+foundation models and we're not pretending to. We're a product
+company and we use the technology where it makes a specific feature
+better.
+[02:07:38] Tomas: I know that's less exciting than what our
+competitors put in their marketing.
+[02:07:45] Ravi: Customers don't ask about it as much as you'd think,
+for what it's worth.
+[02:07:51] Ravi: They ask "does it do this thing I need", and if the
+answer is yes they don't ask how.
+[02:07:59] Lisa: Marketing-wise it's a slight problem, because the
+category is loud right now and we're quiet.
+[02:08:08] Maya: Is that costing us?
+[02:08:10] Lisa: I don't think it's costing us deals. It might be
+costing us attention, which is different and slower.
+[02:08:19] Maya: Second question. "The natural language reporting
+thing sounds useful. When?"
+[02:08:26] Tomas: It's an experiment, not a roadmap item. If it works
+it'd be a Q2 thing at the earliest.
+[02:08:35] Tomas: And I'd rather under-promise on this one, given the
+conference thing.
+[02:08:41] Maya: [laughs] Fair.
+[02:08:44] Maya: Third. "Are we going to have a four-day week?"
+[02:08:49] Sarah: No, and I'd rather say a clear no than a vague
+maybe.
+[02:08:55] Sarah: I've looked at it properly, because people asked
+last year. The version that works requires genuinely reducing the
+amount of work, not compressing it, and we're not in a position to
+reduce output.
+[02:09:11] Sarah: The version that doesn't work is where everyone does
+five days of work in four and it's called a benefit.
+[02:09:20] Sarah: What we do have is flexible hours, which is
+underused, and I'd rather people actually used that.
+[02:09:29] Maya: Underused how?
+[02:09:31] Sarah: People ask permission for things they don't need
+permission for. If you want to work seven to three, do it. You do not
+need to ask me.
+[02:09:43] Maya: Fourth. "What are our diversity numbers and why don't
+we publish them?"
+[02:09:50] Sarah: We do have them and we don't publish them, and the
+honest reason is that they're not good and nobody's wanted to own
+saying so.
+[02:10:01] Maya: Let's own it then.
+[02:10:03] Sarah: Right. Engineering is nineteen percent women, which
+is below the industry benchmark of about twenty five. Leadership,
+meaning the people who spoke today, is three out of nine.
+[02:10:19] Sarah: Ethnicity data we only have for the UK and it's
+about thirty one percent from minority backgrounds, which is roughly
+in line with the local labour market but below London specifically.
+[02:10:35] Sarah: The number that's worst is engineering leadership.
+It's one out of seven.
+[02:10:43] Maya: What's the plan?
+[02:10:45] Sarah: I'm suspicious of plans here because there's a lot
+of activity that makes people feel better and doesn't change numbers.
+[02:10:56] Sarah: The things that actually seem to work are structural.
+Diverse interview panels, which we do inconsistently. Job descriptions
+that don't have a wishlist of twelve requirements, which we're bad at.
+And promotion criteria that are written down, which brings us back to
+levelling.
+[02:11:17] Kevin: The levelling thing again.
+[02:11:20] Sarah: The levelling thing is underneath about four
+different problems in this meeting, yes.
+[02:11:27] Maya: Should we publish the numbers?
+[02:11:30] Sarah: I think we should, annually, with the direction of
+travel. Publishing once is a press release. Publishing every year is
+accountability.
+[02:11:42] Maya: Then let's do that from next year.
+[02:11:46] Maya: Fifth. "Why is there no career ladder for people who
+don't want to manage?"
+[02:11:53] Sarah: There is above senior, in theory, and it's the part
+that becomes vibes, so, effectively no.
+[02:12:02] Kevin: In engineering we've got two people doing staff-level
+work with a senior title, and I can't fix that until the framework
+exists.
+[02:12:14] Sarah: And I'd say to those two people, if they're on this
+call, that I know, and that "I know" isn't good enough, and I'm not
+going to pretend it is.
+[02:12:26] Maya: Sixth. "What happened to the customer advisory
+board?"
+[02:12:32] Ravi: It stopped. We did two, they were good, and then the
+person organising them left.
+[02:12:40] Maya: [laughs] That's becoming a theme today.
+[02:12:44] Ravi: It really is. Three things in this meeting stopped
+because one person left.
+[02:12:51] Kevin: The service catalogue thing was the same. The
+dependencies weren't written down because the people who knew them
+left.
+[02:13:01] Sarah: That's the written culture point again, isn't it.
+Everything that lives in one person's head is one resignation from
+disappearing.
+[02:13:12] Maya: That might be the actual theme of this meeting.
+[02:13:16] Tomas: It's a better theme than "sixteen missing hires".
+[02:13:21] Maya: [laughs] It's the same theme wearing a different
+coat.
+[02:13:26] Maya: Should we restart the advisory board?
+[02:13:30] Ravi: I'd like to, and after today I'd want it structured
+differently. Today's twenty minutes with Liam was more useful than
+either advisory board session we ran.
+[02:13:44] Tomas: Because he was talking to everyone rather than to
+five executives.
+[02:13:50] Ravi: Right. So maybe the format is a customer in the
+all-hands every quarter, rather than a separate board.
+[02:13:59] Maya: I'd support that. Let's do it every quarter.
+[02:14:04] Lisa: I can help find them. I've got about a dozen
+customers who'd say yes.
+[02:14:11] Maya: Seventh. "How do we decide what goes in the roadmap?"
+[02:14:17] Tomas: Badly, is the short answer, and I'll give the long
+one because it's a fair question.
+[02:14:24] Tomas: There are four inputs. Customer requests, which come
+through sales and support. Strategy, meaning things we think will
+matter in a year. Platform work, which is Kevin's list. And bugs and
+debt.
+[02:14:41] Tomas: And the way they get weighed is, essentially, me,
+in a room, arguing with people.
+[02:14:49] Maya: Is that bad?
+[02:14:51] Tomas: It's not terrible. It's not repeatable, and it means
+the loudest input wins, and the loudest input is never the export
+that five percent of users touch.
+[02:15:05] Kevin: Or the platform work, historically.
+[02:15:09] Tomas: Or platform work, yes, though that's improved.
+[02:15:14] Tomas: The shame budget idea is a small fix for that. It
+carves out space for things that would never win an argument.
+[02:15:24] Maya: Eighth. "How much technical debt do we actually
+have?"
+[02:15:30] Kevin: That's a question you can't answer honestly with a
+number, so let me answer it with three specifics.
+[02:15:39] Kevin: Thirty percent of our services aren't in the
+catalogue, and they're the oldest ones.
+[02:15:47] Kevin: Three products share one database connection pool.
+[02:15:52] Kevin: And there's a pattern in the API layer where one bad
+row breaks an entire list response, and it's in about twenty
+endpoints.
+[02:16:04] Tomas: That last one is the one that scares me most,
+because it's a silent time bomb rather than a known slow thing.
+[02:16:14] Kevin: It's the one I'd fix first if someone gave me a
+team.
+[02:16:19] Maya: What would it take?
+[02:16:21] Kevin: Two engineers for six weeks, and it's genuinely
+mechanical work.
+[02:16:27] Maya: That's less than I expected.
+[02:16:30] Kevin: The work is small. Finding two engineers for six
+weeks is the hard part, which goes back to the hiring conversation.
+[02:16:41] Maya: Ninth. "Do we have a plan if a competitor gets
+acquired by one of the big platforms?"
+[02:16:49] Ravi: We've talked about it. The honest answer is that if
+the bigger of the two got bought by a major platform, the deals we
+compete on would get much harder within a year.
+[02:17:04] Maya: What would we do?
+[02:17:06] Ravi: Lean much harder into the segment where we're
+genuinely better, which is mid-market operations teams who don't have
+engineers.
+[02:17:18] Ravi: That's a smaller market and we'd be more dominant in
+it.
+[02:17:24] David: And financially it'd change our growth assumptions
+rather than our viability. We're not dependent on beating them in
+enterprise.
+[02:17:36] Maya: Tenth. "What's the board most focused on?"
+[02:17:41] Maya: I'll take that one. Three things, consistently.
+[02:17:47] Maya: Net revenue retention, which is our best number and
+the one they lead with. New logo growth, which is our weakest and
+they ask about every time. And the gap between planned and actual
+hiring, which came up at the last two meetings.
+[02:18:07] Maya: So they're focused on roughly what we've been focused
+on today, which is reassuring in a slightly boring way.
+[02:18:17] Sarah: Do they ask about attrition?
+[02:18:20] Maya: They ask about it. They don't push on it, because
+nine percent is good.
+[02:18:27] Maya: Eleventh. "Will there be equity refreshes this year?"
+[02:18:33] Sarah: Yes. They go with the April review.
+[02:18:38] Sarah: And I'd note that we do them for everyone at the
+review, not just for people who threaten to leave, which is not
+universal in this industry.
+[02:18:50] Maya: Twelfth. "The office plants are dead."
+[02:18:55] Maya: [laughs] Is that a question?
+[02:18:58] Sarah: It's a statement of fact. They are dead. I'll sort
+it out.
+[02:19:04] Lisa: Same person as the coffee machine, I assume.
+[02:19:08] Sarah: [laughs] It's me. I'm the person.
+[02:19:12] Maya: Thirteenth, and it's a good one to slow down on.
+"What does success look like a year from now?"
+[02:19:21] Maya: Let me give a specific answer rather than a
+motivational one.
+[02:19:27] Maya: A year from now I'd want new logo growth back above
+forty percent of new revenue, because the expansion number is
+carrying us and that's fragile.
+[02:19:40] Maya: I'd want the hiring plan hit within about ten
+percent, because being sixteen short is the root of half of today.
+[02:19:50] Maya: I'd want availability genuinely at ninety nine point
+nine rather than nearly.
+[02:19:57] Maya: And I'd want Liam to not be pasting our data into a
+website.
+[02:20:03] Tomas: [laughs] That one I can promise.
+[02:20:07] Maya: Fourteenth. "Are we hiring in Austin specifically?"
+[02:20:13] Sarah: Yes. Six of the Q1 roles are Austin or remote in
+that timezone.
+[02:20:20] Maya: Fifteenth. "Can we get the recording transcribed
+rather than just recorded? Three hours is a lot to rewatch."
+[02:20:29] Alex: That's a good idea and it's easy, the tool does it.
+I'll turn it on.
+[02:20:36] Sarah: And a transcript is searchable, which a video isn't,
+which is the written culture thing again.
+[02:20:44] Maya: Everything is the written culture thing today.
+[02:20:48] Maya: Sixteenth. "Why did the two people who left
+engineering both go to the same competitor?"
+[02:20:56] Kevin: Because they're hiring aggressively and they pay
+about fifteen percent more at that level.
+[02:21:04] Sarah: And I'd add that neither cited money as the primary
+reason in their exit interview. Both cited progression.
+[02:21:14] Sarah: Money is what makes leaving possible. It's usually
+not what makes people want to.
+[02:21:22] Maya: Seventeenth. "Do managers get training?"
+[02:21:27] Sarah: Some. Not enough, and not consistently. We do a
+two-day thing for new managers and then essentially nothing after
+that.
+[02:21:38] Sarah: And about a third of our managers have never
+managed anywhere else, so the two days is most of what they've had.
+[02:21:48] Kevin: That's true of me, for what it's worth.
+[02:21:52] Sarah: It's true of a lot of the people who spoke today.
+[02:21:57] Maya: Is that on your list?
+[02:22:00] Sarah: It's on the list. It's behind levelling, because
+levelling is what managers most need to be able to do their job.
+[02:22:10] Maya: Eighteenth. "What's the one metric you'd keep if you
+could only have one?"
+[02:22:17] David: Net revenue retention.
+[02:22:19] Ravi: Net revenue retention.
+[02:22:21] Tomas: Weekly active accounts, actually, not revenue.
+[02:22:26] Maya: Say why.
+[02:22:27] Tomas: Because revenue lags. If usage falls, revenue falls
+nine months later, and by then you can't do anything about it.
+[02:22:38] David: That's a good answer and I'd change mine to that.
+[02:22:43] Kevin: Mine would be time to recover from an incident,
+rather than availability. Because things will break, and how fast we
+recover is the part we control.
+[02:22:56] Alex: Mine would be the percentage of tickets resolved
+without escalation. It's a proxy for whether the product makes sense.
+[02:23:07] Sarah: Mine would be regretted attrition specifically, not
+overall.
+[02:23:13] Lisa: Mine's inbound pipeline, which is boring, but it's
+the leading indicator for everything Ravi has to do.
+[02:23:22] Maya: That's a genuinely interesting spread and I'd like it
+written down somewhere.
+[02:23:29] Maya: Nineteenth, and it's the last one. "Is there anything
+we're not talking about that we should be?"
+[02:23:37] Maya: I'll open that to the room rather than answer it.
+[02:23:42] Kevin: Yes. The two people who understand two critical
+systems. We mentioned it and moved on, and it's a genuine single point
+of failure in a way that nothing else today is.
+[02:23:56] Maya: What would fix it?
+[02:23:58] Kevin: Time. Somebody pairing with them for a month with
+the explicit goal of being able to take a page.
+[02:24:07] Kevin: It's not glamorous and it never wins against a
+roadmap item.
+[02:24:13] Maya: Is that your shame budget item?
+[02:24:16] Kevin: That's a good use of it, actually. Yes.
+[02:24:21] Ravi: Mine is that we've talked about win rate dropping for
+two quarters and we've never done a proper competitive teardown. We
+guess what they do. We've never sat down and used their product.
+[02:24:37] Tomas: I'd genuinely like to do that.
+[02:24:40] Ravi: Then let's. I'll get a trial.
+[02:24:44] Lisa: Mine is that we have no idea why people who visit our
+site don't convert. We know the rate and nothing about the reason.
+[02:24:55] Sarah: Mine's that we've talked about hiring for two hours
+and never once about whether the people already here are in the right
+roles.
+[02:25:06] Maya: That's a big one to end on.
+[02:25:09] Sarah: It is, and I don't have a proposal, I just think
+it's a question we never ask.
+[02:25:16] Alex: Mine's smaller. We've never asked the support team
+what they think the product should do, and they talk to more customers
+than anyone.
+[02:25:28] Tomas: That's a very good point and it's embarrassing that
+it's true.
+[02:25:34] Alex: They've got a channel where they post things
+customers ask for. It's been going three years. I don't think anyone
+outside support reads it.
+[02:25:46] Tomas: I'll read it. Send me the link.
+[02:25:49] Alex: I will, and I'll warn you it's long.
+[02:25:55] David: Can I add one to that round?
+[02:25:59] Maya: Please.
+[02:26:00] David: We've never talked about what happens if I'm wrong
+about the runway.
+[02:26:07] Maya: Say more.
+[02:26:09] David: Twenty eight months assumes burn stays roughly flat.
+If we actually hit the hiring plan next year, burn goes up
+substantially, and twenty eight becomes more like twenty.
+[02:26:24] David: And twenty months is the number where you start
+thinking about raising, which is a different conversation entirely.
+[02:26:33] Maya: So hitting the hiring plan shortens the runway.
+[02:26:38] David: Hitting the hiring plan shortens the runway, yes.
+Which is an uncomfortable sentence given we've spent two hours saying
+the shortfall is the problem.
+[02:26:51] Sarah: Both things are true though, aren't they. Not hiring
+is bad for the business and good for the cash.
+[02:27:00] David: Exactly, and the resolution is that we're spending
+to grow, which is the plan, and the plan is fine. I just don't want
+anybody to be surprised in September.
+[02:27:14] Maya: That's a good thing to have said out loud.
+[02:27:18] Ravi: Can I add one more as well?
+[02:27:21] Maya: Go on.
+[02:27:22] Ravi: We haven't talked about what we'd stop doing.
+[02:27:27] Ravi: Every conversation today has been "we should also do
+this". The connectors, the pool split, the recruiters, the blog
+posts, the shame budget, the competitive teardown.
+[02:27:41] Ravi: And I count something like fifteen new things and
+nothing we're stopping.
+[02:27:48] Tomas: That's a very fair challenge.
+[02:27:51] Maya: It is. And the honest answer is that we did stop one
+thing today, which is the outbound agency, and Lisa had to volunteer
+her own budget to do it.
+[02:28:05] Lisa: [laughs] Which took me a year.
+[02:28:09] Maya: Which took a year, yes. So the ratio of things
+started to things stopped is roughly fifteen to one.
+[02:28:18] Kevin: The meeting expiry idea is a version of stopping,
+though. That's structurally forcing it.
+[02:28:26] Sarah: That was the appeal of it, yes.
+[02:28:29] Ravi: I'd want the same for projects. Everything expires
+at the end of the quarter and you have to argue to renew it.
+[02:28:39] Tomas: That's harder for engineering work that spans
+quarters.
+[02:28:44] Ravi: Then argue to renew it. That's not a burden if it's
+genuinely worth doing.
+[02:28:51] Kevin: [laughs] That's annoyingly reasonable.
+[02:28:55] Maya: Let's try it on meetings first, since that's already
+agreed, and see whether we hate it before applying it to projects.
+[02:29:05] Ravi: Fine. But I'd note for the record that "let's try
+the smaller version first" is also how nothing changes.
+[02:29:15] Maya: [laughs] Noted, and genuinely, that's a fair
+warning, and I'd rather have it on the recording than not.
+[02:29:24] Tomas: One more thing nobody's said, since we're being
+uncomfortable.
+[02:29:30] Maya: Go.
+[02:29:31] Tomas: We've had four good quarters and a lot of what we
+did today was diagnosis. We're quite good at diagnosis.
+[02:29:41] Tomas: The March postmortem correctly diagnosed a problem
+and we fixed the narrow version and had the same incident twice more.
+[02:29:52] Tomas: So I'd gently suggest the constraint isn't knowing
+what's wrong.
+[02:29:59] Kevin: That's the same shape as the export thing. Everything
+Liam asked for was already on a list.
+[02:30:08] Tomas: Right. Both of those are the same failure and it's
+not an information failure.
+[02:30:16] Maya: What is it then?
+[02:30:18] Tomas: I think it's that we have no mechanism for doing
+things that are obviously right but never urgent.
+[02:30:27] Sarah: Which is the shame budget.
+[02:30:30] Tomas: Which is why I like the shame budget more than
+anything else we agreed today, and it was a throwaway idea from Kevin
+forty minutes ago.
+[02:30:42] Kevin: [laughs] It was genuinely a throwaway.
+[02:30:46] Maya: The best ones usually are. Right, that's the round.
+[02:30:52] Alex: That was more than nineteen.
+[02:30:55] Maya: [laughs] It was considerably more than nineteen.
+[02:31:05] Maya: Right. That's the questions.
+[02:31:09] Maya: Same six commitments, and I'll write them up.
+Anything else before I stop the recording?
+[02:31:17] Kevin: One thing, and it's short.
+[02:31:21] Maya: Go.
+[02:31:23] Kevin: The read-only seat pricing thing. Ravi raised it,
+Liam basically confirmed it, and then we parked it because it needed
+a separate meeting.
+[02:31:35] Kevin: I don't want it to disappear into a separate meeting
+that never gets booked, because that's exactly the pattern we've been
+talking about for two hours.
+[02:31:47] Ravi: That's a fair worry.
+[02:31:50] Kevin: So can somebody own chasing it, even if the decision
+itself happens elsewhere?
+[02:31:57] Maya: That's a good distinction. Owning the chase rather
+than owning the decision.
+[02:32:04] Kevin: I'll do it if nobody else wants it. I've got no
+authority over pricing whatsoever, which might make me quite annoying,
+which is the point.
+[02:32:16] David: [laughs] I'd accept being chased by Kevin.
+[02:32:20] Maya: When would you want it resolved?
+[02:32:23] Kevin: I'd want the read-only pricing analysis done in
+December, so it can land in the Q1 plan rather than sliding another
+quarter.
+[02:32:34] Maya: Kevin chases the read-only pricing analysis for
+December. Good.
+[02:32:41] Sarah: Can I do one more in the same spirit?
+[02:32:45] Maya: Go on.
+[02:32:46] Sarah: Kevin mentioned the evaluation set earlier, when we
+were talking about the machine learning roles, and it went past
+without anyone picking it up.
+[02:32:58] Kevin: It did, yeah. That's the role I didn't get.
+[02:33:03] Sarah: Right. So there's a piece of work that everyone
+agrees matters and there's now no person attached to it, because the
+headcount that was going to do it didn't happen.
+[02:33:16] Kevin: And it'll quietly get absorbed by three people
+doing it badly, which is what happened last year.
+[02:33:24] Sarah: So rather than leave it, I'll find an owner for the
+evaluation set before the end of the month, even if that owner is a
+contractor or a reallocation rather than a hire.
+[02:33:39] Kevin: That'd be a genuine help.
+[02:33:42] Sarah: It might be an unpopular reallocation.
+[02:33:46] Kevin: Most useful things are.
+[02:33:49] Maya: Good. Sarah finds an owner for the evaluation set.
+[02:33:58] Lisa: Can I sneak one in as well, since we're doing this?
+[02:34:03] Maya: The floodgates are open, apparently.
+[02:34:07] Lisa: [laughs] It's small. The onboarding buddy rota has
+been broken since August.
+[02:34:14] Maya: Broken how?
+[02:34:16] Lisa: There isn't one. It was a spreadsheet, the person who
+maintained it left, and nobody picked it up. So new starters have been
+getting a buddy only if somebody happens to volunteer.
+[02:34:30] Ravi: That explains a lot, actually. My last two hires had
+completely different first weeks and I couldn't work out why.
+[02:34:40] Lisa: Right, and one of them told me in their thirty day
+review that they didn't know they were meant to have a buddy at all.
+[02:34:50] Maya: That's not small, Lisa.
+[02:34:53] Lisa: No. I suppose it isn't.
+[02:34:56] Maya: Do you want to own it?
+[02:34:59] Lisa: I'll own it. I'll rebuild the onboarding buddy rota
+and have it circulated by Monday.
+[02:35:07] Maya: Lisa owns the onboarding buddy rota, circulated
+Monday. And can we not keep it in a spreadsheet this time?
+[02:35:16] Lisa: [laughs] I'll put it somewhere that has an owner
+field, so when I leave it's somebody's problem officially.
+[02:35:25] Ravi: Thank you for raising it.
+[02:35:28] Maya: And I'd note that all three of those came up in the
+last four minutes of a two and a half hour meeting, which probably
+says something about where the useful conversations live.
+[02:35:41] Tomas: The last four minutes and the twenty with the
+customer.
+[02:35:46] Maya: [laughs] Yes. Which is roughly the argument for the
+new format.
+[02:35:52] Maya: Right. Thank you all. Genuinely, that was a good one.
+Summary tomorrow, decisions folder by end of week.
+[02:36:02] Sarah: Thanks Maya.
+[02:36:04] Ravi: Thanks everyone.
+[02:36:06] Lisa: Bye.
+[02:36:07] Kevin: See you.
+[02:36:09] Maya: Alex, stop the recording.
+[02:36:12] Alex: Stopping it now.

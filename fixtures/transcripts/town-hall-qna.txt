@@ -1,0 +1,480 @@
+[00:00:00] Alex: — and I think we're live. Are we live? Somebody in
+the chat tell me we're live.
+[00:00:08] Alex: Okay, people are saying yes. Good.
+[00:00:12] Alex: Hello everyone, welcome to the Q4 town hall. I'm
+Alex, I'm hosting, which mostly means I read questions out and try to
+stop people going over time.
+[00:00:24] Alex: A few logistics. We've got about six hundred people
+on the call and roughly forty in the room in London, so if you're in
+the room, use the mic in the middle, don't just talk, because the
+people at home genuinely cannot hear you.
+[00:00:41] Alex: Questions go in the app. Upvote things you want
+answered, I'll work down the list. There's also an anonymous option
+and I will read those out, including the spiky ones.
+[00:00:55] Alex: Right. Victoria, over to you.
+[00:00:59] Victoria: Thanks Alex. Hello everyone. Can you hear me
+alright?
+[00:01:04] Unknown Speaker: [inaudible]
+[00:01:06] Victoria: Sorry, was that someone in the room?
+[00:01:09] Conference Room B: We can't hear you very well in here.
+[00:01:13] Victoria: Is that better if I move closer?
+[00:01:16] Conference Room B: That's better, yeah.
+[00:01:19] Victoria: Great. Okay. So I'm going to do about fifteen
+minutes and then we've got, Alex, how many questions?
+[00:01:28] Alex: Thirty one already.
+[00:01:30] Victoria: Thirty one. Right, I'll do ten minutes.
+[00:01:34] Victoria: [laughs] So. The quarter. We finished at a
+hundred and four percent of the revenue target, which is the fourth
+quarter in a row we've been over, and I want to start there because
+it's genuinely good and we're bad at sitting with good news.
+[00:01:52] Victoria: Net revenue retention is a hundred and sixteen
+percent. Gross margin's up two points. Churn is the lowest it's been
+since we started measuring it properly.
+[00:02:05] Victoria: And I know that when I say numbers like that,
+some of you are thinking "that doesn't match my experience of this
+quarter", and I want to acknowledge that, because it was also a hard
+quarter operationally.
+[00:02:20] Victoria: We had two significant incidents. We shipped the
+platform migration three weeks late. And we lost four people, three of
+whom I'd have very much liked to keep.
+[00:02:34] Victoria: So both things are true. The business is
+performing and the work has been heavy.
+[00:02:41] Victoria: The thing I want to talk about properly, because
+it's the thing in most of the questions, is the operating model.
+[00:02:50] Victoria: We're going remote-first. Formally, as a policy,
+from the first of February.
+[00:02:57] Unknown Speaker: [inaudible]
+[00:02:59] Victoria: I'll take that as a positive noise.
+[00:03:02] Victoria: [laughs] Let me say what it means, because
+"remote-first" is one of those phrases that everyone hears
+differently.
+[00:03:11] Victoria: It means the default is remote. It means meetings
+are designed for people who aren't in a room. It means we don't make
+decisions in the London office at four o'clock that people in Austin
+find out about the next day.
+[00:03:28] Victoria: It does not mean we're closing offices. We're
+keeping London and we're keeping Austin, and they're becoming places
+you go on purpose rather than places you go by default.
+[00:03:42] Victoria: It also does not mean everyone can move anywhere.
+There are tax and employment issues and I'm not going to pretend
+otherwise. Grace will cover that.
+[00:03:54] Victoria: Right, that's my ten minutes and I've gone over.
+Alex, questions.
+[00:04:00] Alex: You've done nine, actually.
+[00:04:02] Victoria: Oh, well. Let's have another one then.
+[00:04:06] Alex: [laughs] No, let's do questions. Top voted, and it's
+by a long way, from Keiko.
+[00:04:14] Keiko: Hi. Can you hear me?
+[00:04:16] Alex: We can.
+[00:04:17] Keiko: So my question is about the remote-first thing, and
+specifically about people who've already moved.
+[00:04:25] Keiko: I moved to Lisbon in September under the temporary
+policy, and I've been told twice that the permanent policy is coming,
+and it's now January.
+[00:04:37] Keiko: So, what happens to me on the first of February?
+[00:04:42] Victoria: That's a completely fair question and I'm sorry
+it's taken this long.
+[00:04:48] Victoria: Grace, do you want to take the specifics?
+[00:04:51] Grace: Yeah. So, Keiko, short answer, nothing changes for
+you badly. You're not going to be asked to move back.
+[00:05:00] Keiko: Okay, that's the main thing.
+[00:05:03] Grace: The longer answer is that we've got an approved list
+of countries where we can employ people directly, and Portugal is on
+it, so you're fine.
+[00:05:15] Grace: There are places that aren't on it, and for those
+we're using an employer of record, which works but costs more, so we
+have to make a call case by case.
+[00:05:28] Keiko: What's the list?
+[00:05:30] Grace: It's about fourteen countries. I'll publish it. I
+should have published it already.
+[00:05:37] Keiko: That'd be really helpful, because right now everyone
+just asks each other.
+[00:05:43] Grace: Yeah. Point taken.
+[00:05:46] Alex: Next one, from Malik, and it's related.
+[00:05:50] Malik: Hi. So mine is the flip side of Keiko's.
+[00:05:55] Malik: I'm in London and I like being in London and I like
+the office. Does remote-first mean the office gets worse?
+[00:06:04] Victoria: That's a really good question and it's the one I
+worry about most.
+[00:06:10] Victoria: The honest answer is that it can, if we're not
+careful. The failure mode of remote-first is that the office becomes a
+sad room with four people in it.
+[00:06:23] Malik: That's exactly what I'm worried about.
+[00:06:26] Victoria: So the thing we're doing about it is
+anchor days. Tuesday and Wednesday, teams pick one, and on that day
+people who are local come in and the day is designed around being
+together. Workshops, planning, the stuff that's genuinely better in
+person.
+[00:06:47] Malik: And the rest of the week?
+[00:06:49] Victoria: The rest of the week the office is open and quiet
+and you can absolutely use it, but we're not pretending it's the
+centre of gravity.
+[00:07:00] Malik: That's more thought-through than I expected, thank
+you.
+[00:07:04] Victoria: [laughs] I'll take that.
+[00:07:07] Alex: Next, Nadia.
+[00:07:09] Nadia: Hi. Mine's about headcount.
+[00:07:12] Nadia: We were told in October that there'd be a hiring
+plan by the end of the year and I haven't seen one. My team's been
+one person down since August and I've had the same conversation four
+times.
+[00:07:28] Victoria: Grace?
+[00:07:29] Grace: Yeah, that's on me.
+[00:07:31] Grace: The headcount allocation plan exists, it's just not
+been shared, because it's been going back and forth with finance and
+I didn't want to publish something that would change.
+[00:07:44] Nadia: How much has it been changing?
+[00:07:47] Grace: Honestly, less than I've been telling myself. I
+think I've been holding it because it's not perfect rather than
+because it's not ready.
+[00:07:58] Nadia: [laughs] I appreciate the honesty.
+[00:08:02] Grace: I'll have it out by Thursday.
+[00:08:05] Alex: Thursday, everyone note that down.
+[00:08:08] Grace: The headcount allocation plan, Thursday. Yes.
+[00:08:12] Nadia: And my open role specifically?
+[00:08:15] Grace: Your role's approved and it's been approved since
+November, which is worse, isn't it.
+[00:08:23] Nadia: It's a bit worse, yeah.
+[00:08:25] Grace: The problem isn't approval, it's that we've had one
+recruiter covering three functions since Priya's team grew.
+[00:08:35] Nadia: So it's a pipeline problem, not a budget problem.
+[00:08:39] Grace: It's a pipeline problem. And I'm going to start
+doing weekly hiring pipeline reviews so that hiring managers can
+actually see where their roles are, rather than asking me.
+[00:08:53] Alex: When do those start?
+[00:08:55] Grace: Monday.
+[00:08:56] Alex: Weekly hiring pipeline reviews from Monday.
+[00:09:00] Nadia: That's what I wanted. Thank you.
+[00:09:03] Alex: Right, next. This one's anonymous, and it's got a lot
+of votes, and I'm going to read it exactly as written.
+[00:09:12] Alex: "We were told there would be no layoffs in Q4 and
+then four people left. Were they pushed? And should we believe the
+same promise about Q1?"
+[00:09:24] Victoria: Right. Okay.
+[00:09:27] Victoria: No, they weren't pushed. All four resigned.
+Three of them went to other companies and one left for family
+reasons.
+[00:09:37] Victoria: I can't prove that to you, which is the
+frustrating thing about answering a question like this. You either
+believe me or you don't.
+[00:09:47] Victoria: What I can tell you is what I'd say if it were
+different, which is that I'd tell you. I've done layoffs before, at a
+previous company, and I told people, and it was horrible, and I'd do
+the same here.
+[00:10:04] Victoria: On Q1: we are not planning any reductions. We're
+planning to hire about thirty people. I'm not going to say "there will
+never be layoffs" because I can't see the future and that promise gets
+broken constantly in this industry.
+[00:10:23] Victoria: But there's nothing planned, nothing modelled,
+and nothing discussed at board level.
+[00:10:31] Alex: Do you want to say anything about why three people
+left?
+[00:10:36] Victoria: I'd like to, actually.
+[00:10:39] Victoria: Two of the three said the same thing in their
+exit interviews, which is that they couldn't see a path to the next
+level. Not money, not management, not burnout. Progression.
+[00:10:54] Victoria: And that's a real gap. We've got a levelling
+framework that stops at senior and then becomes vibes.
+[00:11:03] Grace: That's a fair description of it.
+[00:11:06] Victoria: Grace is working on it and I'm not going to give
+a date because the last time we gave a date for a levelling framework
+we missed it by nine months.
+[00:11:17] Grace: [laughs] Thank you for that.
+[00:11:20] Alex: Next question, Jonás.
+[00:11:22] Jonás: Hi, yeah. Mine's about the incidents.
+[00:11:26] Jonás: We had two big ones and I read both writeups and
+they were good. But the November one had almost exactly the same
+cause as one from March, and I want to know why we didn't catch it.
+[00:11:41] Alex: Elena, that's probably you.
+[00:11:44] Elena: Yeah, I'll take it.
+[00:11:46] Elena: So Jonás is right, and I want to be clear that he's
+right, because it'd be easy to explain why they're technically
+different.
+[00:11:56] Elena: They're both connection pool exhaustion caused by a
+slow query. The specific query is different. The mechanism is
+identical.
+[00:12:07] Jonás: So why didn't the March actions prevent it?
+[00:12:11] Elena: Because the March actions were about that query. We
+indexed it, we added a test for it, and we moved on.
+[00:12:21] Elena: We didn't fix the class of problem, which is that
+any slow query can take down the whole pool, because it's shared.
+[00:12:31] Jonás: Is that being fixed now?
+[00:12:33] Elena: It's in progress. We're splitting the pool by
+service so one bad query can only take out its own service. It's
+about a quarter of work.
+[00:12:45] Jonás: And in the meantime?
+[00:12:47] Elena: In the meantime we've got a timeout that kills
+anything holding a connection too long, which turns an outage into a
+degradation. It's not a fix, it's a limiter.
+[00:13:01] Jonás: That's a better answer than I expected, thanks.
+[00:13:05] Elena: Can I add one thing?
+[00:13:07] Alex: Go on.
+[00:13:08] Elena: The reason we did the narrow fix in March is that
+the postmortem asked "what was the root cause" and the answer we
+wrote was "a missing index".
+[00:13:20] Elena: And if your root cause is a missing index, your
+action is to add an index, and you're done.
+[00:13:28] Elena: So the shape of the answer determined the shape of
+the fix, and we've changed how we write those now.
+[00:13:37] Victoria: That's a really good point and I'd like that
+written up somewhere people can see it.
+[00:13:44] Elena: I'll do that.
+[00:13:46] Alex: Next, Ivy.
+[00:13:48] Ivy: Hi. Mine's small and practical. The security key
+thing.
+[00:13:54] Ivy: I got an email saying I need a YubiKey and then
+nothing else happened. Do I have one? Am I getting one? Do I buy one?
+[00:14:04] Alex: Frank, this is yours.
+[00:14:06] Frank: It is mine and Ivy is correct that the
+communication was bad.
+[00:14:12] Frank: So. Yes, everyone in engineering is getting a
+YubiKey. You don't buy it. They're ordered, they're in a box, and the
+box is in London.
+[00:14:24] Ivy: I'm in Austin.
+[00:14:26] Frank: I know. That's the bit I got wrong.
+[00:14:29] Frank: [laughs] We ordered them all to one place and then
+discovered that shipping security keys internationally is more
+complicated than I assumed.
+[00:14:41] Ivy: So when do I get mine?
+[00:14:43] Frank: The Austin batch ships this week. Everyone in
+engineering should have one by Tuesday.
+[00:14:51] Ivy: And then what?
+[00:14:53] Frank: Then there's a two-week grace period where you can
+still use the app-based codes, and after that hardware keys are
+required for production access.
+[00:15:05] Ivy: What if I lose it?
+[00:15:07] Frank: You get two. Register both. One lives at home.
+[00:15:12] Ivy: That's a good answer.
+[00:15:14] Frank: I've thought about this a lot. [laughs]
+[00:15:18] Alex: Anything else on security while we're here?
+[00:15:22] Frank: One thing, quickly. Please stop sharing credentials
+in direct messages.
+[00:15:29] Frank: I'm not going to name anyone. But I ran a search
+last week and it's, uh, it's a lot of people.
+[00:15:38] Unknown Speaker: [laughs]
+[00:15:40] Frank: It's not funny, it's genuinely the thing most likely
+to hurt us.
+[00:15:46] Frank: Use the password manager. It has a share function.
+It takes eleven seconds.
+[00:15:53] Alex: Right. Next, Brian.
+[00:15:56] Brian: Hi. Mine's about support.
+[00:15:59] Brian: Our response times have got much worse and I keep
+having to apologise to customers. What's happening?
+[00:16:08] Alex: Omar.
+[00:16:09] Omar: Yeah. So Brian's right, they've got worse, and the
+reason is volume plus the migration.
+[00:16:18] Omar: Ticket volume is up about forty percent year on year.
+Headcount in support is up zero.
+[00:16:26] Brian: Zero?
+[00:16:27] Omar: Zero. We've had two people leave and backfilled both,
+so net zero.
+[00:16:34] Brian: That seems like the whole answer.
+[00:16:37] Omar: It's most of it. The other part is that the migration
+generated a lot of tickets that look like support tickets but are
+really engineering tickets, and those sit in our queue looking bad
+while we wait for someone else.
+[00:16:54] Victoria: What's the actual number?
+[00:16:56] Omar: First response is averaging eleven hours. Our
+published target is four.
+[00:17:03] Victoria: That's a long way off.
+[00:17:05] Omar: It's a long way off, and I want to say clearly that
+the team is working extremely hard and the number is still bad.
+[00:17:15] Victoria: What do you need?
+[00:17:17] Omar: Three people. And a decision about whether we're
+holding the four hour target or changing it, because right now we're
+publishing a number we don't hit, which is worse than publishing a
+realistic one.
+[00:17:33] Victoria: That's a good point. What's realistic?
+[00:17:37] Omar: With current headcount, eight hours. With three more
+people, four is achievable.
+[00:17:44] Victoria: Grace, can we get those three in the headcount
+plan?
+[00:17:48] Grace: They're already in it. That's part of why it's been
+going back and forth.
+[00:17:54] Victoria: Then let's stop going back and forth.
+[00:17:57] Omar: Can I get a decision on the SLA either way? Because
+the team keeps getting measured against a number we can't hit and
+it's demoralising.
+[00:18:08] Victoria: Yes. Let's revise the support response SLA to
+something honest and publish it with the reasoning.
+[00:18:17] Omar: When do you want it?
+[00:18:19] Victoria: When can you do it?
+[00:18:21] Omar: Wednesday.
+[00:18:22] Victoria: Wednesday. Omar owns the revised support response
+SLA, published Wednesday.
+[00:18:29] Brian: And can that be communicated to the people who talk
+to customers? Because I found out about the last SLA change from a
+customer.
+[00:18:39] Omar: ...Yeah. That's fair.
+[00:18:42] Alex: Next. Clara.
+[00:18:44] Clara: Hi. This might be a bit awkward.
+[00:18:48] Alex: Those are the good ones.
+[00:18:50] Clara: [laughs] Okay. We've talked a lot about hiring and
+headcount and I want to ask about pay.
+[00:18:58] Clara: Specifically, is there a review this year, and is it
+going to keep up with inflation?
+[00:19:05] Victoria: There is a review. It's in April, same as always.
+[00:19:11] Victoria: On inflation: I'm not going to promise that
+everyone's increase matches inflation, because that's not how the
+budget works and I'd be lying.
+[00:19:22] Victoria: What I can tell you is that the total
+compensation pool is up eight percent, which is above what we did last
+year.
+[00:19:32] Clara: And how's it distributed?
+[00:19:34] Victoria: Not evenly. It's weighted towards people who are
+below market for their level, and there are more of those than I'd
+like.
+[00:19:44] Clara: How would I know if I'm one of them?
+[00:19:47] Grace: You should be able to ask your manager and get a
+straight answer. If you can't, that's a problem and I'd want to know.
+[00:19:57] Clara: Okay. Thank you for answering it directly.
+[00:20:01] Victoria: It's a completely reasonable question and people
+should ask it more.
+[00:20:07] Alex: Next, Dan.
+[00:20:09] Dan: Hi. Mine's about the product roadmap.
+[00:20:13] Dan: We announced three big things at the customer
+conference in October and as far as I can tell one of them has
+started. What happened to the other two?
+[00:20:24] Alex: Priya.
+[00:20:25] Priya: Yeah. So, the honest answer is we announced three
+things and had capacity for one and a half.
+[00:20:34] Dan: Did we know that at the time?
+[00:20:36] Priya: I knew it was tight. I didn't think it was that
+tight.
+[00:20:41] Dan: So what happens now?
+[00:20:43] Priya: The reporting redesign is shipping in February,
+that's the one that's started. The API v3 work is starting in March.
+And the workflow builder is, uh.
+[00:20:57] Priya: The workflow builder is not happening this year.
+[00:21:01] Dan: Have we told the customers who asked about it?
+[00:21:05] Priya: Not yet.
+[00:21:06] Dan: That's the bit that worries me. I've had two customers
+ask me about it in the last month and I said it was coming.
+[00:21:16] Priya: Then that's my fault for not communicating it, and
+I'm sorry, because you've now told two customers something that isn't
+true.
+[00:21:26] Dan: I'd rather know.
+[00:21:28] Priya: I'll get a note out this week about what changed and
+why, and I'll make sure it goes to the customer-facing teams before it
+goes anywhere else.
+[00:21:39] Victoria: Can I add something?
+[00:21:41] Alex: Please.
+[00:21:42] Victoria: The pattern of announcing three things and
+delivering one and a half is on me, not Priya. I was in the room for
+that conference and I pushed for a bigger announcement.
+[00:21:56] Victoria: So the lesson isn't "product should be more
+careful". It's that I should stop asking for one more thing on the
+slide.
+[00:22:06] Priya: I appreciate that, but I could also have said no.
+[00:22:11] Victoria: You could. But it's harder to say no to me than
+it is for me to not ask.
+[00:22:18] Alex: We've got about eight minutes and eleven questions,
+so let me do a lightning round. Henry, you're first, keep it short.
+[00:22:28] Henry: Are we doing the summer party again?
+[00:22:31] Alex: [laughs] Grace.
+[00:22:33] Grace: Yes. June. It's booked.
+[00:22:36] Henry: Excellent. No further questions.
+[00:22:39] Alex: Next. Conference room, someone had their hand up.
+[00:22:44] Conference Room B: Yeah, this is, uh, sorry, can you hear
+me?
+[00:22:49] Alex: Just about. Get closer to the mic.
+[00:22:52] Conference Room B: Is the London office lease actually up
+next year? Because there's a rumour.
+[00:22:59] Victoria: The lease is up in 2028. There is no rumour, or
+rather, there is a rumour and it's wrong.
+[00:23:08] Conference Room B: Okay, thanks.
+[00:23:10] Alex: Next, Grace, this one's for you and it's anonymous.
+"Why do we have four different tools for time off?"
+[00:23:19] Grace: [laughs] Because of three acquisitions and one bad
+decision.
+[00:23:25] Grace: We're consolidating to one in Q2. I'm not going to
+say which because I'll get lobbied.
+[00:23:33] Alex: Next. Elena, quick one. "Will engineering get the
+Friday no-meeting policy back?"
+[00:23:41] Elena: I'd like it back. It got eroded because of the
+migration and nobody formally ended it, it just decayed.
+[00:23:51] Elena: I'll put it back from February and I'll defend it
+this time.
+[00:23:56] Alex: Next. Frank. "Can we get password manager licences
+for contractors?"
+[00:24:03] Frank: Yes. Ask me. That should never have been a question.
+[00:24:08] Alex: Next. This one's for Victoria. "What are you actually
+worried about?"
+[00:24:15] Victoria: Oh, that's a good one.
+[00:24:18] Victoria: Uh. Honestly? Two things.
+[00:24:22] Victoria: The first is that we're growing revenue faster
+than we're growing our ability to support it, and support and
+engineering are both telling us that in different words, and I don't
+think we've fully heard it.
+[00:24:37] Victoria: The second is that we've had a good run and good
+runs make people slow. I've seen it before. Everything's fine, so
+nobody pushes, and then eighteen months later you're behind and you
+can't point at when it happened.
+[00:24:55] Alex: That's a bleaker answer than the question expected.
+[00:24:59] Victoria: [laughs] They asked what I was worried about.
+[00:25:03] Alex: Fair. Two more. Keiko, you had a follow-up.
+[00:25:08] Keiko: Just a quick one. Grace, when you publish the
+country list, can you also say what happens if someone wants to move
+somewhere not on it?
+[00:25:19] Grace: Yes. And the short version is: ask, because
+sometimes we can add a country and sometimes we can't, and the answer
+depends on how many people want it.
+[00:25:32] Keiko: Perfect.
+[00:25:34] Alex: Last one. It's anonymous and it's short. "Was this
+town hall useful?"
+[00:25:41] Alex: [laughs] Bold.
+[00:25:43] Victoria: I mean, I hope so.
+[00:25:46] Victoria: We got five things with dates on them, which is
+more than usual. Grace's headcount plan Thursday, hiring pipeline
+reviews from Monday, YubiKeys by Tuesday, the support SLA Wednesday,
+and Priya's note about the roadmap this week.
+[00:26:06] Victoria: And I got asked directly about layoffs and pay,
+which people don't always do, so, yes. I thought it was useful.
+[00:26:16] Alex: Right, we're at time, but there's one that's shot to
+the top of the list in the last two minutes and I think we should take
+it.
+[00:26:26] Victoria: Go on.
+[00:26:28] Alex: It's anonymous. "Three of the answers today were 'I
+should have published that already'. Is anything actually stopping
+people publishing things?"
+[00:26:41] Grace: [laughs] That's a very good question and it's aimed
+squarely at me.
+[00:26:47] Grace: Nothing's stopping me. That's the honest answer. The
+country list has been ready for three weeks.
+[00:26:56] Victoria: So why hasn't it gone out?
+[00:26:59] Grace: Because it's not perfect, and because publishing it
+means people will ask me follow-up questions I can't answer yet.
+[00:27:09] Grace: Which, said out loud, is not a good reason.
+[00:27:14] Elena: Can I say something about this? Because engineering
+had exactly this problem and we fixed it with one rule.
+[00:27:23] Alex: Go on.
+[00:27:24] Elena: You're allowed to publish something marked draft and
+you're not allowed to be criticised for it being incomplete.
+[00:27:33] Elena: It sounds trivial. It changed everything. Half our
+documentation is permanently marked draft and it's all more useful
+than the nothing it replaced.
+[00:27:46] Grace: That would genuinely help me.
+[00:27:49] Victoria: Then let's adopt it everywhere. Anything can go
+out as draft, and nobody gets to complain that a draft is a draft.
+[00:28:00] Frank: I'd want an exception for security guidance.
+[00:28:04] Victoria: That's fair. Security guidance and anything legal
+or financial has to be final.
+[00:28:12] Frank: Then I'm happy.
+[00:28:14] Malik: Does that apply to the roadmap?
+[00:28:17] Priya: [laughs] I was waiting for that.
+[00:28:20] Priya: Yes, and honestly it should. A draft roadmap that's
+visibly uncertain is better than a confident one that changes silently,
+which is what we did in October.
+[00:28:34] Alex: That feels like the most useful thing we've agreed
+today and it came from an anonymous question at the buzzer.
+[00:28:43] Victoria: It usually does.
+[00:28:45] Alex: Right, that's genuinely time. Thank you everyone. The
+recording and a written summary go out tomorrow, and unanswered
+questions get answered in writing.
+[00:28:58] Alex: There are twelve of those, so give me a couple of
+days.
+[00:29:02] Victoria: Thanks all.
+[00:29:04] Unknown Speaker: Thanks.
+[00:29:05] Conference Room B: [inaudible]
+[00:29:07] Alex: [laughs] Room, you're still unmuted. Okay. Stopping
+the recording.
