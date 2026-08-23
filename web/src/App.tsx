@@ -1,7 +1,14 @@
+import { Route, Routes } from 'react-router';
+import { AppShell } from './components/layout/AppShell';
+import { MeetingsPage } from './pages/MeetingsPage';
+
 export function App() {
   return (
-    <div className="min-h-dvh bg-canvas p-6">
-      <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">Meetings</h1>
-    </div>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<MeetingsPage />} />
+        <Route path="*" element={<MeetingsPage />} />
+      </Route>
+    </Routes>
   );
 }
