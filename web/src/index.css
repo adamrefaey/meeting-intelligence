@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: #141b21;
+  --color-surface: #1b242c;
+  --color-surface-raised: #25313a;
+  --color-control: #303d47;
+  --color-border: #3b4a55;
+  --color-border-strong: #52636f;
+  --color-control-border: #7d8e9a;
+  --color-foreground: #eef4f7;
+  --color-muted: #94a4af;
+  --color-accent: #56bdf5;
+  --color-positive: #63cf9a;
+  --color-danger: #ff7f7f;
+  --color-speaker-blue: #356a8d;
+  --color-speaker-cyan: #256f78;
+  --color-speaker-green: #356e57;
+  --color-speaker-violet: #5c5890;
+  --color-speaker-rose: #87516a;
+  --color-speaker-gold: #7a6339;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --shadow-raised: 0 1px 1px rgb(0 0 0 / 0.24), 0 12px 32px rgb(0 0 0 / 0.14);
+}
+
+@utility turn-flash {
+  background-color: color-mix(in oklab, var(--color-accent) 22%, var(--color-surface-raised));
+}
+
+@utility scrollbar-thin-muted {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-muted) 25%, transparent) transparent;
+
+  &::-webkit-scrollbar {
+    width: 0.375rem;
+    height: 0.375rem;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--color-muted) 25%, transparent);
+    border-radius: 9999px;
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    background-color: var(--color-canvas);
+    color: var(--color-foreground);
+  }
+
+  html {
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    color: var(--color-foreground);
+  }
+}
