@@ -1,0 +1,15 @@
+[00:00:03] Ada: Morning, I am shipping the health endpoint today.
+[00:00:12] Ben: I am finishing sqlite-vec load in the db client.
+[00:00:24] Chen: Still reading the ingest notes, no blockers.
+[00:00:35] Ada: I will pair with Ben on the blob helpers if needed.
+[00:00:48] Ben: The memory database tests are green on my machine.
+[00:01:02] Chen: I have a question about FTS triggers later.
+[00:01:15] Ada: We can talk after standup, nothing urgent.
+[00:01:28] Ben: I am unblocked on WAL and foreign keys.
+[00:01:40] Chen: Same, just catching up on the schema.
+[00:01:55] Ada: I will push the health tests before lunch.
+[00:02:08] Ben: I will add the cosine neighbor check next.
+[00:02:21] Chen: I will skim the transcript format notes.
+[00:02:34] Ada: Thanks, see you in the channel.
+[00:02:46] Ben: Sounds good.
+[00:02:58] Chen: Bye.

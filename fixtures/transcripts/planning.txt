@@ -1,0 +1,40 @@
+[00:00:04] Maya: Welcome to Q3 planning. Today is scope, storage, freeze, and owners.
+[00:00:18] Omar: Last sprint we shipped ingest into SQLite.
+[00:00:32] Priya: Design is still catching up on the workspace layout.
+[00:00:47] Sam: Load tests are not done yet.
+[00:01:02] Maya: Let us lock storage first.
+[00:01:16] Omar: I think we should keep embeddings in SQLite.
+[00:01:31] Priya: Agree, this is a single-user app.
+[00:01:44] Sam: Vector search can stay in-process.
+[00:02:01] Maya: Okay, we are locking it. Embeddings stay in SQLite. We are not adding a separate vector database.
+[00:02:20] Omar: I can write the storage RFC.
+[00:02:34] Maya: Omar, can you have that RFC out by Monday?
+[00:02:51] Priya: Do we include video upload in v1?
+[00:03:06] Sam: Video would blow the five megabyte upload limit.
+[00:03:21] Omar: Transcripts only for v1 is enough.
+[00:03:36] Maya: Alright, v1 is transcript upload only. No audio, no video.
+[00:03:52] Priya: I can mock the three-column workspace this week.
+[00:04:08] Maya: Priya, could you have those workspace mockups ready by Wednesday?
+[00:04:25] Sam: I need a long fixture for soak tests.
+[00:04:40] Maya: Sam, can you run a ten-thousand-token soak test by Thursday?
+[00:04:58] Omar: When is feature freeze?
+[00:05:12] Priya: Friday before the demo works for design.
+[00:05:27] Sam: We also need a cutoff for prompt wording.
+[00:05:43] Maya: Let's freeze features Friday at 5pm.
+[00:06:00] Omar: Who talks to legal about retention?
+[00:06:15] Maya: I'll schedule a legal retention review for next Tuesday.
+[00:06:33] Priya: Citation chips should jump the transcript gutter.
+[00:06:49] Sam: That is UI, after the API streams SSE.
+[00:07:04] Omar: Chat must stay per meeting, never mix corpora.
+[00:07:19] Maya: Yes, retrieve always filters by meeting id.
+[00:07:34] Priya: Empty state copy is ready: upload a transcript to start.
+[00:07:50] Sam: Local embed of a long file will be slow.
+[00:08:05] Omar: We can raise the POST timeout on that route only.
+[00:08:21] Maya: Anything else we need to lock today?
+[00:08:36] Priya: The three we named are enough for v1.
+[00:08:50] Sam: Owners are assigned for the four follow-ups.
+[00:09:05] Omar: I will post notes in the channel after this.
+[00:09:18] Priya: Thanks everyone.
+[00:09:29] Sam: Thanks.
+[00:09:41] Maya: Recap: SQLite embeddings, no video, Friday freeze.
+[00:09:58] Maya: That is a wrap.
