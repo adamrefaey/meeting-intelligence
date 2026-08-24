@@ -19,9 +19,10 @@ function GlowingBrandMark() {
 function EmptyMeetings({
   onFile,
   onReject,
-  uploading,
+  onCancel,
+  uploadName,
   error,
-}: Pick<ShellOutletContext, 'onFile' | 'onReject' | 'uploading' | 'error'>) {
+}: Pick<ShellOutletContext, 'onFile' | 'onReject' | 'onCancel' | 'uploadName' | 'error'>) {
   const listFailed = error?.kind === 'load';
   return (
     <EmptyState
@@ -34,20 +35,29 @@ function EmptyMeetings({
           : 'Drop a speaker-labeled .txt transcript to read it and ask questions about that meeting.'
       }
       action={
-        <FileDrop
-          disabled={uploading}
-          className="w-full max-w-sm"
-          label={uploading ? 'Ingesting…' : 'Drop a .txt transcript'}
-          onFile={onFile}
-          onReject={onReject}
-        />
+        <div className="flex w-full max-w-sm flex-col">
+          <FileDrop
+            busy={uploadName !== null}
+            busyLabel={uploadName ?? undefined}
+            onCancel={onCancel}
+            className="w-full"
+            label="Drop a .txt transcript"
+            onFile={onFile}
+            onReject={onReject}
+          />
+          {error?.kind === 'action' ? (
+            <p role="alert" className="mt-2 text-sm text-danger">
+              {error.message}
+            </p>
+          ) : null}
+        </div>
       }
     />
   );
 }
 
 export function MeetingsPage() {
-  const { meetings, onFile, onReject, uploading, loading, error } =
+  const { meetings, onFile, onReject, onCancel, uploadName, loading, error } =
     useOutletContext<ShellOutletContext>();
 
   if (loading) {
@@ -61,7 +71,13 @@ export function MeetingsPage() {
   if (meetings.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-4">
-        <EmptyMeetings onFile={onFile} onReject={onReject} uploading={uploading} error={error} />
+        <EmptyMeetings
+          onFile={onFile}
+          onReject={onReject}
+          onCancel={onCancel}
+          uploadName={uploadName}
+          error={error}
+        />
       </div>
     );
   }

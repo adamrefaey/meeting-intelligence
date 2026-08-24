@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { Link, Outlet, useMatch, useNavigate } from 'react-router';
 import { BrandMark } from '../ui/BrandMark';
 import { FileDrop } from '../ui/FileDrop';
@@ -9,6 +17,7 @@ import {
   deleteMeeting,
   errorMessage,
   isAbortError,
+  isUploadCancelled,
   listMeetings,
   type MeetingSummary,
 } from '../../lib/api';
@@ -22,7 +31,8 @@ export type ShellOutletContext = {
   meetings: MeetingSummary[];
   onFile: (file: File) => void;
   onReject: (file: File) => void;
-  uploading: boolean;
+  onCancel: () => void;
+  uploadName: string | null;
   loading: boolean;
   error: ShellError | null;
 };
@@ -39,34 +49,36 @@ async function handleUpload(
   file: File,
   refresh: (signal?: AbortSignal) => Promise<void>,
   navigate: ReturnType<typeof useNavigate>,
-  setUploading: (value: boolean) => void,
+  setUploadName: (value: string | null) => void,
   setError: (value: ShellError | null) => void,
   alive: { current: boolean },
-  signal: AbortSignal,
+  uploadSignal: AbortSignal,
+  refreshSignal: AbortSignal,
+  isCurrent: () => boolean,
 ) {
-  setUploading(true);
+  setUploadName(file.name);
   setError(null);
   let created: { id: number } | undefined;
   try {
-    created = await createMeeting(file, signal);
+    created = await createMeeting(file, uploadSignal);
   } catch (cause) {
-    if (alive.current && !isAbortError(cause)) {
+    if (alive.current && isCurrent() && !isUploadCancelled(cause)) {
       setError({ kind: 'action', message: errorMessage(cause, 'Upload failed') });
     }
   }
   if (!alive.current) {
     return;
   }
+  if (isCurrent()) {
+    setUploadName(null);
+    if (created && !uploadSignal.aborted) {
+      navigate(`/meetings/${created.id}`);
+    }
+  }
   try {
-    await refresh(signal);
+    await refresh(refreshSignal);
   } catch {
     // List refresh is best-effort; upload error (if any) is already shown.
-  }
-  if (alive.current && created) {
-    navigate(`/meetings/${created.id}`);
-  }
-  if (alive.current) {
-    setUploading(false);
   }
 }
 
@@ -133,6 +145,7 @@ function useLoadMeetings(
 function useAliveAbort() {
   const aliveRef = useRef(true);
   const abortRef = useRef(new AbortController());
+  const uploadAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     aliveRef.current = true;
     const controller = new AbortController();
@@ -140,43 +153,55 @@ function useAliveAbort() {
     return () => {
       aliveRef.current = false;
       controller.abort();
+      uploadAbortRef.current?.abort();
+      uploadAbortRef.current = null;
     };
   }, []);
-  return { aliveRef, abortRef };
+  return { aliveRef, abortRef, uploadAbortRef };
 }
 
-function useShellActions(
+function queueUpload(
+  file: File,
+  refresh: (signal?: AbortSignal) => Promise<void>,
+  navigate: ReturnType<typeof useNavigate>,
+  setUploadName: (value: string | null) => void,
+  setError: (value: ShellError | null) => void,
+  aliveRef: { current: boolean },
+  abortRef: { current: AbortController },
+  uploadAbortRef: { current: AbortController | null },
+) {
+  uploadAbortRef.current?.abort();
+  const controller = new AbortController();
+  uploadAbortRef.current = controller;
+  const isCurrent = () => uploadAbortRef.current === controller;
+  void handleUpload(
+    file,
+    refresh,
+    navigate,
+    setUploadName,
+    setError,
+    aliveRef,
+    controller.signal,
+    abortRef.current.signal,
+    isCurrent,
+  ).finally(() => {
+    if (isCurrent()) {
+      uploadAbortRef.current = null;
+    }
+  });
+}
+
+function useDeleteAction(
   refresh: (signal?: AbortSignal) => Promise<void>,
   openId: string | undefined,
   closeRail: CloseRail,
   aliveRef: { current: boolean },
   abortRef: { current: AbortController },
   setMeetings: (update: (prev: MeetingSummary[]) => MeetingSummary[]) => void,
-  setUploading: (value: boolean) => void,
   setError: (value: ShellError | null) => void,
+  navigate: ReturnType<typeof useNavigate>,
 ) {
-  const navigate = useNavigate();
-  const onFile = useCallback(
-    (file: File) => {
-      void handleUpload(
-        file,
-        refresh,
-        navigate,
-        setUploading,
-        setError,
-        aliveRef,
-        abortRef.current.signal,
-      );
-    },
-    [refresh, navigate, setUploading, setError, aliveRef, abortRef],
-  );
-  const onReject = useCallback(
-    (file: File) => {
-      setError({ kind: 'action', message: `${file.name} is not a .txt transcript` });
-    },
-    [setError],
-  );
-  const onDelete = useCallback(
+  return useCallback(
     (meeting: MeetingSummary) => {
       void handleDelete(
         meeting,
@@ -192,15 +217,64 @@ function useShellActions(
     },
     [refresh, navigate, openId, closeRail, setMeetings, setError, aliveRef, abortRef],
   );
-  return { onFile, onReject, onDelete };
+}
+
+function useShellActions(
+  refresh: (signal?: AbortSignal) => Promise<void>,
+  openId: string | undefined,
+  closeRail: CloseRail,
+  aliveRef: { current: boolean },
+  abortRef: { current: AbortController },
+  uploadAbortRef: { current: AbortController | null },
+  setMeetings: (update: (prev: MeetingSummary[]) => MeetingSummary[]) => void,
+  setUploadName: (value: string | null) => void,
+  setError: (value: ShellError | null) => void,
+) {
+  const navigate = useNavigate();
+  const onFile = useCallback(
+    (file: File) => {
+      queueUpload(
+        file,
+        refresh,
+        navigate,
+        setUploadName,
+        setError,
+        aliveRef,
+        abortRef,
+        uploadAbortRef,
+      );
+    },
+    [refresh, navigate, setUploadName, setError, aliveRef, abortRef, uploadAbortRef],
+  );
+  const onReject = useCallback(
+    (file: File) => {
+      setError({ kind: 'action', message: `${file.name} is not a .txt transcript` });
+    },
+    [setError],
+  );
+  const onCancel = useCallback(() => {
+    uploadAbortRef.current?.abort();
+    setUploadName(null);
+  }, [uploadAbortRef, setUploadName]);
+  const onDelete = useDeleteAction(
+    refresh,
+    openId,
+    closeRail,
+    aliveRef,
+    abortRef,
+    setMeetings,
+    setError,
+    navigate,
+  );
+  return { onFile, onReject, onCancel, onDelete };
 }
 
 function useShellMeetings(openId: string | undefined, closeRail: CloseRail) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploadName, setUploadName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ShellError | null>(null);
-  const { aliveRef, abortRef } = useAliveAbort();
+  const { aliveRef, abortRef, uploadAbortRef } = useAliveAbort();
 
   const refresh = useCallback(
     async (signal?: AbortSignal) => {
@@ -219,12 +293,19 @@ function useShellMeetings(openId: string | undefined, closeRail: CloseRail) {
     closeRail,
     aliveRef,
     abortRef,
+    uploadAbortRef,
     setMeetings,
-    setUploading,
+    setUploadName,
     setError,
   );
 
-  return { meetings, uploading, loading, error, ...actions };
+  return {
+    meetings,
+    uploadName,
+    loading,
+    error,
+    ...actions,
+  };
 }
 
 function ShellHeader({
@@ -328,27 +409,32 @@ function useRailOpen(openId: string | undefined, desktop: boolean) {
 type MeetingRailProps = {
   open: boolean;
   overlay: boolean;
-  uploading: boolean;
+  showUpload: boolean;
+  uploadName: string | null;
   loading: boolean;
   error: ShellError | null;
   meetings: MeetingSummary[];
   onFile: (file: File) => void;
   onReject: (file: File) => void;
+  onCancel: () => void;
   onDelete: (meeting: MeetingSummary) => void;
   onSelect: () => void;
 };
 
 function RailUpload({
-  uploading,
+  uploadName,
   error,
   onFile,
   onReject,
-}: Pick<MeetingRailProps, 'uploading' | 'error' | 'onFile' | 'onReject'>) {
+  onCancel,
+}: Pick<MeetingRailProps, 'uploadName' | 'error' | 'onFile' | 'onReject' | 'onCancel'>) {
   return (
     <div className="shrink-0 p-2.5">
       <FileDrop
-        disabled={uploading}
-        label={uploading ? 'Ingesting…' : 'Upload transcript'}
+        busy={uploadName !== null}
+        busyLabel={uploadName ?? undefined}
+        onCancel={onCancel}
+        label="Upload transcript"
         className="px-3 py-4"
         onFile={onFile}
         onReject={onReject}
@@ -362,15 +448,36 @@ function RailUpload({
   );
 }
 
+function MeetingRailHeading({ count }: { count: number }) {
+  return (
+    <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-2">
+      <h2
+        id="meeting-rail-heading"
+        className="font-mono text-[11px] font-medium tracking-[0.12em] text-muted uppercase"
+      >
+        Meetings
+      </h2>
+      <span
+        className="min-w-5 rounded-full bg-control px-1.5 py-0.5 text-center font-mono text-[10px] leading-4 text-foreground/75"
+        aria-label={`${count} ${count === 1 ? 'meeting' : 'meetings'}`}
+      >
+        {count}
+      </span>
+    </div>
+  );
+}
+
 function MeetingRail({
   open,
   overlay,
-  uploading,
+  showUpload,
+  uploadName,
   loading,
   error,
   meetings,
   onFile,
   onReject,
+  onCancel,
   onDelete,
   onSelect,
 }: MeetingRailProps) {
@@ -381,28 +488,23 @@ function MeetingRail({
       role={overlay ? 'dialog' : undefined}
       aria-modal={overlay || undefined}
       aria-labelledby="meeting-rail-heading"
-      aria-busy={uploading || loading}
+      aria-busy={loading || undefined}
       className={cn(
         'flex w-64 shrink-0 flex-col border-r border-border-strong bg-surface',
         'fixed top-13 bottom-0 left-0 z-20 xl:static xl:z-auto',
         open ? undefined : 'hidden xl:flex',
       )}
     >
-      <RailUpload uploading={uploading} error={error} onFile={onFile} onReject={onReject} />
-      <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-2">
-        <h2
-          id="meeting-rail-heading"
-          className="font-mono text-[11px] font-medium tracking-[0.12em] text-muted uppercase"
-        >
-          Meetings
-        </h2>
-        <span
-          className="min-w-5 rounded-full bg-control px-1.5 py-0.5 text-center font-mono text-[10px] leading-4 text-foreground/75"
-          aria-label={`${meetings.length} ${meetings.length === 1 ? 'meeting' : 'meetings'}`}
-        >
-          {meetings.length}
-        </span>
-      </div>
+      {showUpload ? (
+        <RailUpload
+          uploadName={uploadName}
+          error={error}
+          onFile={onFile}
+          onReject={onReject}
+          onCancel={onCancel}
+        />
+      ) : null}
+      <MeetingRailHeading count={meetings.length} />
       <MeetingList meetings={meetings} loading={loading} onDelete={onDelete} onSelect={onSelect} />
     </aside>
   );
@@ -423,12 +525,14 @@ function ShellWorkspace({
   railOpen,
   overlay,
   closeRail,
+  showUpload,
   shell,
   context,
 }: {
   railOpen: boolean;
   overlay: boolean;
   closeRail: CloseRail;
+  showUpload: boolean;
   shell: ReturnType<typeof useShellMeetings>;
   context: ShellOutletContext;
 }) {
@@ -446,12 +550,14 @@ function ShellWorkspace({
       <MeetingRail
         open={railOpen}
         overlay={overlay}
-        uploading={shell.uploading}
+        showUpload={showUpload}
+        uploadName={shell.uploadName}
         loading={shell.loading}
         error={shell.error}
         meetings={shell.meetings}
         onFile={shell.onFile}
         onReject={shell.onReject}
+        onCancel={shell.onCancel}
         onDelete={shell.onDelete}
         onSelect={() => closeRail()}
       />
@@ -468,14 +574,27 @@ export function AppShell() {
   const { railOpen, setRailOpen, closeRail, menuRef } = useRailOpen(openId, desktop);
   const shell = useShellMeetings(openId, closeRail);
   const overlay = railOpen && !desktop;
-  const context: ShellOutletContext = {
-    meetings: shell.meetings,
-    onFile: shell.onFile,
-    onReject: shell.onReject,
-    uploading: shell.uploading,
-    loading: shell.loading,
-    error: shell.error,
-  };
+  const emptyIndex = openId === undefined && shell.meetings.length === 0;
+  const context = useMemo<ShellOutletContext>(
+    () => ({
+      meetings: shell.meetings,
+      onFile: shell.onFile,
+      onReject: shell.onReject,
+      onCancel: shell.onCancel,
+      uploadName: shell.uploadName,
+      loading: shell.loading,
+      error: shell.error,
+    }),
+    [
+      shell.meetings,
+      shell.onFile,
+      shell.onReject,
+      shell.onCancel,
+      shell.uploadName,
+      shell.loading,
+      shell.error,
+    ],
+  );
 
   return (
     <div className="flex h-dvh flex-col bg-canvas">
@@ -485,11 +604,12 @@ export function AppShell() {
         menuRef={menuRef}
         onToggleRail={() => setRailOpen((open) => !open)}
       />
-      <ActionErrorBanner error={shell.error} hidden={railOpen} />
+      <ActionErrorBanner error={shell.error} hidden={railOpen || emptyIndex} />
       <ShellWorkspace
         railOpen={railOpen}
         overlay={overlay}
         closeRail={closeRail}
+        showUpload={!emptyIndex}
         shell={shell}
         context={context}
       />

@@ -46,6 +46,25 @@
   }
 }
 
+@keyframes ingest-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@utility ingest-progress-fill {
+  width: 40%;
+  animation: ingest-progress-slide 1.15s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    width: 35%;
+    animation: none;
+  }
+}
+
 @layer base {
   html,
   body,

@@ -87,6 +87,10 @@ export function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+export function isUploadCancelled(error: unknown): boolean {
+  return isAbortError(error) || (error instanceof ApiError && error.status === 204);
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.error : fallback;
 }
