@@ -6,6 +6,7 @@ Chat never mixes meetings. Leaving a meeting (or clicking **Stop**) aborts an in
 
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Ingestion and retrieval](docs/flows/README.md)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -16,7 +17,24 @@ Chat never mixes meetings. Leaving a meeting (or clicking **Stop**) aborts an in
 - [Data](#data)
 - [Checks](#checks)
 
-Ingestion and retrieval diagrams (and the files that implement them) are in [docs/flows](docs/flows/README.md).
+UI screenshots are in [docs/screenshots](docs/screenshots/). Ingestion and retrieval diagrams (and the files that implement them) are in [docs/flows](docs/flows/README.md).
+
+## Screenshots
+
+| File | What |
+| ---- | ---- |
+| [`01.png`](docs/screenshots/01.png) | Empty state: drop or click-select a `.txt` transcript. |
+| [`02.png`](docs/screenshots/02.png) | Ingest in progress (`Ingesting…`, with Cancel). |
+| [`03.png`](docs/screenshots/03.png) | A ready meeting: extracted **decisions** and **Ask this meeting**. |
+| [`04.png`](docs/screenshots/04.png) | Transcript plus a cited answer (chips scroll to the turn). |
+
+![Empty state: upload a transcript to start](docs/screenshots/01.png)
+
+![Ingesting a transcript](docs/screenshots/02.png)
+
+![Extracted decisions and Ask this meeting](docs/screenshots/03.png)
+
+![Transcript with cited chat answers](docs/screenshots/04.png)
 
 ## Requirements
 
