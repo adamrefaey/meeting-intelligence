@@ -60,17 +60,10 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-export type ChatCitation = {
-  id: number;
-  speakerLabel: string;
-  startTimestamp: string;
-  endTimestamp: string;
-  startSeconds: number;
-  endSeconds: number;
-};
-
+// The context event also carries the retrieved chunks; the answer's own inline
+// citations identify the turns, so nothing here needs to read them.
 export type ChatEvent =
-  | { type: 'context'; citations: ChatCitation[]; useFullTranscript: boolean }
+  | { type: 'context'; useFullTranscript: boolean }
   | { type: 'token'; text: string }
   | { type: 'done' }
   | { type: 'error'; error: string };
@@ -172,10 +165,6 @@ function foldSse(text: string): string {
   return body.replaceAll('\r\n', '\n').replaceAll('\r', '\n') + held;
 }
 
-function asCitations(value: unknown): ChatCitation[] {
-  return Array.isArray(value) ? (value as ChatCitation[]) : [];
-}
-
 function toChatEvent(event: string, data: unknown): ChatEvent | undefined {
   if (event === 'done') {
     return { type: 'done' };
@@ -191,11 +180,7 @@ function toChatEvent(event: string, data: unknown): ChatEvent | undefined {
     return { type: 'error', error: payload.error };
   }
   if (event === 'context') {
-    return {
-      type: 'context',
-      citations: asCitations(payload.citations),
-      useFullTranscript: payload.useFullTranscript === true,
-    };
+    return { type: 'context', useFullTranscript: payload.useFullTranscript === true };
   }
   return undefined;
 }

@@ -17,9 +17,9 @@ import {
   chat,
   errorMessage,
   isAbortError,
-  type ChatCitation,
   type ChatEvent,
   type ChatMessage,
+  type Turn,
 } from '../../lib/api';
 import { ChatBubble } from './ChatBubble';
 
@@ -27,7 +27,6 @@ type Bubble = {
   key: string;
   role: 'user' | 'assistant';
   content: string;
-  citations: ChatCitation[];
   useFullTranscript: boolean;
   error?: string;
   streaming?: boolean;
@@ -38,7 +37,6 @@ function toBubbles(messages: ChatMessage[]): Bubble[] {
     key: String(message.id),
     role: message.role === 'assistant' ? 'assistant' : 'user',
     content: message.content,
-    citations: [],
     useFullTranscript: false,
   }));
 }
@@ -60,10 +58,7 @@ function applyChatEvent(bubbles: Bubble[], event: ChatEvent): Bubble[] {
     return patchLastAssistant(bubbles, { content: last.content + event.text });
   }
   if (event.type === 'context') {
-    return patchLastAssistant(bubbles, {
-      citations: event.citations,
-      useFullTranscript: event.useFullTranscript,
-    });
+    return patchLastAssistant(bubbles, { useFullTranscript: event.useFullTranscript });
   }
   if (event.type === 'error') {
     return patchLastAssistant(bubbles, { error: event.error, streaming: false });
@@ -88,18 +83,11 @@ function isNearBottom(el: HTMLElement): boolean {
 
 function optimisticPair(seq: number, text: string): Bubble[] {
   return [
-    {
-      key: `local-user-${seq}`,
-      role: 'user',
-      content: text,
-      citations: [],
-      useFullTranscript: false,
-    },
+    { key: `local-user-${seq}`, role: 'user', content: text, useFullTranscript: false },
     {
       key: `local-assistant-${seq}`,
       role: 'assistant',
       content: '',
-      citations: [],
       useFullTranscript: false,
       streaming: true,
     },
@@ -243,7 +231,17 @@ function useStickScroll(bubbles: Bubble[]) {
   return { scrollerRef, stickRef };
 }
 
-function ChatThread({ bubbles }: { bubbles: Bubble[] }) {
+/** An answer's chips are grounded against the question, which is the bubble just above it. */
+function askedBefore(bubbles: Bubble[], index: number): string {
+  const bubble = bubbles[index];
+  const previous = bubbles[index - 1];
+  if (bubble?.role !== 'assistant' || previous?.role !== 'user') {
+    return '';
+  }
+  return previous.content;
+}
+
+function ChatThread({ bubbles, turns }: { bubbles: Bubble[]; turns: Turn[] }) {
   const { scrollerRef, stickRef } = useStickScroll(bubbles);
 
   if (bubbles.length === 0) {
@@ -266,15 +264,16 @@ function ChatThread({ bubbles }: { bubbles: Bubble[] }) {
       }}
     >
       <div className="flex flex-col gap-3">
-        {bubbles.map((bubble) => (
+        {bubbles.map((bubble, index) => (
           <ChatBubble
             key={bubble.key}
             role={bubble.role}
             content={bubble.content}
+            question={askedBefore(bubbles, index)}
             streaming={bubble.streaming}
             error={bubble.error}
-            citations={bubble.citations}
             useFullTranscript={bubble.useFullTranscript}
+            turns={turns}
           />
         ))}
       </div>
@@ -363,9 +362,11 @@ function useChatSession(meetingId: number, initialMessages: ChatMessage[]) {
 export function ChatPanel({
   meetingId,
   initialMessages,
+  turns,
 }: {
   meetingId: number;
   initialMessages: ChatMessage[];
+  turns: Turn[];
 }) {
   const session = useChatSession(meetingId, initialMessages);
   return (
@@ -376,7 +377,7 @@ export function ChatPanel({
       <p className="sr-only" aria-live="polite">
         {session.status}
       </p>
-      <ChatThread bubbles={session.bubbles} />
+      <ChatThread bubbles={session.bubbles} turns={turns} />
       <ChatComposer
         draft={session.draft}
         streaming={session.streaming}

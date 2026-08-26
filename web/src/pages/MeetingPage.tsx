@@ -153,7 +153,12 @@ function MeetingWorkspace({
         />
       </section>
       {meeting.status === 'ready' ? (
-        <ChatPanel key={meeting.id} meetingId={meeting.id} initialMessages={messages} />
+        <ChatPanel
+          key={meeting.id}
+          meetingId={meeting.id}
+          initialMessages={messages}
+          turns={turns}
+        />
       ) : (
         <p className="min-h-0 overflow-auto px-6 py-4 text-sm text-muted">
           Chat is available when this meeting is ready.
