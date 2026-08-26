@@ -1,6 +1,6 @@
 # Ingestion flow
 
-Upload a `.txt` transcript. The server parses speaker turns, packs them into chunks, writes SQLite rows, embeds those chunk strings, then tries to extract decisions and action items.
+Upload a `.txt` transcript. The server parses speaker turns, packs them into chunks, writes SQLite rows, then embeds those chunk strings **in parallel with** extracting decisions and action items from overlapping transcript windows.
 
 [`meetings.ts`](../../server/src/routes/meetings.ts) calls [`ingestTranscript`](../../server/src/ingest/pipeline.ts). Parse and chunk run **before** any `meetings` row exists.
 
@@ -27,15 +27,15 @@ flowchart TD
   storeTx["storeTranscript TX"]
   processing["meetings.status = processing"]
   embed["embedDocuments(chunk.text)"]
+  extractStart["extractFacts(turns) starts"]
   abortCheck{"signal.throwIfAborted"}
   storeEmb["storeEmbeddings TX"]
   ready["meetings.status = ready, error_message = NULL"]
-  extract["extractFacts then storeFacts"]
-  abortDel["isAbortError before ready: DELETE FROM meetings"]
-  keepReady["isAbortError after ready: keep meeting"]
+  extract["await extractFacts then storeFacts"]
+  abortDel["isAbortError: DELETE FROM meetings"]
   failDel["hard-fail before ready: DELETE FROM meetings"]
   doneCheck{"skipIfAborted"}
-  noBody["hijack; meeting stays ready, no 201"]
+  noBody["hijack; DELETE meeting, no 201"]
   created["201 { id, status: ready }"]
   http204["204, or hijack if the socket is gone"]
   http500["500 failed to ingest transcript"]
@@ -52,7 +52,9 @@ flowchart TD
   check -->|no parts.file| noFile
   check -->|file present| ingest --> parse
   parse -->|turns.length === 0| parseFail
-  parse --> chunk --> storeTx --> processing --> embed
+  parse --> chunk --> storeTx --> processing
+  processing --> embed
+  processing --> extractStart
   embed -->|isAbortError| abortDel
   embed -->|other throw| failDel
   embed -->|resolves| abortCheck
@@ -60,12 +62,12 @@ flowchart TD
   abortCheck -->|ok| storeEmb
   storeEmb -->|throw| failDel
   storeEmb --> ready --> extract
-  extract -->|isAbortError| keepReady
+  extractStart --> extract
+  extract -->|isAbortError| abortDel
   extract -->|success or swallowed non-abort| doneCheck
   doneCheck -->|socket gone| noBody
   doneCheck -->|ok| created
   abortDel --> http204
-  keepReady --> http204
   failDel --> http500
 ```
 
@@ -84,11 +86,12 @@ HTTP entry: [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.t
 - `skipIfAborted` runs before that mapping. When a client disappears mid-upload the socket is destroyed, so the reply is hijacked. The error `@fastify/multipart` throws in that case is `FST_MP_PREMATURE_CLOSE`, which is not an `AbortError`, so a premature close on a socket that is somehow still open falls through the table to `400 invalid upload`. Ingest never starts either way.
 - `title` is the optional `title` field, trimmed; a later `title` field overwrites an earlier one. When it is missing or blank the title is `filename.replace(/\.txt$/i, '')`.
 - `parseTranscript` runs before `storeTranscript`. Zero turns **throws** `ParseError` (it does not return `[]`). `createMeeting` maps that to 400; no `meetings` row exists yet.
-- `storeEmbeddings` sets `status = 'ready'` and `error_message = NULL` **before** fact extraction.
-- [`recoverIngestFailure`](../../server/src/ingest/pipeline.ts) does nothing when `meetingId` is unset or when `storeEmbeddings` already committed in this call; otherwise it runs `DELETE FROM meetings WHERE id = ?`. An incomplete ingest (abort **or** hard failure before `ready`) therefore leaves no `meetings` row, while an abort during fact extraction keeps the meeting, which is already searchable.
+- `storeEmbeddings` sets `status = 'ready'` and `error_message = NULL` **before** `storeFacts` returns. Fact extraction **starts** in parallel with embedding, after `storeTranscript` commits. The embed request is issued first so a single-backend queue is not filled by the eight extract calls.
+- If embedding fails, `ingestTranscript` aborts the in-flight extract (`AbortSignal.any` with a local controller) so the API call is not left running for a meeting that will be deleted.
+- [`recoverIngestFailure`](../../server/src/ingest/pipeline.ts) does nothing when `meetingId` is unset; otherwise it runs `DELETE FROM meetings WHERE id = ?`. An aborted ingest therefore leaves no `meetings` row, even when embeddings had already committed `ready`. A hard failure before `ready` is the same delete; a non-abort extract failure is swallowed and the meeting stays `ready`.
 - The status code still separates those two cases: an abort answers **204** through `skipIfAborted` (or hijacks when the socket is already gone), a hard failure answers **500** `failed to ingest transcript`.
-- That recovery `DELETE` is itself best-effort. If it fails the error is swallowed, which leaves a `processing` row behind but still surfaces the original ingest failure to the client.
-- After a successful ingest, `skipIfAborted` may omit the `201` if the client is already gone; the meeting stays `ready`.
+- That recovery `DELETE` is itself best-effort. If it fails the error is swallowed, which can leave a `processing` or `ready` row behind but still surfaces the original ingest failure to the client.
+- After a successful ingest, `skipIfAborted` may omit the `201` if the client is already gone; [`discardMeeting`](../../server/src/ingest/pipeline.ts) then deletes that row so a cancelled upload never appears in the list.
 
 ## Parsing
 
@@ -140,10 +143,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  start["chunkTurns(turns, maxChars = 1800)"]
+  start["chunkTurns(turns, maxChars = 2000)"]
   empty{"turns.length === 0"}
   none["return empty array"]
-  lines["lines[i] = Speaker: text"]
+  lines["lines[i] = renderTurn: [Speaker, timestamp]: text"]
   cursor["cursor = 0"]
   more{"cursor < turns.length"}
   packNext["packNext(cursor, chunks, turns, lines, maxChars)"]
@@ -171,8 +174,11 @@ flowchart TD
 
 [`server/src/transcript/chunk.ts`](../../server/src/transcript/chunk.ts)
 
-- Packed `text` is `` `[${startTimestamp}–${endTimestamp}] ${speakerLabel}\n` `` plus the turn lines joined by `\n`. The dash in the header is en-dash `U+2013`.
-- `packFrom` always includes `turns[start]`. Further whole turns are added while `candidateLength <= maxChars`. A single turn longer than `1800` stays one chunk; a turn is never split.
+- Packed `text` is `` `Speakers: ${speakerLabel}\n` `` plus the turn lines joined by `\n`. The header deliberately carries no clock, only the roster; the window range stays on the `startTimestamp`/`endTimestamp` columns for the UI.
+- Turn lines come from [`renderTurn`](../../server/src/transcript/parse.ts), the same `[Speaker, timestamp]: text` rendering `packWindows` uses for extraction. The prefix is the citation format, so the model copies rather than rebuilds. Drop the per-turn clock and the only remaining association is "this speaker appeared in the window", which is how a greeting's timestamp gets attached to a later question.
+- `text` is written once, at ingest. `reindexMeeting` re-embeds the stored text but never re-chunks it, so a meeting ingested before a change to this rendering keeps its old excerpts. Re-upload the transcript to pick one up.
+- `packFrom` always includes `turns[start]`. Further whole turns are added while `candidateLength <= maxChars`. A single turn longer than `2000` stays one chunk; a turn is never split.
+- The `2000` budget covers the `[Speaker, timestamp]: ` prefixes, which are roughly 11 characters per turn, so it buys about the same amount of speech per chunk as a clock-free `1800` would.
 - `candidateLength` = header length + `1` (the newline after the header) + sum of line lengths + `(lineCount - 1)` (newlines between lines).
 - `speakerLabel` lists unique speakers in first-seen order, comma-separated (`Ada, Ben`). The same speaker twice does not duplicate the label.
 - Overlap: only when the previous chunk covers more than one turn, try starting again at `previous.turnEndIndex`, so the previous chunk's last turn is repeated. Keep that window only if it reaches `overlapped.end >= cursor`, which guarantees at least one new turn and therefore forward progress. A previous chunk holding a single turn skips overlap entirely.
@@ -270,92 +276,81 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  start["extractFacts(llm, input.rawText)"]
-  trunc{"transcript.length > 100000"}
-  slice["user: truncated-to-100000 notice + Transcript: + slice"]
-  full["user: Transcript: + rawText"]
-  sys["system: SYSTEM_PROMPT"]
-  complete["completeJson"]
-  cjAbort["signal.throwIfAborted"]
-  extra["extra = chatSampling(model, 0) + response_format json_object"]
-  streamed["completions.create stream true"]
-  plain["completions.create without stream"]
-  content["delta.content or message.content"]
-  parse["parseExtractedFacts"]
-  parsed{"JSON.parse succeeded"}
-  direct["factsFromCandidate on the whole value"]
-  usableDirect{"factsFromCandidate defined"}
-  scan["for each brace-matched object"]
-  container{"has decisions or actionItems array"}
-  classify["keep closed decision/action objects"]
-  hasInner{"any inner items kept"}
-  empty["return empty decisions and actionItems"]
-  abort{"isAbortError"}
-  rethrow["throw"]
+  start["extractFacts(llm, turns)"]
+  pack["packWindows: 12000 chars, 20% overlap"]
+  map["mapPool concurrency 8"]
+  one{"windows.length === 1"}
+  skip["return that window's facts"]
+  concat["exact-text dedupe; later owner/due fill in"]
+  few{"unique facts <= 1"}
+  skipConcat["return concatenation"]
+  groups["packExtractGroups at 60000 chars"]
+  many{"groups.length greater than 1"}
+  collapse["mapPool: skip singleton groups; drop summaries"]
+  packed{"one group remains"}
+  reduce["one reconcile JSON prompt"]
+  reduceFail["non-abort: keep concatenation"]
   store["storeFacts"]
   bothEmpty{"no decisions and no action items"}
   noop["return without INSERT"]
   insert["TX: INSERT decisions, INSERT action_items"]
 
-  start --> trunc
-  trunc -->|yes| slice --> sys
-  trunc -->|no| full --> sys
-  sys --> complete --> cjAbort
-  cjAbort -->|throw| abort
-  cjAbort -->|ok| extra --> streamed
-  streamed -->|success| content
-  streamed -->|throw non-400| abort
-  streamed -->|HTTP 400| plain
-  plain -->|success| content
-  plain -->|throw| abort
-  abort -->|yes| rethrow
-  abort -->|no| empty
-  content --> parse --> parsed
-  parsed -->|yes| direct --> usableDirect
-  usableDirect -->|no| empty
-  usableDirect -->|yes| store
-  parsed -->|no| scan --> container
-  container -->|yes| store
-  container -->|no| classify --> scan
-  scan -->|exhausted| hasInner
-  hasInner -->|yes| store
-  hasInner -->|no| empty
-  empty --> store
+  start --> pack --> map --> one
+  one -->|yes| skip --> store
+  one -->|no| concat --> few
+  few -->|yes| skipConcat --> store
+  few -->|no| groups --> many
+  many -->|yes| collapse --> packed
+  packed -->|yes| reduce
+  packed -->|no| skipConcat
+  many -->|no| reduce
+  reduce -->|throw non-abort| reduceFail --> store
+  reduce -->|ok| store
   store --> bothEmpty
   bothEmpty -->|yes| noop
   bothEmpty -->|no| insert
 ```
 
-[`server/src/extract/facts.ts`](../../server/src/extract/facts.ts), [`server/src/llm/chat.ts`](../../server/src/llm/chat.ts) `completeJson`, [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `storeFacts`
+[`server/src/extract/window.ts`](../../server/src/extract/window.ts), [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts), [`server/src/extract/pool.ts`](../../server/src/extract/pool.ts), [`server/src/llm/chat.ts`](../../server/src/llm/chat.ts) `completeJson`, [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `storeFacts`
 
-The prompt is built from **`input.rawText`**, not from the concatenated chunk texts:
+Extraction is **map-reduce over turns**, not a single stuffed transcript:
 
-- Truncation happens when `length > 100_000`; exactly `100_000` is not truncated.
-- Truncated user content is `The transcript was truncated to the first 100000 characters.\n\nTranscript:\n` plus the slice. Otherwise it is `Transcript:\n` plus the full text.
+- `packWindows` fills from a cursor until rendered `[Speaker, timestamp]: text` would exceed `WINDOW_MAX_CHARS` (`12_000`). A rendered turn over that budget is sliced to `maxChars` with a 20% stride; each slice keeps `[Speaker, timestamp]:` when the header fits, so an unlabeled wall of text cannot become one oversized prompt.
+- The next window starts ~20% back into the previous window (`WINDOW_OVERLAP_RATIO = 0.2`), snapped to a whole turn. If the suffix from the end never reaches 20% (one turn dominates the window), the next window still starts at `previous.turnEnd` so the last packed turn is shared. If that would not advance (`start <= previous.turnStart`, or the next pack would not pass `previous.turnEnd`), the next window starts at `previous.turnEnd + 1`. A single-turn window never overlaps itself.
+- Window text is rendered from turns, not `chunk.text`, so each utterance still has its clock. Embedding chunks stay an independent packing with `DEFAULT_MAX_CHARS`.
+- Each window is mapped at `EXTRACT_CONCURRENCY` (`8`). Several windows also ask for a short ephemeral `summary` (capped at 1000 characters). A single window asks only for `decisions` and `actionItems`.
+- A non-abort throw from one window contributes empty facts for that window; other windows still run. `AbortError` propagates.
+- Identical `text` (trimmed, lowercase, collapsed whitespace) collapses to one row. The first wording and timestamp are kept; a later non-null `owner` or `due` fills in.
+- One window, or several windows that yield at most one unique fact, skip the LLM reduce.
+- Otherwise concatenated summaries plus the deduped fact lists go to the reduce prompt. Summaries are context only. The reduce step copies `text` from the window lists; speaker, timestamp, owner, and due stay the window values. Invented rows are dropped. A unique longer or shorter phrasing maps back to the original wording. If the reply is unreadable, empty, only invented, or rephrases more rows than it copies, the exact-deduped concatenation is stored instead.
+- If that packed JSON would exceed `MERGE_MAX_CHARS` (`60_000`), groups are reconciled once (singleton groups skip the LLM) with summaries dropped so the next pack can shrink. At most one follow-up reconcile runs; if more than one group remains, the concatenation is stored. A non-abort reduce failure stores the exact-deduped concatenation.
 
-`completeJson` ([`server/src/llm/chat.ts`](../../server/src/llm/chat.ts)) makes the request:
+`completeJson` ([`server/src/llm/chat.ts`](../../server/src/llm/chat.ts)) makes each JSON request:
 
-- It starts with `signal.throwIfAborted()`, then adds one extra payload: `chatSampling(model, 0)` plus `response_format: json_object`. `chatSampling` omits `temperature` when the model name matches `/^(gpt-5|o1|o3|o4)/i` and otherwise sends `temperature: 0`.
+- It starts with `signal.throwIfAborted()`, then adds `chatSampling(model, 0)`, `jsonReasoningEffort(model)`, and `response_format: json_object`. `chatSampling` omits `temperature` when the model name matches `/^(gpt-5|o1|o3|o4)/i` and otherwise sends `temperature: 0`.
+- `jsonReasoningEffort` is **only** on `completeJson` (ingest), not `streamChat`. `gpt-5*chat*` omit the field. `gpt-5-pro` sends `"high"`. `gpt-5.<digit>*` (5.1+) send `reasoning_effort: "none"`. Other `gpt-5*` (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) send `"minimal"`. `o1` / `o3` / `o4` send `"low"`. Non-reasoning models omit the field. `none` is a 400 on `gpt-5-mini`; `minimal` is a 400 on `gpt-5.1`.
 - It tries `stream: true` first and concatenates `delta.content`. Only an `APIError` with status `400` triggers the fallback, one non-streaming call that reads `message.content`. Every other throw, abort included, propagates.
 - The `try` wraps the iteration as well as the create call, so a `400` raised part-way through the stream also falls back, discarding whatever was collected.
 - If the fallback call fails too, that error propagates; there is no second retry.
 - If the SSE iterator hangs, `completeJson` still rejects on abort rather than resolving as empty JSON, because `collectDeltaContent` races the collection against the signal.
 
-`parseExtractedFacts` ([`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)) turns the reply into facts, tolerating a truncated or fenced response:
+Fact parsing ([`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)) turns each reply into facts, tolerating a truncated, nested, or fenced response:
 
 - First `JSON.parse` the whole text. On failure retry once after stripping a trailing comma, matched only at the very end of the text (`/,(\s*[}\]])$/`), so interior `,}` is never touched.
-- If either parse succeeds, the result goes straight to `factsFromCandidate`; `undefined` means empty arrays and **no** brace scan.
-- If both fail, scan for brace-matched `{...}` slices. The first slice carrying a `decisions` or `actionItems`/`action_items` array is returned as the whole answer.
-- Otherwise each slice is classified on its own, so a truncated response still stores the items that finished. A slice that fails to parse is not skipped over — scanning continues inside it, which is how items nested in a broken container are still found.
+- If that parse is a facts object (`decisions` / `actionItems` / `action_items` arrays), use it. Otherwise scan for brace-matched `{...}` slices, including objects nested one level deeper than the root.
+- The first slice carrying a `decisions` or `actionItems`/`action_items` array is returned as the whole answer.
+- Otherwise each slice is classified on its own, so a truncated response still stores the items that finished. A slice that is not itself a fact is not skipped over — scanning continues inside it.
+- Unmatched opening braces are ignored. After 32 of them the scan stops, so a degenerate reply cannot go quadratic on the event loop.
 - An inner object holding `owner` or `due` is treated as an action item even when it also has `speaker`.
-- Unclosed objects are ignored. Nothing closes braces on the model's behalf, which would invent the tail of a cut-off string.
+- Nothing closes braces on the model's behalf, which would invent the tail of a cut-off string.
 - A clock-shaped `due` (including a bracketed `[00:06:15]`) is stored as `null`; clocks belong in `timestamp`.
+- Window replies may also include `summary`; a missing or unparsable summary becomes `''`. Reduce may only keep items whose text already appeared in a window (verbatim, or a unique longer/shorter phrasing of the same row). Speaker, timestamp, owner, and due stay the window values. Invented rows are dropped. If the reply is unreadable, empty, only invented, or rephrases more rows than it copies, the exact-deduped concatenation is stored instead.
 
 Extraction is best-effort, so the pipeline never loses a meeting over it:
 
 - `extractFacts` maps every non-abort throw to `{ decisions: [], actionItems: [] }` and rethrows only `isAbortError`.
 - `ingestTranscript` always calls `storeFacts` with that result unless `extractFacts` threw an abort, and `storeFacts` no-ops when both arrays are empty.
-- A non-abort throw from `storeFacts` is swallowed and the meeting stays `ready`. An abort is rethrown into `recoverIngestFailure`, which keeps the meeting because embeddings are already committed.
+- A non-abort throw from `storeFacts` is swallowed and the meeting stays `ready`. An abort is rethrown into `recoverIngestFailure`, which deletes the meeting even if embeddings already committed. `throwIfAborted` after `storeFacts` covers a cancel that arrives once facts are already written.
 
 ## Status and failure recovery
 
@@ -366,32 +361,32 @@ flowchart TD
   store["storeTranscript TX"]
   processing["status = processing"]
   embed["embedDocuments"]
+  extract["extractFacts starts"]
   readyTx["storeEmbeddings TX: status = ready, error_message = NULL"]
-  facts["extractFacts / storeFacts"]
+  facts["await extractFacts / storeFacts"]
   readyStay["status stays ready"]
-  outerCatch["recoverIngestFailure"]
+  outerCatch["extractAbort.abort then recoverIngestFailure"]
   hasId{"meetingId defined"}
-  committed{"embeddingsCommitted"}
   del["DELETE FROM meetings WHERE id = ?"]
-  keep["leave ready; facts may be empty"]
 
-  parse --> noRow --> store --> processing --> embed
+  parse --> noRow --> store --> processing
+  processing --> embed
+  processing --> extract
   embed --> readyTx --> facts --> readyStay
+  extract --> facts
   embed -->|throw| outerCatch
   readyTx -->|throw| outerCatch
   facts -->|isAbortError| outerCatch
   outerCatch --> hasId
   hasId -->|no| leave["return; no DB change"]
-  hasId -->|yes| committed
-  committed -->|yes| keep
-  committed -->|no| del
+  hasId -->|yes| del
 ```
 
 [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `ingestTranscript`, `recoverIngestFailure`
 
-- `signal.throwIfAborted()`, `parseTranscript`, and `chunkTurns` run **outside** the try, so failure there never calls `recoverIngestFailure` (no row yet). `throwIfAborted` after `storeTranscript` and after `embedChunks` is inside the try; abort then deletes the meeting.
-- `processing` is visible while embeddings are in flight (after the first transaction commits).
-- `ready` is set in the embeddings transaction, even when facts are empty or extraction later fails without aborting.
+- `signal.throwIfAborted()`, `parseTranscript`, and `chunkTurns` run **outside** the try, so failure there never calls `recoverIngestFailure` (no row yet). `throwIfAborted` after `storeTranscript`, after `embedChunks`, and after `storeFacts` is inside the try; abort then deletes the meeting.
+- `processing` is visible while embeddings **and** fact extraction are in flight (after the first transaction commits).
+- `ready` is set in the embeddings transaction, even when facts are empty or extraction later fails without aborting. Extract started earlier, in parallel with embed. A later abort still deletes that `ready` row.
 - `openDb` sets `PRAGMA foreign_keys = ON`. `DELETE FROM meetings` cascades turns, chunks, embeddings, facts, and messages. Nothing in the code ever writes `status = 'error'`, so a failed ingest never leaves an `error` stub even though the schema allows that value.
-- Abort after `storeEmbeddings` skips that delete: the meeting stays `ready` even if fact extraction is cancelled.
+- Abort after `storeEmbeddings` still deletes: cancelling ingest never leaves a meeting, including one that was already searchable.
 - `recoverIngestFailure` swallows a failing `DELETE`, so it never masks the original ingest error with one of its own.

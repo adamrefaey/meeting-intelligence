@@ -8,7 +8,7 @@ Chat and embeddings go through one official OpenAI SDK client (`createLlm` in [`
 
 ## How to read
 
-- [Ingestion](ingestion.md) — upload a transcript, parse, chunk, persist, embed, extract facts.
+- [Ingestion](ingestion.md) — upload a transcript, parse, chunk, persist, then embed and extract facts in parallel.
 - [Retrieval](retrieval.md) — answer a question about one meeting: full-transcript short-circuit, optional reindex, hybrid retrieve, prompt, stream.
 
 Each page starts with one high-level diagram, then one diagram per process. Under every diagram is the implementing file.
@@ -27,23 +27,23 @@ That **204** only exists before a response has started. Once the chat route has 
 
 ## Code map
 
-| Process              | Implementation                                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| HTTP ingest          | [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.ts), multipart in [`server/src/app.ts`](../../server/src/app.ts)       |
-| Orchestration        | [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `ingestTranscript`                                                 |
-| Parsing              | [`server/src/transcript/parse.ts`](../../server/src/transcript/parse.ts)                                                                  |
-| Chunking             | [`server/src/transcript/chunk.ts`](../../server/src/transcript/chunk.ts)                                                                  |
-| FTS index            | [`server/src/db/schema.sql`](../../server/src/db/schema.sql) `chunks_fts` + `chunks_ai` / `chunks_ad` / `chunks_au`                       |
-| LLM client           | [`server/src/llm/client.ts`](../../server/src/llm/client.ts) `createLlm` (one `OpenAI` instance)                                          |
-| Embedding            | [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embedDocuments`                                                               |
-| Extracting           | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts), JSON chat in [`server/src/llm/chat.ts`](../../server/src/llm/chat.ts) |
-| HTTP chat            | [`server/src/routes/chat.ts`](../../server/src/routes/chat.ts)                                                                            |
-| Answer orchestration | [`server/src/rag/chat.ts`](../../server/src/rag/chat.ts) `answerQuestion`                                                                 |
-| Retrieving           | [`server/src/rag/retrieve.ts`](../../server/src/rag/retrieve.ts)                                                                          |
-| Vector SQL           | [`server/src/db/client.ts`](../../server/src/db/client.ts) `cosineQuery`                                                                  |
-| Fusing               | [`server/src/rag/fuse.ts`](../../server/src/rag/fuse.ts)                                                                                  |
-| Prompting            | [`server/src/rag/prompt.ts`](../../server/src/rag/prompt.ts)                                                                              |
-| Reindexing           | [`server/src/rag/chat.ts`](../../server/src/rag/chat.ts) `reindexMeeting`                                                                 |
+| Process              | Implementation                                                                                                                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP ingest          | [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.ts), multipart in [`server/src/app.ts`](../../server/src/app.ts)                                                                                        |
+| Orchestration        | [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `ingestTranscript`                                                                                                                                  |
+| Parsing              | [`server/src/transcript/parse.ts`](../../server/src/transcript/parse.ts)                                                                                                                                                   |
+| Chunking             | [`server/src/transcript/chunk.ts`](../../server/src/transcript/chunk.ts)                                                                                                                                                   |
+| FTS index            | [`server/src/db/schema.sql`](../../server/src/db/schema.sql) `chunks_fts` + `chunks_ai` / `chunks_ad` / `chunks_au`                                                                                                        |
+| LLM client           | [`server/src/llm/client.ts`](../../server/src/llm/client.ts) `createLlm` (one `OpenAI` instance)                                                                                                                           |
+| Embedding            | [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embedDocuments`                                                                                                                                                |
+| Extracting           | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts), windows in [`server/src/extract/window.ts`](../../server/src/extract/window.ts), JSON chat in [`server/src/llm/chat.ts`](../../server/src/llm/chat.ts) |
+| HTTP chat            | [`server/src/routes/chat.ts`](../../server/src/routes/chat.ts)                                                                                                                                                             |
+| Answer orchestration | [`server/src/rag/chat.ts`](../../server/src/rag/chat.ts) `answerQuestion`                                                                                                                                                  |
+| Retrieving           | [`server/src/rag/retrieve.ts`](../../server/src/rag/retrieve.ts)                                                                                                                                                           |
+| Vector SQL           | [`server/src/db/client.ts`](../../server/src/db/client.ts) `cosineQuery`                                                                                                                                                   |
+| Fusing               | [`server/src/rag/fuse.ts`](../../server/src/rag/fuse.ts)                                                                                                                                                                   |
+| Prompting            | [`server/src/rag/prompt.ts`](../../server/src/rag/prompt.ts)                                                                                                                                                               |
+| Reindexing           | [`server/src/rag/chat.ts`](../../server/src/rag/chat.ts) `reindexMeeting`                                                                                                                                                  |
 
 ## Constants
 
@@ -51,7 +51,7 @@ Env knobs that change these flows. The defaults are the same in [`.env.example`]
 
 | Name                          | Default                  | Used for                                         |
 | ----------------------------- | ------------------------ | ------------------------------------------------ |
-| `CHAT_MODEL`                  | `gpt-5-mini`             | fact extraction and answer streaming             |
+| `CHAT_MODEL`                  | `gpt-5-mini`             | fact extraction JSON and answer streaming        |
 | `EMBEDDING_MODEL`             | `text-embedding-3-small` | chunk and query vectors; staleness check         |
 | `EMBEDDING_DIMENSIONS`        | `1536`                   | vector width; staleness check                    |
 | `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                  | full transcript instead of retrieval             |
@@ -63,8 +63,11 @@ Code (not env):
 
 | Name                             | Value             | File                                                                     |
 | -------------------------------- | ----------------- | ------------------------------------------------------------------------ |
-| `DEFAULT_MAX_CHARS`              | `1800`            | [`server/src/transcript/chunk.ts`](../../server/src/transcript/chunk.ts) |
-| `FACT_TRANSCRIPT_CHAR_LIMIT`     | `100_000`         | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
+| `DEFAULT_MAX_CHARS`              | `2000`            | [`server/src/transcript/chunk.ts`](../../server/src/transcript/chunk.ts) |
+| `WINDOW_MAX_CHARS`               | `12_000`          | [`server/src/extract/window.ts`](../../server/src/extract/window.ts)     |
+| `WINDOW_OVERLAP_RATIO`           | `0.2`             | [`server/src/extract/window.ts`](../../server/src/extract/window.ts)     |
+| `EXTRACT_CONCURRENCY`            | `8`               | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
+| `MERGE_MAX_CHARS`                | `60_000`          | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
 | `DEFAULT_RRF_K`                  | `60`              | [`server/src/rag/fuse.ts`](../../server/src/rag/fuse.ts)                 |
 | `INSERT_BATCH_SIZE`              | `100`             | [`server/src/db/batch.ts`](../../server/src/db/batch.ts)                 |
 | `EMBED_BATCH_SIZE`               | `128`             | [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts)               |

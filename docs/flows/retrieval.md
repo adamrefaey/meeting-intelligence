@@ -84,7 +84,7 @@ The route validates the request, then hands off to `answerQuestion`:
 `buildAnswer` assembles the same prompt on both paths; only the placement of the meeting content differs:
 
 - It always loads `decisions` and `action_items` (`ORDER BY id`) plus history, including on the full-transcript path.
-- Full transcript: `citations` is `[]` and `raw_text` goes on the **system** message. Retrieved excerpts are never added.
+- Full transcript: the stored turns, rendered through [`renderTurn`](../../server/src/transcript/parse.ts), go on the **system** message. Retrieved excerpts are never added. Raw file text is not used here, so a `Speaker (MM:SS)` export still cites as `[Speaker, timestamp]`.
 - Hybrid retrieve: excerpts go on the **user** message. Decisions and action items stay on the system message.
 - History is `SELECT role, content FROM messages WHERE meeting_id = ? ORDER BY created_at DESC, id DESC LIMIT ?` bound to `chatHistoryTurns`, then reversed. The limit counts **message rows**, not user/assistant pairs, and `chatHistoryTurns <= 0` loads nothing.
 - History is read inside `answerQuestion`, **before** the route inserts the current user row, so a question is never part of its own history.
@@ -92,7 +92,7 @@ The route validates the request, then hands off to `answerQuestion`:
 The route then persists and streams:
 
 - The order is: `answerQuestion` returns, insert the user row, `skipIfAborted`, start SSE. A client that left during that window ends the request there, with nothing streamed.
-- `sseChunks` yields `context` `{ citations, useFullTranscript }` first. `streamChat` is an async generator, so `client.chat.completions.create` only runs when that generator is first iterated, which is after the `context` event.
+- `sseChunks` yields `context` `{ useFullTranscript }` first. The retrieved chunks are not on the wire: the answer's own inline citations name the turns, so the client has nothing to read from a chunk-level list. `streamChat` is an async generator, so `client.chat.completions.create` only runs when that generator is first iterated, which is after the `context` event.
 - After the token loop, `signal.throwIfAborted()` runs again before anything is persisted. A stream that produced no tokens yields `error` `failed to generate answer` and writes no assistant row.
 - An abort while streaming keeps the user row and writes no assistant row; `sseChunks` simply returns. The response is already `200` by then, so the client just sees the event stream stop, with no `error` and no `done`.
 - An abort anywhere inside `answerQuestion` — the initial `throwIfAborted`, reindex, or the query embedding in `retrieveForMeeting` — happens before the user row exists, so that row is never written and the request ends **204** or hijacked.
@@ -172,6 +172,7 @@ flowchart TD
 - Token test is `/[\p{L}\p{N}]/u`, so a token survives only if it contains a letter or a digit. Operator-only input such as `" * ( )` leaves no tokens and skips FTS entirely, returning `[]`.
 - Every surviving token is wrapped in double quotes and the tokens are joined with `OR`, which both neutralizes FTS5 operators in user text and makes the match a union rather than a conjunction.
 - SQL: `WHERE chunks.meeting_id = ? AND chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?`. Any throw from that query is swallowed and becomes `[]`, so a malformed match degrades to vector-only retrieval instead of failing the answer.
+- Known trade-off: `chunks_fts` indexes `chunks.text`, which includes the per-turn clocks, and `unicode61` splits `[00:04:17]` into the tokens `00`, `04`, `17`. A query containing a bare two-digit number therefore matches on clock digits. Measured against the fixtures, answer recall in the top 8 held for three of four digit-bearing questions and for every digit-free one, so this is left as-is rather than paying for a second clock-free column on `chunks`. It also cuts both ways: clocks on every turn make those digits common enough that bm25 discounts them, where the old header-only range made them rare and therefore falsely distinctive.
 
 ### Vector (`vectorIds`)
 
@@ -240,9 +241,10 @@ flowchart TD
   decisions["system += Decisions section, or None recorded."]
   actions["system += Action items section, or None recorded."]
   full{"useFullTranscript"}
-  sysTranscript["system += Transcript + rawText"]
+  sysTranscript["system += Transcript + renderTurns(stored turns)"]
   userFull["user = userMessage only"]
   excerpts{"chunks.length > 0"}
+  sysExcerpt["system += EXCERPT_RULES"]
   userChunks["user = Retrieved excerpts + chunk.text + Question"]
   userNone["user = Retrieved excerpts None retrieved. + Question"]
   hist["recentHistory: slice -chatHistoryTurns, or empty when turns <= 0"]
@@ -251,7 +253,7 @@ flowchart TD
   start --> sysRules --> title --> decisions --> actions --> full
   full -->|yes| sysTranscript --> userFull
   full -->|no| excerpts
-  excerpts -->|yes| userChunks
+  excerpts -->|yes| sysExcerpt --> userChunks
   excerpts -->|no| userNone
   userFull --> hist
   userChunks --> hist
@@ -261,9 +263,12 @@ flowchart TD
 
 [`server/src/rag/prompt.ts`](../../server/src/rag/prompt.ts)
 
-- System always includes the rules, title, decisions, and action items. On the full-transcript path it also includes `## Transcript\n${rawText}`.
+- System always includes the rules, title, decisions, and action items. On the full-transcript path it also includes `## Transcript\n` plus the stored turns rendered as `[Speaker, timestamp]: text`.
 - Full-transcript user content is exactly `userMessage`. Chunk texts passed into `buildChatMessages` are not added.
-- Retrieved path user content is `## Retrieved excerpts\n` + `chunk.text` values joined by `\n\n` (or `None retrieved.`) + `\n\n## Question\n` + `userMessage`.
+- Retrieved path user content is `## Retrieved excerpts\n` + `chunk.text` values joined by `\n\n` + `\n\n## Question\n` + `userMessage`, or `None retrieved.` in place of the excerpts. Rules live in the system message and data in the user message, so `EXCERPT_RULES` is appended to `systemParts` — and only when there is at least one excerpt to describe.
+- `SYSTEM_RULES` tells the model a turn opens with `[Speaker, timestamp]:` and runs until the next one, so it may wrap over several lines, and to cite by copying that marker from the turn the claim comes from — not from an earlier line by the same speaker. The prefix is the citation, so a rebuild that grabs Keiko's first "Hi" at `00:04:14` instead of the remote-work question at `00:04:17` is no longer the path of least resistance. Continuation lines still carry neither a speaker nor a clock; the rule points at the turn, not the physical line.
+- The instruction is a second line of defence, not the mechanism. [`chunkTurns`](../../server/src/transcript/chunk.ts) puts a clock on every turn and none in the header, so an excerpt offers no clock that a turn does not own. `server/test/chunk.test.ts` asserts exactly that over every fixture.
+- Neither is prompting the last line of defence. A cited clock stays the model's guess, so [`segmentAnswer`](../../web/src/lib/citations.ts) grounds it before it becomes a chip: among that speaker's turns it keeps the one sharing the most content words with the claim, breaking ties toward the clock the model chose. Words come from the answer text leading up to the chip, falling back to the question when that text is only a name — a bare `- Keiko — [Keiko, 00:04:14]` list offers nothing else to match on. A claim matching no turn better than the cited one is left alone, so grounding corrects but never invents. The turn holding the cited clock only counts as the baseline when that speaker owns it; a clock belonging to someone else scores nothing, because a chip naming a speaker must never scroll to a different one.
 - `chatHistoryTurns <= 0` drops history (`turns > 0 ? history.slice(-turns) : []`). For a positive value the slice is a no-op, since `loadHistory` already applied the same bound as a SQL `LIMIT`.
 - `buildAnswer` then calls `llm.streamChat(messages, signal)` ([`server/src/llm/chat.ts`](../../server/src/llm/chat.ts)). `streamChat` calls `throwIfAborted` before `completions.create`. Sampling is `chatSampling(model, 0.2)`: omit `temperature` when the model name matches `/^(gpt-5|o1|o3|o4)/i`; otherwise `temperature: 0.2`.
 - It tries `stream: true` first and yields `choices[0].delta.content` whenever that is non-empty. Only an `APIError` with status `400` triggers the fallback, one non-streaming call that yields `message.content` if present; anything else, abort included, propagates. The `try` also covers the yield loop, so a `400` raised part-way through the stream falls back after tokens have already been sent.

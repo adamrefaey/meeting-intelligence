@@ -88,14 +88,18 @@ Eleven sample transcripts live under [`fixtures/`](fixtures/README.md), written 
 
 ## How a question is answered
 
-Uploading parses turns, packs them into chunks (~1800 characters), stores them in SQLite, embeds the chunks, then asks the chat model for decisions and action items.
+Uploading parses turns, packs them into chunks (~2000 characters), stores them in SQLite, and **in parallel** embeds those chunks and extracts decisions and action items from overlapping ~12k-character windows (then one reconcile pass if there is more than one window).
 
 Asking a question is always `WHERE meeting_id = ?`:
 
 - If the transcript is **under** `FULL_CONTEXT_CHAR_THRESHOLD` (24000 characters in `.env.example`), the model sees the **full transcript**. `planning.txt` takes this path.
 - If it is **at or above** the threshold, the API retrieves a handful of chunks (vector similarity + SQLite FTS, fused) and prompts with those excerpts plus the extracted facts.
 
-On a retrieval answer, citation chips scroll the transcript to the cited turns. Full-transcript answers show a **Full transcript** badge instead — the whole file was in the prompt.
+Either way the answer's citations become chips that scroll the transcript to the cited turn, and only what the answer actually cites gets a chip. Full-transcript answers also carry a **Full transcript** badge, since the whole file was in the prompt rather than a handful of excerpts.
+
+Each chunk names its turns as `[Speaker, timestamp]:` — the same shape as a citation — and keeps clocks out of its header. Copying the marker from the turn that contains the claim is what stops a citation landing on that speaker's first greeting.
+
+The cited clock is still only the model's guess, so the web app checks it against the transcript before drawing a chip: among that speaker's turns it picks the one whose words the claim actually shares, and leaves the citation alone when nothing matches better. That is why "who asked about remote work?" points at Keiko's question rather than the "Hi, can you hear me?" three seconds earlier.
 
 ## Transcript format
 
@@ -128,6 +132,8 @@ BOM is stripped. Continuation lines matter more than they look: transcription se
 | `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                                |
 
 Do not commit `data/`, `*.db`, or `.env`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages all live in that SQLite file.
+
+Chunks are written once, at upload. Nothing re-chunks an existing meeting, so after pulling a change to chunking or citation rendering, re-upload the transcript — or delete `server/data/app.db` — to see it. Stored answers are history and are never rewritten.
 
 ## Checks
 

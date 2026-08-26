@@ -2,7 +2,7 @@
 
 Sample transcripts for manual testing. Every file is written to read like an export from a real transcription service — Otter, Rev, Zoom, Whisper — rather than a tidy script, so extraction and retrieval are exercised against the kind of input the product actually receives.
 
-Sizes are deliberate. The set straddles `FULL_CONTEXT_CHAR_THRESHOLD`, `DEFAULT_MAX_CHARS`, and `FACT_TRANSCRIPT_CHAR_LIMIT` so each code path is reachable by uploading a file. See [Limits](#limits).
+Sizes are deliberate. The set straddles `FULL_CONTEXT_CHAR_THRESHOLD` and `DEFAULT_MAX_CHARS` so each code path is reachable by uploading a file. `all-hands-marathon.txt` is the only fixture large enough to force several overlapping extract windows. See [Limits](#limits).
 
 ## How to test with them
 
@@ -39,14 +39,14 @@ Machine transcription does not produce one tidy line per turn, and the fixtures 
 | [`standup.txt`](transcripts/standup.txt)                                     | `[HH:MM:SS]`      | 834     | 15    | 1      | 3        | 0%      | full      |
 | [`planning.txt`](transcripts/planning.txt)                                   | `[HH:MM:SS]`      | 2,398   | 40    | 2      | 4        | 0%      | full      |
 | [`customer-interview.txt`](transcripts/customer-interview.txt)               | `Speaker (MM:SS)` | 23,940  | 295   | 13     | 2        | 43%     | full      |
-| [`solo-keynote.txt`](transcripts/solo-keynote.txt)                           | `Speaker (MM:SS)` | 24,249  | 161   | 14     | 1        | 78%     | retrieval |
+| [`solo-keynote.txt`](transcripts/solo-keynote.txt)                           | `Speaker (MM:SS)` | 24,249  | 161   | 13     | 1        | 78%     | retrieval |
 | [`security-architecture-rfc.txt`](transcripts/security-architecture-rfc.txt) | bare `HH:MM:SS`   | 24,668  | 280   | 14     | 4        | 48%     | retrieval |
-| [`sprint-retrospective.txt`](transcripts/sprint-retrospective.txt)           | `[HH:MM:SS]`      | 24,831  | 398   | 13     | 5        | 29%     | retrieval |
+| [`sprint-retrospective.txt`](transcripts/sprint-retrospective.txt)           | `[HH:MM:SS]`      | 24,831  | 398   | 14     | 5        | 29%     | retrieval |
 | [`town-hall-qna.txt`](transcripts/town-hall-qna.txt)                         | `[HH:MM:SS]`      | 24,894  | 268   | 14     | 18       | 51%     | retrieval |
 | [`incident-postmortem.txt`](transcripts/incident-postmortem.txt)             | `[HH:MM:SS]`      | 25,143  | 284   | 14     | 5        | 46%     | retrieval |
 | [`executive-budget-review.txt`](transcripts/executive-budget-review.txt)     | `[MM:SS]`         | 25,552  | 312   | 15     | 5        | 42%     | retrieval |
 | [`technical-war-room.txt`](transcripts/technical-war-room.txt)               | bare `HH:MM:SS`   | 28,346  | 350   | 16     | 4        | 44%     | retrieval |
-| [`all-hands-marathon.txt`](transcripts/all-hands-marathon.txt)               | `[HH:MM:SS]`      | 106,337 | 1,198 | 58     | 9        | 54%     | retrieval |
+| [`all-hands-marathon.txt`](transcripts/all-hands-marathon.txt)               | `[HH:MM:SS]`      | 106,337 | 1,198 | 60     | 9        | 54%     | retrieval |
 
 ## What each one is for
 
@@ -76,7 +76,7 @@ The largest transcript that still fits the full-context path, by 60 characters. 
 
 A conference keynote. One speaker for the entire file, delivered in long uninterrupted stretches — 78% of turns wrap, the highest in the set, including a single turn of 3,657 characters.
 
-Two things only this fixture reaches. Chunk speaker labels must stay `Evelyn` rather than accumulating `Evelyn, Evelyn, Evelyn`, and a turn longer than `DEFAULT_MAX_CHARS` is emitted whole — so the chunker legitimately produces one chunk of 3,686 characters, more than twice its nominal maximum.
+Two things only this fixture reaches. Chunk speaker labels must stay `Evelyn` rather than accumulating `Evelyn, Evelyn, Evelyn`, and a turn longer than `DEFAULT_MAX_CHARS` is emitted whole — so the chunker legitimately produces one chunk of 3,691 characters, nearly twice its nominal maximum.
 
 **Try asking:** _What does Evelyn insist on before running consensus in production?_ — an election timeout at least ten times measured p99 inter-node latency, log compaction configured from day one, quorum-aware deployments, clock skew monitoring, and a runbook tested by someone who does not understand the system.
 
@@ -102,7 +102,7 @@ The valuable content is a causal chain that no single turn contains: adding an e
 
 A Q4 company town hall with 18 distinct speaker labels: Alex hosting and reading questions out, Victoria taking most of them, five leaders answering in their own areas, a long tail of nine people asking one or two questions each, plus `Unknown Speaker` and `Conference Room B` where diarisation gave up on a shared room microphone.
 
-Highest speaker count in the set, and the widest chunk label spans nine distinct speakers. Chunk headers list every distinct speaker in the window, so this is where label accumulation eats into the character budget, and where speaker attribution is easiest to get wrong. One speaker is named Jonás, so the labels carry non-ASCII too.
+Highest speaker count in the set, and the widest chunk label spans nine distinct speakers. Chunk headers list every distinct speaker in the window, so this is where label accumulation eats into the character budget, and where speaker attribution is easiest to get wrong. It is the fixture that most needs each turn to carry its own clock: with nine names in one header, a single window timestamp is enough to pin a claim on the wrong person. One speaker is named Jonás, so the labels carry non-ASCII too.
 
 **Try asking:** _Who owns the YubiKey rollout and when is it due?_ — Frank, shipping to engineering by Tuesday, with a two-week grace period before hardware keys are required for production access.
 
@@ -134,26 +134,26 @@ It also has the shape of a real incident rather than a clean narrative: the seve
 
 ### `all-hands-marathon.txt`
 
-A quarterly business review billed as three hours, of which 2 hours 36 minutes is recorded. Nine speakers, 1,198 turns, and a guest customer — Liam, the same person interviewed in `customer-interview.txt` — taking questions for fourteen minutes near the end. Sections cover finance, sales, marketing, product, engineering, support, and people, so the same terms recur in different contexts and retrieval has to pick the right one out of 58 chunks with `RETRIEVE_K=8`.
+A quarterly business review billed as three hours, of which 2 hours 36 minutes is recorded. Nine speakers, 1,198 turns, and a guest customer — Liam, the same person interviewed in `customer-interview.txt` — taking questions for fourteen minutes near the end. Sections cover finance, sales, marketing, product, engineering, support, and people, so the same terms recur in different contexts and retrieval has to pick the right one out of 60 chunks with `RETRIEVE_K=8`.
 
 The recording is paused for both breaks, so the timeline jumps: ten minutes between `00:28:00` and `00:38:02`, and fifteen between `01:03:12` and `01:18:14`. The parser only requires timestamps not to move backwards, so gaps like these are legal — but anything that treats a transcript as continuous audio will be wrong about this file.
 
-The only fixture past `FACT_TRANSCRIPT_CHAR_LIMIT`. The last **73 turns** fall beyond the 100,000-character cutoff, so fact extraction never sees them while chat retrieval does. The sharpest demonstration is Lisa's commitment to rebuild the **onboarding buddy rota** and circulate it by Monday: ask chat about it and you get an answer with a citation, but it never appears in the extracted action items. That gap is the intended observation, not a bug.
+Lisa’s commitment to rebuild the **onboarding buddy rota** and circulate it by Monday sits in the last minutes of the file. Windowed extraction must still list it; if the panel omits it, a window was dropped or truncated.
 
 **Try asking:** _How much were the orphaned preview environments costing?_ — about nineteen thousand a month at peak, and roughly a hundred and fifty thousand across the eight months it went unnoticed, because the teardown webhook broke in February and returned a success code instead of erroring, so nothing alerted. It is discussed early and referenced again much later, so a wrong answer usually means retrieval ranking rather than generation.
 
 ## Limits
 
-| Limit                                                                                               | Value     | Fixture that reaches it                                         |
-| --------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
-| `FULL_CONTEXT_CHAR_THRESHOLD` — below it the whole transcript is prompted                           | `24000`   | `customer-interview.txt` (23,940) / `solo-keynote.txt` (24,249) |
-| [`DEFAULT_MAX_CHARS`](../server/src/transcript/chunk.ts) — soft cap, a longer turn is emitted whole | `1800`    | `solo-keynote.txt`, one chunk of 3,686                          |
-| [`FACT_TRANSCRIPT_CHAR_LIMIT`](../server/src/extract/facts.ts) — extraction truncates above it      | `100_000` | `all-hands-marathon.txt` (106,337), 73 turns dropped            |
-| `RETRIEVE_K` / `FTS_K` — chunks fused into the prompt                                               | `8`       | `all-hands-marathon.txt`, 58 chunks                             |
-| Distinct speakers in one chunk label                                                                | unbounded | `town-hall-qna.txt`, 18 speakers, 9 in one label                |
-| Continuation lines appended to the previous turn                                                    | unbounded | `solo-keynote.txt`, one turn of 3,657 chars across 55 lines     |
-| UTF-8 bytes exceeding JavaScript string length                                                      | —         | `security-architecture-rfc.txt`, 25,245 bytes vs 24,668 chars   |
-| Gap between consecutive timestamps when the recording is paused                                     | unbounded | `all-hands-marathon.txt`, 902 seconds across the second break   |
+| Limit                                                                                                 | Value     | Fixture that reaches it                                         |
+| ----------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
+| `FULL_CONTEXT_CHAR_THRESHOLD` — below it the whole transcript is prompted                             | `24000`   | `customer-interview.txt` (23,940) / `solo-keynote.txt` (24,249) |
+| [`DEFAULT_MAX_CHARS`](../server/src/transcript/chunk.ts) — soft cap, a longer turn is emitted whole   | `2000`    | `solo-keynote.txt`, one chunk of 3,691                          |
+| [`WINDOW_MAX_CHARS`](../server/src/extract/window.ts) / 20% overlap — extract windows, not truncation | `12000`   | `all-hands-marathon.txt` (106,337), several windows             |
+| `RETRIEVE_K` / `FTS_K` — chunks fused into the prompt                                                 | `8`       | `all-hands-marathon.txt`, 60 chunks                             |
+| Distinct speakers in one chunk label                                                                  | unbounded | `town-hall-qna.txt`, 18 speakers, 9 in one label                |
+| Continuation lines appended to the previous turn                                                      | unbounded | `solo-keynote.txt`, one turn of 3,657 chars across 55 lines     |
+| UTF-8 bytes exceeding JavaScript string length                                                        | —         | `security-architecture-rfc.txt`, 25,245 bytes vs 24,668 chars   |
+| Gap between consecutive timestamps when the recording is paused                                       | unbounded | `all-hands-marathon.txt`, 902 seconds across the second break   |
 
 Constants and their source files are listed in [docs/flows](../docs/flows/README.md#constants).
 
