@@ -68,10 +68,7 @@ async function* sseChunks(
   log: FastifyBaseLogger,
   signal: AbortSignal,
 ): AsyncGenerator<string> {
-  yield writeSse('context', {
-    citations: answer.citations,
-    useFullTranscript: answer.useFullTranscript,
-  });
+  yield writeSse('context', { useFullTranscript: answer.useFullTranscript });
   let full = '';
   let saved = false;
   try {

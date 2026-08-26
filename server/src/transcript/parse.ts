@@ -5,6 +5,23 @@ export type Turn = {
   text: string;
 };
 
+/**
+ * The one way a turn is written for a model. The prefix is the citation itself, so
+ * copying the marker from the turn that contains the claim cannot yield an earlier
+ * greeting by the same speaker. turn.text may contain newlines.
+ */
+export function turnPrefix(turn: Turn): string {
+  return `[${turn.speaker}, ${turn.timestamp}]: `;
+}
+
+export function renderTurn(turn: Turn): string {
+  return turnPrefix(turn) + turn.text;
+}
+
+export function renderTurns(turns: Turn[]): string {
+  return turns.map(renderTurn).join('\n');
+}
+
 export class ParseError extends Error {
   override name = 'ParseError';
   constructor() {

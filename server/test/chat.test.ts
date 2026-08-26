@@ -218,7 +218,17 @@ test('chat streams tokens and persists user then assistant messages', async () =
   assert.equal(body.messages[1]?.content, 'Hello world');
 });
 
-test('chat against meeting A does not retrieve meeting B chunk ids', async () => {
+function chunkTexts(database: DatabaseSync, meetingId: number): string[] {
+  return (
+    database.prepare('SELECT text FROM chunks WHERE meeting_id = ?').all(meetingId) as Array<{
+      text: string;
+    }>
+  ).map((row) => row.text);
+}
+
+// Retrieval is scoped by meeting, and the prompt is where a leak would do damage, so the
+// assertion is on the excerpts the model actually saw rather than on any side channel.
+test('chat against meeting A prompts with no chunk from meeting B', async () => {
   process.env.FULL_CONTEXT_CHAR_THRESHOLD = '0';
   const prompts: ChatMessage[][] = [];
   const llm = fakeLlm({
@@ -231,23 +241,16 @@ test('chat against meeting A does not retrieve meeting B chunk ids', async () =>
   const { app: instance, db: database } = await openTestApp(llm);
   const a = await seedMeeting(database, llm, 'A', '[00:00:01] Ada: Project Phoenix ships Friday');
   const b = await seedMeeting(database, llm, 'B', '[00:00:01] Omar: Project Zephyr is cancelled');
-  const bIds = new Set(
-    (
-      database.prepare('SELECT id FROM chunks WHERE meeting_id = ?').all(b.meetingId) as Array<{
-        id: number | bigint;
-      }>
-    ).map((row) => Number(row.id)),
-  );
 
   const res = await chat(instance, a.meetingId, 'What ships Friday?');
   assert.equal(res.statusCode, 200);
   const context = parseSse(res.body).find((event) => event.event === 'context');
   assert.ok(context);
-  const data = context.data as { citations: Array<{ id: number }>; useFullTranscript: boolean };
-  assert.equal(data.useFullTranscript, false);
-  assert.ok(data.citations.length > 0);
-  assert.ok(data.citations.every((citation) => !bIds.has(citation.id)));
-  assert.doesNotMatch(JSON.stringify(data.citations), /Zephyr/);
+  assert.equal((context.data as { useFullTranscript: boolean }).useFullTranscript, false);
+
+  const asked = prompts[0]?.at(-1)?.content ?? '';
+  assert.ok(chunkTexts(database, a.meetingId).some((text) => asked.includes(text)));
+  assert.ok(chunkTexts(database, b.meetingId).every((text) => !asked.includes(text)));
   assert.doesNotMatch(JSON.stringify(prompts), /Zephyr/);
 });
 
@@ -308,6 +311,24 @@ test('full-transcript chat skips reindex when embeddings are stale', async () =>
   const context = parseSse(res.body).find((event) => event.event === 'context');
   assert.ok(context);
   assert.equal((context.data as { useFullTranscript: boolean }).useFullTranscript, true);
+});
+
+test('full-transcript prompt renders turns as copyable citations', async () => {
+  const prompts: ChatMessage[][] = [];
+  const llm = fakeLlm({
+    streamChat: async function* (messages) {
+      prompts.push(messages);
+      yield 'ok';
+    },
+  });
+  const { app: instance, db: database } = await openTestApp(llm);
+  const { meetingId } = await seedMeeting(database, llm, 'Short', '[00:00:01] Ada: hello');
+
+  const res = await chat(instance, meetingId, 'Who spoke?');
+  assert.equal(res.statusCode, 200);
+  const system = prompts[0]?.find((message) => message.role === 'system')?.content ?? '';
+  assert.match(system, /\[Ada, 00:00:01\]: hello/);
+  assert.doesNotMatch(system, /\[00:00:01\] Ada:/);
 });
 
 test('stream failure persists partial answer and hides internal errors', async () => {

@@ -5,12 +5,14 @@ import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, test } from 'node:test';
 import { fromVectorBlob, openDb } from '../src/db/client.ts';
 import { migrate } from '../src/db/migrate.ts';
+import { packWindows } from '../src/extract/window.ts';
 import { ingestTranscript } from '../src/ingest/pipeline.ts';
 import { EmbeddingDimensionError } from '../src/llm/embed.ts';
 import type { Llm } from '../src/llm/types.ts';
-import { ParseError } from '../src/transcript/parse.ts';
+import { ParseError, parseTranscript } from '../src/transcript/parse.ts';
 
 const standupPath = join(import.meta.dirname, '../../fixtures/transcripts/standup.txt');
+const marathonPath = join(import.meta.dirname, '../../fixtures/transcripts/all-hands-marathon.txt');
 const oneTurn = '[00:00:01] Ada: hello';
 
 const embedConfig = {
@@ -150,7 +152,9 @@ test('standup fixture ingest creates turns, chunks, embeddings, and status ready
     .all(meetingId) as Array<{ id: number | bigint; chunk_index: number; text: string }>;
   assert.equal(chunks.length, 1);
   assert.equal(chunks[0].chunk_index, 0);
-  assert.ok(chunks[0].text.includes('Ada: Morning, I am shipping the health endpoint today.'));
+  assert.ok(
+    chunks[0].text.includes('[Ada, 00:00:03]: Morning, I am shipping the health endpoint today.'),
+  );
 
   const embeddings = db
     .prepare(`SELECT chunk_id, embedding FROM chunk_embeddings WHERE meeting_id = ?`)
@@ -271,7 +275,7 @@ test('abort during embed deletes the meeting instead of leaving it in error', as
   assert.equal(count(db, 'SELECT COUNT(*) AS n FROM meetings'), 0);
 });
 
-test('abort during fact extraction keeps a ready meeting', async () => {
+test('abort during fact extraction deletes the meeting', async () => {
   db = openMigratedMemoryDb();
   const llm = fakeLlm(
     async (texts) => unitVectors(texts.length, embedConfig.embeddingDimensions),
@@ -292,20 +296,47 @@ test('abort during fact extraction keeps a ready meeting', async () => {
     { name: 'AbortError' },
   );
 
-  const meetings = db.prepare('SELECT id, status FROM meetings').all() as Array<{
-    id: number | bigint;
-    status: string;
-  }>;
-  assert.equal(meetings.length, 1);
-  assert.equal(meetings[0].status, 'ready');
-  assert.deepEqual(derivedRowCounts(db, Number(meetings[0].id)), {
-    turns: 1,
-    chunks: 1,
-    embeddings: 1,
-    fts: 1,
-    decisions: 0,
-    actionItems: 0,
-  });
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM meetings'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM turns'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM chunks'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM chunk_embeddings'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM chunks_fts'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM decisions'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM action_items'), 0);
+});
+
+test('abort after facts are stored still deletes the meeting', async () => {
+  db = openMigratedMemoryDb();
+  const controller = new AbortController();
+  const llm = fakeLlm(
+    async (texts) => unitVectors(texts.length, embedConfig.embeddingDimensions),
+    async () => {
+      controller.abort();
+      return JSON.stringify({
+        decisions: [{ text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' }],
+        actionItems: [],
+      });
+    },
+  );
+
+  await assert.rejects(
+    () =>
+      ingestTranscript(
+        db!,
+        llm,
+        embedConfig,
+        {
+          title: 'Short',
+          filename: 'short.txt',
+          rawText: oneTurn,
+        },
+        controller.signal,
+      ),
+    { name: 'AbortError' },
+  );
+
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM meetings'), 0);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM decisions'), 0);
 });
 
 test('valid extract JSON inserts decisions and action items and stays ready', async () => {
@@ -459,4 +490,70 @@ test('malformed extract JSON leaves meeting ready with zero facts', async () => 
     decisions: 0,
     actionItems: 0,
   });
+});
+
+test('marathon ingest maps every window and stays ready', async () => {
+  db = openMigratedMemoryDb();
+  const rawText = readFileSync(marathonPath, 'utf8');
+  const windows = packWindows(parseTranscript(rawText));
+  let completeJsonCalls = 0;
+  const llm = fakeLlm(
+    async (texts) => unitVectors(texts.length, embedConfig.embeddingDimensions),
+    async () => {
+      completeJsonCalls += 1;
+      return emptyFactsJson();
+    },
+  );
+
+  const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
+    title: 'Marathon',
+    filename: 'all-hands-marathon.txt',
+    rawText,
+  });
+
+  const meeting = db.prepare('SELECT status FROM meetings WHERE id = ?').get(meetingId) as {
+    status: string;
+  };
+  assert.equal(meeting.status, 'ready');
+  assert.equal(completeJsonCalls, windows.length);
+  assert.ok(windows.length > 1);
+});
+
+test('embed failure aborts in-flight fact extraction', async () => {
+  db = openMigratedMemoryDb();
+  let extractAborted = false;
+  const llm = fakeLlm(
+    async () => {
+      throw new EmbeddingDimensionError(3, embedConfig.embeddingDimensions);
+    },
+    async (_messages, signal) => {
+      await new Promise<void>((_resolve, reject) => {
+        const fail = () => {
+          extractAborted = true;
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        };
+        if (signal?.aborted) {
+          fail();
+          return;
+        }
+        signal?.addEventListener('abort', fail, { once: true });
+      });
+      return emptyFactsJson();
+    },
+  );
+
+  await assert.rejects(
+    () =>
+      ingestTranscript(db!, llm, embedConfig, {
+        title: 'Short',
+        filename: 'short.txt',
+        rawText: oneTurn,
+      }),
+    EmbeddingDimensionError,
+  );
+
+  assert.equal(extractAborted, true);
+  assert.equal(count(db, 'SELECT COUNT(*) AS n FROM meetings'), 0);
 });

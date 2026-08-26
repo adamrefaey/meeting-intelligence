@@ -15,6 +15,28 @@ export function chatSampling(model: string, temperature: number): { temperature?
   return REASONING_MODEL.test(model) ? {} : { temperature };
 }
 
+export function jsonReasoningEffort(model: string): {
+  reasoning_effort?: 'none' | 'minimal' | 'low' | 'high';
+} {
+  if (!REASONING_MODEL.test(model)) {
+    return {};
+  }
+  if (/^gpt-5/i.test(model) && /chat/i.test(model)) {
+    return {};
+  }
+  if (/gpt-5-pro/i.test(model)) {
+    return { reasoning_effort: 'high' };
+  }
+  // gpt-5.1+ rejects 'minimal'; gpt-5 / gpt-5-mini / gpt-5-nano reject 'none'.
+  if (/^gpt-5\.\d/i.test(model)) {
+    return { reasoning_effort: 'none' };
+  }
+  if (/^gpt-5/i.test(model)) {
+    return { reasoning_effort: 'minimal' };
+  }
+  return { reasoning_effort: 'low' };
+}
+
 function abortReason(signal: AbortSignal): Error {
   if (signal.reason instanceof Error) {
     return signal.reason;
@@ -76,6 +98,7 @@ export async function completeJson(
   const options = requestOptions(signal);
   const extra = {
     ...chatSampling(model, 0),
+    ...jsonReasoningEffort(model),
     response_format: { type: 'json_object' as const },
   };
 

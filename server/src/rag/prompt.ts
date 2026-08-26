@@ -28,10 +28,17 @@ export type BuildChatMessagesInput = {
 
 const SYSTEM_RULES = `You answer questions about this single meeting.
 Use only the provided context. Do not use outside knowledge.
-Cite supporting turns as [Speaker, timestamp] using labels from the context.
+Each turn starts with [Speaker, timestamp]: and runs until the next one, so it may span
+several lines. Cite by copying that [Speaker, timestamp] marker from the turn the claim
+comes from, not from an earlier line by the same speaker.
 If the answer is not in the context, say you cannot find it in this meeting.
 Prefer the Decisions and Action items lists when the question is about those topics.
 Keep answers concise.`;
+
+const EXCERPT_RULES =
+  '## Excerpt format\nEach retrieved excerpt lists its speakers, then its turns, each ' +
+  'beginning with a [Speaker, timestamp]: marker. Copy that marker to cite. Excerpts are ' +
+  'separate windows of the same meeting and may be out of order.';
 
 function bullet(text: string, meta: string[]): string {
   return meta.length > 0 ? `- ${text} (${meta.join(', ')})` : `- ${text}`;
@@ -84,6 +91,8 @@ export function buildChatMessages(input: BuildChatMessagesInput): ChatMessage[] 
   ];
   if (input.useFullTranscript) {
     systemParts.push(`## Transcript\n${input.rawText}`);
+  } else if (input.chunks.length > 0) {
+    systemParts.push(EXCERPT_RULES);
   }
   return [
     { role: 'system', content: systemParts.join('\n\n') },

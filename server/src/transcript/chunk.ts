@@ -1,4 +1,4 @@
-import { type Turn } from './parse.ts';
+import { renderTurn, type Turn } from './parse.ts';
 
 export type Chunk = {
   chunkIndex: number;
@@ -12,7 +12,8 @@ export type Chunk = {
   turnEndIndex: number;
 };
 
-export const DEFAULT_MAX_CHARS = 1800;
+/** Covers the `[Speaker, timestamp]: ` prefixes too, so it buys ~1800 chars of speech. */
+export const DEFAULT_MAX_CHARS = 2000;
 
 type Packed = {
   start: number;
@@ -21,18 +22,17 @@ type Packed = {
   text: string;
 };
 
-function header(startTs: string, endTs: string, speakerLabel: string): string {
-  return `[${startTs}\u2013${endTs}] ${speakerLabel}`;
+/**
+ * Deliberately carries no clock. Every timestamp a model can see in an excerpt has to
+ * belong to a turn, or it will pair a speaker from this roster with a window boundary.
+ * The window range stays available to callers on startTimestamp/endTimestamp.
+ */
+function header(speakerLabel: string): string {
+  return `Speakers: ${speakerLabel}`;
 }
 
-function candidateLength(
-  startTs: string,
-  endTs: string,
-  speakerLabel: string,
-  bodyLen: number,
-  lineCount: number,
-): number {
-  return header(startTs, endTs, speakerLabel).length + 1 + bodyLen + (lineCount - 1);
+function candidateLength(speakerLabel: string, bodyLen: number, lineCount: number): number {
+  return header(speakerLabel).length + 1 + bodyLen + (lineCount - 1);
 }
 
 function nextSpeakerLabel(label: string, speaker: string, seen: Set<string>): string {
@@ -76,13 +76,7 @@ function packFrom(start: number, turns: Turn[], lines: string[], maxChars: numbe
     const turn = turns[i];
     const line = lines[i];
     const nextLabel = nextSpeakerLabel(speakerLabel, turn.speaker, seen);
-    const nextLen = candidateLength(
-      first.timestamp,
-      turn.timestamp,
-      nextLabel,
-      bodyLen + line.length,
-      windowLines.length + 1,
-    );
+    const nextLen = candidateLength(nextLabel, bodyLen + line.length, windowLines.length + 1);
     if (nextLen > maxChars) {
       break;
     }
@@ -93,8 +87,7 @@ function packFrom(start: number, turns: Turn[], lines: string[], maxChars: numbe
     end = i;
   }
 
-  const last = turns[end];
-  const text = `${header(first.timestamp, last.timestamp, speakerLabel)}\n${windowLines.join('\n')}`;
+  const text = `${header(speakerLabel)}\n${windowLines.join('\n')}`;
   return { start, end, speakerLabel, text };
 }
 
@@ -118,7 +111,7 @@ export function chunkTurns(turns: Turn[], maxChars = DEFAULT_MAX_CHARS): Chunk[]
   if (turns.length === 0) {
     return [];
   }
-  const lines = turns.map((turn) => `${turn.speaker}: ${turn.text}`);
+  const lines = turns.map(renderTurn);
   const chunks: Chunk[] = [];
   let cursor = 0;
 

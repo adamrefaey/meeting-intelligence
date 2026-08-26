@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { FACT_TRANSCRIPT_CHAR_LIMIT } from '../src/extract/facts.ts';
+import { packWindows, WINDOW_MAX_CHARS, WINDOW_OVERLAP_RATIO } from '../src/extract/window.ts';
 import { shouldUseFullTranscript } from '../src/rag/retrieve.ts';
 import { chunkTurns, DEFAULT_MAX_CHARS } from '../src/transcript/chunk.ts';
 import { parseTranscript } from '../src/transcript/parse.ts';
@@ -308,28 +308,32 @@ test('fixtures straddle the full-context threshold in both directions', () => {
   );
 });
 
-test('all-hands-marathon drops late commitments from fact extraction', () => {
+test('all-hands-marathon windows cover the tail commitment', () => {
   const raw = read('all-hands-marathon.txt');
+  const turns = parseTranscript(raw);
+  const windows = packWindows(turns);
+
+  assert.ok(windows.length > 1, 'marathon must span more than one extract window');
+  assert.equal(windows[windows.length - 1].turnEnd, turns.length - 1);
   assert.ok(
-    raw.length > FACT_TRANSCRIPT_CHAR_LIMIT,
-    `marathon fixture must exceed ${FACT_TRANSCRIPT_CHAR_LIMIT} chars to exercise truncation`,
+    windows.some((window) => window.text.includes('onboarding buddy rota')),
+    'Lisa’s late buddy-rota commitment must land in an extract window',
   );
 
-  // Retrieval indexes the whole transcript while fact extraction only sees the
-  // first FACT_TRANSCRIPT_CHAR_LIMIT chars. This commitment lands in the gap, so
-  // asking about it should surface an answer that the facts panel never lists.
-  const needle = 'onboarding buddy rota';
-  assert.ok(raw.indexOf(needle) > FACT_TRANSCRIPT_CHAR_LIMIT, `${needle} must fall past the limit`);
-  assert.ok(!raw.slice(0, FACT_TRANSCRIPT_CHAR_LIMIT).includes(needle));
-
-  const turns = parseTranscript(raw);
-  const kept = parseTranscript(raw.slice(0, FACT_TRANSCRIPT_CHAR_LIMIT));
-  assert.ok(turns.length - kept.length > 25, 'truncation should drop a meaningful run of turns');
+  const covered = new Set<number>();
+  for (const window of windows) {
+    for (let index = window.turnStart; index <= window.turnEnd; index += 1) {
+      covered.add(index);
+    }
+  }
+  assert.equal(covered.size, turns.length);
 
   assert.ok(
     chunkTurns(turns).length > 50,
     'marathon should produce far more chunks than RETRIEVE_K',
   );
+  assert.equal(WINDOW_OVERLAP_RATIO, 0.2);
+  assert.equal(WINDOW_MAX_CHARS, 12_000);
 });
 
 test('customer-interview and all-hands-marathon share a customer on purpose', () => {

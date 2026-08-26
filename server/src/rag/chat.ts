@@ -4,8 +4,9 @@ import { inTransaction, insertRows } from '../db/batch.ts';
 import { toVectorBlob } from '../db/client.ts';
 import { EmbeddingDimensionError } from '../llm/embed.ts';
 import type { ChatMessage, Llm } from '../llm/types.ts';
+import { renderTurns, type Turn } from '../transcript/parse.ts';
 import { buildChatMessages, type PromptActionItem, type PromptFact } from './prompt.ts';
-import { retrieveForMeeting, shouldUseFullTranscript, type RetrievedChunk } from './retrieve.ts';
+import { retrieveForMeeting, shouldUseFullTranscript } from './retrieve.ts';
 
 export class MeetingNotFoundError extends Error {
   override name = 'MeetingNotFoundError';
@@ -31,18 +32,8 @@ export type ChatConfig = Pick<
   | 'chatHistoryTurns'
 >;
 
-export type ChatCitation = {
-  id: number;
-  speakerLabel: string;
-  startTimestamp: string;
-  endTimestamp: string;
-  startSeconds: number;
-  endSeconds: number;
-};
-
 export type AnswerQuestionResult = {
   stream: AsyncIterable<string>;
-  citations: ChatCitation[];
   useFullTranscript: boolean;
 };
 
@@ -69,11 +60,14 @@ function loadMeeting(db: DatabaseSync, meetingId: number): MeetingRow | undefine
     .get(meetingId) as MeetingRow | undefined;
 }
 
-function loadRawText(db: DatabaseSync, meetingId: number): string {
-  const row = db.prepare('SELECT raw_text FROM meetings WHERE id = ?').get(meetingId) as
-    | { raw_text: string }
-    | undefined;
-  return row?.raw_text ?? '';
+function loadRenderedTranscript(db: DatabaseSync, meetingId: number): string {
+  const turns = db
+    .prepare(
+      `SELECT speaker, timestamp, start_seconds AS startSeconds, text
+       FROM turns WHERE meeting_id = ? ORDER BY turn_index`,
+    )
+    .all(meetingId) as Turn[];
+  return renderTurns(turns);
 }
 
 function needsReindex(meeting: MeetingRow, config: ChatConfig): boolean {
@@ -169,17 +163,6 @@ function loadHistory(db: DatabaseSync, meetingId: number, limit: number): ChatMe
   return rows.reverse().map((row) => ({ role: row.role, content: row.content }));
 }
 
-function toCitation(chunk: RetrievedChunk): ChatCitation {
-  return {
-    id: chunk.id,
-    speakerLabel: chunk.speakerLabel,
-    startTimestamp: chunk.startTimestamp,
-    endTimestamp: chunk.endTimestamp,
-    startSeconds: chunk.startSeconds,
-    endSeconds: chunk.endSeconds,
-  };
-}
-
 async function buildAnswer(
   db: DatabaseSync,
   llm: Llm,
@@ -211,14 +194,10 @@ async function buildAnswer(
     history: loadHistory(db, meetingId, config.chatHistoryTurns),
     userMessage,
     useFullTranscript,
-    rawText: useFullTranscript ? loadRawText(db, meetingId) : '',
+    rawText: useFullTranscript ? loadRenderedTranscript(db, meetingId) : '',
     chatHistoryTurns: config.chatHistoryTurns,
   });
-  return {
-    stream: llm.streamChat(messages, signal),
-    citations: chunks.map(toCitation),
-    useFullTranscript,
-  };
+  return { stream: llm.streamChat(messages, signal), useFullTranscript };
 }
 
 export async function answerQuestion(

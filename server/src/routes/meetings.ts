@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { DatabaseSync } from 'node:sqlite';
 import type { AppConfig } from '../config.ts';
-import { ingestTranscript } from '../ingest/pipeline.ts';
+import { discardMeeting, ingestTranscript } from '../ingest/pipeline.ts';
 import type { Llm } from '../llm/types.ts';
 import { ParseError } from '../transcript/parse.ts';
 import {
@@ -326,6 +326,7 @@ async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, re
       clientDisconnectSignal(reply),
     );
     if (skipIfAborted(reply)) {
+      discardMeeting(deps.db, meetingId);
       return;
     }
     return reply.code(201).send({ id: meetingId, status: 'ready' });

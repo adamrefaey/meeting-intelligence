@@ -156,20 +156,19 @@ function storeFacts(db: DatabaseSync, meetingId: number, facts: ExtractedFacts):
   });
 }
 
-function recoverIngestFailure(
-  db: DatabaseSync,
-  meetingId: number | undefined,
-  embeddingsCommitted: boolean,
-): void {
-  if (meetingId === undefined || embeddingsCommitted) {
-    // Extract runs after embeddings commit `ready`. Do not delete a searchable meeting.
-    return;
-  }
+export function discardMeeting(db: DatabaseSync, meetingId: number): void {
   try {
     db.prepare('DELETE FROM meetings WHERE id = ?').run(meetingId);
   } catch {
-    // Keep the original ingest failure if recovery itself fails.
+    // Best-effort: never mask the original ingest or abort error.
   }
+}
+
+function recoverIngestFailure(db: DatabaseSync, meetingId: number | undefined): void {
+  if (meetingId === undefined) {
+    return;
+  }
+  discardMeeting(db, meetingId);
 }
 
 export async function ingestTranscript(
@@ -184,25 +183,32 @@ export async function ingestTranscript(
   const chunks = chunkTurns(turns);
 
   let meetingId: number | undefined;
-  let embeddingsCommitted = false;
+  const extractAbort = new AbortController();
+  const extractSignal =
+    signal === undefined ? extractAbort.signal : AbortSignal.any([signal, extractAbort.signal]);
   try {
     const stored = storeTranscript(db, config, input, turns, chunks);
     meetingId = stored.meetingId;
     signal?.throwIfAborted();
-    const vectors = await embedChunks(llm, chunks, signal);
+    const vectorsPromise = embedChunks(llm, chunks, signal);
+    const factsPromise = extractFacts(llm, turns, extractSignal);
+    // Embed failure aborts extract without awaiting it; swallow so that is not unhandled.
+    void factsPromise.catch(() => undefined);
+    const vectors = await vectorsPromise;
     signal?.throwIfAborted();
     storeEmbeddings(db, config, stored.meetingId, stored.chunkIds, vectors);
-    embeddingsCommitted = true;
     try {
-      storeFacts(db, stored.meetingId, await extractFacts(llm, input.rawText, signal));
+      storeFacts(db, stored.meetingId, await factsPromise);
     } catch (error) {
       if (isAbortError(error)) {
         throw error;
       }
     }
+    signal?.throwIfAborted();
     return { meetingId: stored.meetingId };
   } catch (error) {
-    recoverIngestFailure(db, meetingId, embeddingsCommitted);
+    extractAbort.abort();
+    recoverIngestFailure(db, meetingId);
     throw error;
   }
 }

@@ -327,3 +327,42 @@ test('HTTP client abort during ingest does not leave a meeting', async () => {
   }
   assert.equal(remaining, 0);
 });
+
+test('HTTP client abort during fact extraction does not leave a meeting', async () => {
+  let started!: () => void;
+  const extractStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const llm: Llm = {
+    embedDocuments: async (texts) => unitVectors(texts.length, 4),
+    embedQueries: unused,
+    completeJson: async (_messages, signal) => {
+      started();
+      await waitForAbort(signal);
+      return '{"decisions":[],"actionItems":[]}';
+    },
+    streamChat: unused,
+  };
+  const { app: instance } = await openTestApp(llm);
+  const origin = await instance.listen({ host: '127.0.0.1', port: 0 });
+  const controller = new AbortController();
+  const pending = fetch(`${origin}/api/meetings`, {
+    method: 'POST',
+    body: txtForm('standup.txt', standupText, 'Standup'),
+    signal: controller.signal,
+  });
+  await extractStarted;
+  controller.abort();
+  await pending.catch(() => undefined);
+  const deadline = Date.now() + 2_000;
+  let remaining = -1;
+  while (Date.now() < deadline) {
+    const listed = await instance.inject({ method: 'GET', url: '/api/meetings' });
+    remaining = (listed.json() as unknown[]).length;
+    if (remaining === 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(remaining, 0);
+});

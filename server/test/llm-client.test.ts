@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { chatSampling } from '../src/llm/chat.ts';
+import { chatSampling, jsonReasoningEffort } from '../src/llm/chat.ts';
 import { createLlm } from '../src/llm/client.ts';
 import { EMBED_BATCH_SIZE, EmbeddingDimensionError } from '../src/llm/embed.ts';
 import type { LlmConfig } from '../src/llm/types.ts';
@@ -233,6 +233,21 @@ test('chatSampling omits temperature for GPT-5 and o-series models', () => {
   assert.deepEqual(chatSampling('gpt-4.1', 0.2), { temperature: 0.2 });
 });
 
+test('jsonReasoningEffort maps model families to supported effort values', () => {
+  assert.deepEqual(jsonReasoningEffort('gpt-5-mini'), { reasoning_effort: 'minimal' });
+  assert.deepEqual(jsonReasoningEffort('GPT-5'), { reasoning_effort: 'minimal' });
+  assert.deepEqual(jsonReasoningEffort('gpt-5-nano'), { reasoning_effort: 'minimal' });
+  assert.deepEqual(jsonReasoningEffort('gpt-5.1'), { reasoning_effort: 'none' });
+  assert.deepEqual(jsonReasoningEffort('gpt-5.3'), { reasoning_effort: 'none' });
+  assert.deepEqual(jsonReasoningEffort('gpt-5.5'), { reasoning_effort: 'none' });
+  assert.deepEqual(jsonReasoningEffort('gpt-5.2-chat'), {});
+  assert.deepEqual(jsonReasoningEffort('gpt-5-chat-latest'), {});
+  assert.deepEqual(jsonReasoningEffort('gpt-5-pro'), { reasoning_effort: 'high' });
+  assert.deepEqual(jsonReasoningEffort('o3-mini'), { reasoning_effort: 'low' });
+  assert.deepEqual(jsonReasoningEffort('o4-mini'), { reasoning_effort: 'low' });
+  assert.deepEqual(jsonReasoningEffort('gpt-4.1'), {});
+});
+
 test("streamChat yields concatenated deltas 'ab' from two chunks", async () => {
   const { fetch, recorded } = recordingFetch(() => sseChatResponse(['a', 'b']));
   const llm = createLlm(llmConfig(), { fetch });
@@ -244,6 +259,7 @@ test("streamChat yields concatenated deltas 'ab' from two chunks", async () => {
   assert.match(recorded[0].url, /^http:\/\/openai\.test\/v1\//);
   assert.equal(recorded[0].body.stream, true);
   assert.equal(recorded[0].body.temperature, undefined);
+  assert.equal(recorded[0].body.reasoning_effort, undefined);
 });
 
 test('streamChat sends temperature 0.2 for non-reasoning chat models', async () => {
@@ -297,6 +313,7 @@ test('completeJson returns content when json_object is supported', async () => {
   assert.equal(recorded[0].body.stream, true);
   assert.deepEqual(recorded[0].body.response_format, { type: 'json_object' });
   assert.equal(recorded[0].body.temperature, undefined);
+  assert.equal(recorded[0].body.reasoning_effort, 'minimal');
   assert.equal(recorded[0].body.max_tokens, undefined);
 });
 
@@ -308,6 +325,7 @@ test('completeJson sends temperature 0 for non-reasoning chat models', async () 
 
   assert.equal(recorded[0].body.stream, true);
   assert.equal(recorded[0].body.temperature, 0);
+  assert.equal(recorded[0].body.reasoning_effort, undefined);
   assert.equal(recorded[0].body.max_tokens, undefined);
 });
 
