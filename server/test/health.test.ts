@@ -15,6 +15,8 @@ const ENV_KEYS = [
   'FTS_K',
   'CHAT_HISTORY_TURNS',
   'PORT',
+  'HOST',
+  'WEB_ROOT',
 ] as const;
 
 const baseline = {
@@ -29,6 +31,7 @@ const baseline = {
   FTS_K: '8',
   CHAT_HISTORY_TURNS: '8',
   PORT: '3000',
+  HOST: '127.0.0.1',
 } as const;
 
 const envSnapshot: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
@@ -40,6 +43,7 @@ beforeEach(() => {
   for (const [key, value] of Object.entries(baseline)) {
     process.env[key] = value;
   }
+  delete process.env.WEB_ROOT;
 });
 
 afterEach(() => {
@@ -123,7 +127,19 @@ test('loadConfig applies spec defaults when optional env vars are unset', () => 
   assert.equal(config.ftsK, 8);
   assert.equal(config.chatHistoryTurns, 8);
   assert.equal(config.port, 3000);
+  assert.equal(config.host, '127.0.0.1');
   assert.equal('llmMode' in config, false);
+});
+
+test('loadConfig throws when PORT is not a valid port', () => {
+  process.env.PORT = 'abc';
+  assert.throws(() => loadConfig(), /PORT/);
+});
+
+test('loadConfig reads HOST', () => {
+  process.env.HOST = '0.0.0.0';
+  const config = loadConfig();
+  assert.equal(config.host, '0.0.0.0');
 });
 
 test('loadConfig reads OPENAI_BASE_URL as openaiBaseUrl', () => {

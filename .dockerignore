@@ -1,0 +1,17 @@
+.git
+.gitignore
+.cursor
+.vscode
+.DS_Store
+**/.env
+**/.env.*
+**/*.db
+**/data
+**/dist
+**/node_modules
+npm-debug.log*
+docs
+fixtures
+server/test
+web/test
+**/*.md

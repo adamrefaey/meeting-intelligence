@@ -8,6 +8,8 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web",
+    "start": "node --env-file-if-exists=.env server/src/server.ts",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "lint": "oxlint -c .oxlintrc.json",

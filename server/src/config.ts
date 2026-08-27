@@ -10,6 +10,7 @@ export type AppConfig = {
   ftsK: number;
   chatHistoryTurns: number;
   port: number;
+  host: string;
 };
 
 function required(name: string): string {
@@ -34,6 +35,10 @@ export function loadConfig(): AppConfig {
   if (!Number.isInteger(embeddingDimensions) || embeddingDimensions <= 0) {
     throw new Error('EMBEDDING_DIMENSIONS must be a positive integer');
   }
+  const port = optionalNumber('PORT', 3000);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error('PORT must be an integer between 0 and 65535');
+  }
 
   return {
     openaiBaseUrl: optional('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
@@ -46,6 +51,7 @@ export function loadConfig(): AppConfig {
     retrieveK: optionalNumber('RETRIEVE_K', 8),
     ftsK: optionalNumber('FTS_K', 8),
     chatHistoryTurns: optionalNumber('CHAT_HISTORY_TURNS', 8),
-    port: optionalNumber('PORT', 3000),
+    port,
+    host: optional('HOST', '127.0.0.1'),
   };
 }

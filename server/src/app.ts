@@ -10,6 +10,7 @@ import type { Llm } from './llm/types.ts';
 import { chatRoutes } from './routes/chat.ts';
 import { healthRoutes } from './routes/health.ts';
 import { meetingsRoutes } from './routes/meetings.ts';
+import { registerWeb, webDistRoot } from './web.ts';
 
 const FIVE_MIB = 5 * 1024 * 1024;
 
@@ -37,8 +38,11 @@ export async function buildApp(options?: {
   }
 
   const llm = options?.llm ?? createLlm(config);
+  const webRoot = webDistRoot();
 
-  await app.register(cors, { origin: 'http://localhost:5173' });
+  if (webRoot === undefined) {
+    await app.register(cors, { origin: 'http://localhost:5173' });
+  }
   await app.register(healthRoutes(config));
   await app.register(async (scope) => {
     await scope.register(multipart, {
@@ -47,6 +51,9 @@ export async function buildApp(options?: {
     await scope.register(meetingsRoutes({ db, llm, config }));
   });
   await app.register(chatRoutes({ db, llm, config }));
+  if (webRoot !== undefined) {
+    await registerWeb(app, webRoot);
+  }
 
   return app;
 }

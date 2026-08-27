@@ -11,6 +11,7 @@ Chat never mixes meetings. Leaving a meeting (or clicking **Stop**) aborts an in
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Run](#run)
+- [Docker](#docker)
 - [First transcript](#first-transcript)
 - [How a question is answered](#how-a-question-is-answered)
 - [Transcript format](#transcript-format)
@@ -21,12 +22,12 @@ UI screenshots are in [docs/screenshots](docs/screenshots/). Ingestion and retri
 
 ## Screenshots
 
-| File | What |
-| ---- | ---- |
-| [`01.png`](docs/screenshots/01.png) | Empty state: drop or click-select a `.txt` transcript. |
-| [`02.png`](docs/screenshots/02.png) | Ingest in progress (`Ingesting…`, with Cancel). |
+| File                                | What                                                               |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| [`01.png`](docs/screenshots/01.png) | Empty state: drop or click-select a `.txt` transcript.             |
+| [`02.png`](docs/screenshots/02.png) | Ingest in progress (`Ingesting…`, with Cancel).                    |
 | [`03.png`](docs/screenshots/03.png) | A ready meeting: extracted **decisions** and **Ask this meeting**. |
-| [`04.png`](docs/screenshots/04.png) | Transcript plus a cited answer (chips scroll to the turn). |
+| [`04.png`](docs/screenshots/04.png) | Transcript plus a cited answer (chips scroll to the turn).         |
 
 ![Empty state: upload a transcript to start](docs/screenshots/01.png)
 
@@ -94,6 +95,30 @@ Expect `{ "ok": true, "chatModel": "gpt-5-mini", "embeddingModel": "text-embeddi
 
 Ingest **always** embeds. Chat **re-embeds** a meeting only when its stored `embedding_model` / `embedding_dimensions` do not match `.env` **and** the question uses retrieval. Full-transcript chats skip that reindex (the stored vectors are unused). There is one vector per chunk; a reindex replaces it.
 
+## Docker
+
+One image serves the Vite UI and the Fastify API on port **3000**. SQLite lives on a volume. Secrets stay out of the image — pass them at run time.
+
+```bash
+cp .env.example .env   # set OPENAI_API_KEY
+docker compose up --build
+```
+
+Open **http://localhost:3000**.
+
+```bash
+curl -s http://localhost:3000/api/health
+```
+
+`HOST=0.0.0.0` is set in the image so the process is reachable from outside the container. Local `npm run dev` still binds loopback (`127.0.0.1`).
+
+Without Compose:
+
+```bash
+docker build -t meeting-intelligence .
+docker run --rm -p 3000:3000 --env-file .env -v meeting-data:/app/data meeting-intelligence
+```
+
 ## First transcript
 
 1. On the empty state (**Upload a transcript to start**), drop or click-select [`fixtures/transcripts/planning.txt`](fixtures/transcripts/planning.txt).
@@ -144,10 +169,10 @@ BOM is stripped. Continuation lines matter more than they look: transcription se
 
 ## Data
 
-| Path                                    | What                                                                                                                                                    |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. With `npm run dev`, the API cwd is `server/`, so the file is `server/data/app.db`. The API creates the directory on first start. |
-| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                                |
+| Path                                    | What                                                                                                                                                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. With `npm run dev`, the API cwd is `server/`, so the file is `server/data/app.db`. In Docker, Compose stores it at `/app/data/app.db` on a named volume. The API creates the directory on first start. |
+| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                                                                                                      |
 
 Do not commit `data/`, `*.db`, or `.env`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages all live in that SQLite file.
 
