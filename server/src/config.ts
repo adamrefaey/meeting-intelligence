@@ -42,7 +42,7 @@ export function loadConfig(): AppConfig {
 
   return {
     openaiBaseUrl: optional('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-    chatModel: optional('CHAT_MODEL', 'gpt-5-mini'),
+    chatModel: optional('CHAT_MODEL', 'gpt-5.6-luna'),
     embeddingModel: optional('EMBEDDING_MODEL', 'text-embedding-3-small'),
     embeddingDimensions,
     apiKey: required('OPENAI_API_KEY'),

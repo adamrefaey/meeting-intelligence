@@ -60,7 +60,7 @@ Set `OPENAI_API_KEY` in `.env`. It is required and must be non-empty. The other 
 | Variable                      | Default                     |
 | ----------------------------- | --------------------------- |
 | `OPENAI_BASE_URL`             | `https://api.openai.com/v1` |
-| `CHAT_MODEL`                  | `gpt-5-mini`                |
+| `CHAT_MODEL`                  | `gpt-5.6-luna`              |
 | `EMBEDDING_MODEL`             | `text-embedding-3-small`    |
 | `EMBEDDING_DIMENSIONS`        | `1536`                      |
 | `DATABASE_PATH`               | `data/app.db`               |
@@ -91,7 +91,7 @@ Open **http://localhost:5173**. The Vite proxy forwards `/api` to port **3000** 
 curl -s http://localhost:5173/api/health
 ```
 
-Expect `{ "ok": true, "chatModel": "gpt-5-mini", "embeddingModel": "text-embedding-3-small" }` when using the defaults.
+Expect `{ "ok": true, "chatModel": "gpt-5.6-luna", "embeddingModel": "text-embedding-3-small" }` when using the defaults.
 
 Ingest **always** embeds. Chat **re-embeds** a meeting only when its stored `embedding_model` / `embedding_dimensions` do not match `.env` **and** the question uses retrieval. Full-transcript chats skip that reindex (the stored vectors are unused). There is one vector per chunk; a reindex replaces it.
 

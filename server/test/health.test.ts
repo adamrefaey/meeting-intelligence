@@ -118,7 +118,7 @@ test('loadConfig applies spec defaults when optional env vars are unset', () => 
   const config = loadConfig();
   assert.equal(config.apiKey, 'test-key');
   assert.equal(config.openaiBaseUrl, 'https://api.openai.com/v1');
-  assert.equal(config.chatModel, 'gpt-5-mini');
+  assert.equal(config.chatModel, 'gpt-5.6-luna');
   assert.equal(config.embeddingModel, 'text-embedding-3-small');
   assert.equal(config.embeddingDimensions, 1536);
   assert.equal(config.databasePath, 'data/app.db');
