@@ -41,8 +41,7 @@ function unused(): never {
 
 function fakeLlm(completeJson: Llm['completeJson']): Llm {
   return {
-    embedDocuments: unused,
-    embedQueries: unused,
+    embed: unused,
     completeJson,
     streamChat: unused,
   };

@@ -50,12 +50,11 @@ function emptyFactsJson(): string {
 }
 
 function fakeLlm(
-  embedDocuments: Llm['embedDocuments'],
+  embed: Llm['embed'],
   completeJson: Llm['completeJson'] = async () => emptyFactsJson(),
 ): Llm {
   return {
-    embedDocuments,
-    embedQueries: unused,
+    embed,
     completeJson,
     streamChat: unused,
   };

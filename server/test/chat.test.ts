@@ -76,14 +76,13 @@ function unitVectors(count: number, dimensions: number): number[][] {
 }
 
 type FakeLlmOptions = {
-  embedDocuments?: Llm['embedDocuments'];
+  embed?: Llm['embed'];
   streamChat?: Llm['streamChat'];
 };
 
 function fakeLlm(options: FakeLlmOptions = {}): Llm {
   return {
-    embedDocuments: options.embedDocuments ?? (async (texts) => unitVectors(texts.length, 4)),
-    embedQueries: async () => [[1, 0, 0, 0]],
+    embed: options.embed ?? (async (texts) => unitVectors(texts.length, 4)),
     completeJson: async () => '{"decisions":[],"actionItems":[]}',
     streamChat:
       options.streamChat ??
@@ -258,7 +257,7 @@ test('chat reindexes when stored embedding model does not match config', async (
   process.env.FULL_CONTEXT_CHAR_THRESHOLD = '0';
   let embedCalls = 0;
   const llm = fakeLlm({
-    embedDocuments: async (texts) => {
+    embed: async (texts) => {
       embedCalls += 1;
       return unitVectors(texts.length, 4);
     },
@@ -293,7 +292,7 @@ test('chat reindexes when stored embedding model does not match config', async (
 test('full-transcript chat skips reindex when embeddings are stale', async () => {
   let embedCalls = 0;
   const llm = fakeLlm({
-    embedDocuments: async (texts) => {
+    embed: async (texts) => {
       embedCalls += 1;
       return unitVectors(texts.length, 4);
     },
@@ -478,7 +477,7 @@ test('abort during reindex does not persist a user message', async () => {
   process.env.FULL_CONTEXT_CHAR_THRESHOLD = '0';
   let embedStarted = false;
   const llm = fakeLlm({
-    embedDocuments: async (texts) => {
+    embed: async (texts) => {
       if (embedStarted) {
         throw abortError();
       }

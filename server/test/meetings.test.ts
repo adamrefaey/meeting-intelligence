@@ -83,8 +83,7 @@ function unused(): never {
 
 function fakeLlm(): Llm {
   return {
-    embedDocuments: async (texts) => unitVectors(texts.length, 4),
-    embedQueries: unused,
+    embed: async (texts) => unitVectors(texts.length, 4),
     completeJson: async () => '{"decisions":[],"actionItems":[]}',
     streamChat: unused,
   };
@@ -232,10 +231,9 @@ test('title defaults to the filename without .txt', async () => {
 
 test('failed ingest returns 500 and does not leave a meeting', async () => {
   const llm: Llm = {
-    embedDocuments: async () => {
+    embed: async () => {
       throw new Error('embed exploded');
     },
-    embedQueries: unused,
     completeJson: unused,
     streamChat: unused,
   };
@@ -249,12 +247,11 @@ test('failed ingest returns 500 and does not leave a meeting', async () => {
 
 test('aborted ingest does not report 500', async () => {
   const llm: Llm = {
-    embedDocuments: async () => {
+    embed: async () => {
       const error = new Error('aborted');
       error.name = 'AbortError';
       throw error;
     },
-    embedQueries: unused,
     completeJson: unused,
     streamChat: unused,
   };
@@ -295,12 +292,11 @@ test('HTTP client abort during ingest does not leave a meeting', async () => {
     started = resolve;
   });
   const llm: Llm = {
-    embedDocuments: async (_texts, signal) => {
+    embed: async (_texts, signal) => {
       started();
       await waitForAbort(signal);
       return unitVectors(_texts.length, 4);
     },
-    embedQueries: unused,
     completeJson: unused,
     streamChat: unused,
   };
@@ -334,8 +330,7 @@ test('HTTP client abort during fact extraction does not leave a meeting', async 
     started = resolve;
   });
   const llm: Llm = {
-    embedDocuments: async (texts) => unitVectors(texts.length, 4),
-    embedQueries: unused,
+    embed: async (texts) => unitVectors(texts.length, 4),
     completeJson: async (_messages, signal) => {
       started();
       await waitForAbort(signal);

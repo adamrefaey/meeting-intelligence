@@ -125,7 +125,7 @@ export async function reindexMeeting(
 ): Promise<void> {
   const chunks = loadChunkTexts(db, meetingId);
   signal?.throwIfAborted();
-  const vectors = await llm.embedDocuments(
+  const vectors = await llm.embed(
     chunks.map((chunk) => chunk.text),
     signal,
   );

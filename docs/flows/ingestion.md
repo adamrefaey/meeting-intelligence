@@ -115,13 +115,13 @@ flowchart TD
 flowchart TD
   start["embedChunks"]
   texts["texts = chunk.text"]
-  embed["embedDocuments in slices of 128"]
+  embed["embed in slices of 128"]
   store["storeEmbeddings: status = ready"]
 
   start --> texts --> embed --> store
 ```
 
-[`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embedDocuments`, [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `embedChunks` / `storeEmbeddings`
+[`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embed`, [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `embedChunks` / `storeEmbeddings`
 
 - The embedded string is the stored chunk `text` (roster plus turns).
 - Slices of `EMBED_BATCH_SIZE` (`128`). `text-embedding-3*` also send `dimensions`. Vectors are L2-normalized, then stored as BLOBs.

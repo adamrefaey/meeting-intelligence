@@ -121,7 +121,7 @@ async function vectorIds(
   signal?: AbortSignal,
 ): Promise<number[]> {
   try {
-    const vectors = await llm.embedQueries([query], signal);
+    const vectors = await llm.embed([query], signal);
     if (vectors[0] === undefined) {
       return [];
     }

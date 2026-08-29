@@ -96,7 +96,7 @@ function storeTranscript(
 }
 
 async function embedChunks(llm: Llm, chunks: Chunk[], signal?: AbortSignal): Promise<number[][]> {
-  const vectors = await llm.embedDocuments(
+  const vectors = await llm.embed(
     chunks.map((chunk) => chunk.text),
     signal,
   );

@@ -118,7 +118,7 @@ function okEmbedFetch(vectors: number[][] = [[1, 0, 0, 0]]) {
   return recordingFetch(() => jsonResponse(200, embeddingPayload(vectors)));
 }
 
-test('embedDocuments splits inputs into EMBED_BATCH_SIZE requests', async () => {
+test('embed splits inputs into EMBED_BATCH_SIZE requests', async () => {
   const texts = Array.from({ length: EMBED_BATCH_SIZE + 1 }, (_, index) => `t${index}`);
   const { fetch, recorded } = recordingFetch((_url, body) => {
     const input = body.input as string[];
@@ -126,7 +126,7 @@ test('embedDocuments splits inputs into EMBED_BATCH_SIZE requests', async () => 
   });
   const llm = createLlm(llmConfig(), { fetch });
 
-  const vectors = await llm.embedDocuments(texts);
+  const vectors = await llm.embed(texts);
 
   assert.equal(vectors.length, texts.length);
   assert.equal(recorded.length, 2);
@@ -134,36 +134,25 @@ test('embedDocuments splits inputs into EMBED_BATCH_SIZE requests', async () => 
   assert.equal((recorded[1].body.input as string[]).length, 1);
 });
 
-test('embedQueries sends query texts unchanged', async () => {
-  const { fetch, recorded } = okEmbedFetch();
-  const llm = createLlm(llmConfig(), { fetch });
-
-  await llm.embedQueries(['what was decided?']);
-
-  assert.equal(recorded.length, 1);
-  assert.match(recorded[0].url, /^http:\/\/openai\.test\/v1\//);
-  assert.deepEqual(recorded[0].body.input, ['what was decided?']);
-  assert.equal(recorded[0].body.dimensions, 4);
-  assert.equal(recorded[0].body.encoding_format, 'float');
-});
-
-test('embedDocuments sends document texts unchanged', async () => {
+test('embed sends texts unchanged', async () => {
   const document = '[00:00:01–00:00:02] Ada\nAda: hi';
   const { fetch, recorded } = okEmbedFetch();
   const llm = createLlm(llmConfig(), { fetch });
 
-  await llm.embedDocuments([document]);
+  await llm.embed([document]);
 
   assert.equal(recorded.length, 1);
   assert.match(recorded[0].url, /^http:\/\/openai\.test\/v1\//);
   assert.deepEqual(recorded[0].body.input, [document]);
+  assert.equal(recorded[0].body.dimensions, 4);
+  assert.equal(recorded[0].body.encoding_format, 'float');
 });
 
 test('dimension mismatch throws EmbeddingDimensionError and requests dimensions for text-embedding-3', async () => {
   const { fetch, recorded } = okEmbedFetch([[1, 0, 0]]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  await assert.rejects(() => llm.embedDocuments(['x']), EmbeddingDimensionError);
+  await assert.rejects(() => llm.embed(['x']), EmbeddingDimensionError);
   assert.equal(recorded[0].body.dimensions, 4);
 });
 
@@ -171,7 +160,7 @@ test('text-embedding-3 dimensions are requested regardless of model name case', 
   const { fetch, recorded } = okEmbedFetch();
   const llm = createLlm(llmConfig({ embeddingModel: 'TEXT-EMBEDDING-3-SMALL' }), { fetch });
 
-  await llm.embedDocuments(['x']);
+  await llm.embed(['x']);
 
   assert.equal(recorded[0].body.dimensions, 4);
 });
@@ -180,35 +169,34 @@ test('throws when the embedding API returns the wrong number of vectors', async 
   const { fetch } = okEmbedFetch([]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  await assert.rejects(() => llm.embedDocuments(['x']), /Expected 1 embeddings, got 0/);
+  await assert.rejects(() => llm.embed(['x']), /Expected 1 embeddings, got 0/);
 });
 
-test('embedDocuments and embedQueries skip the API when texts is empty', async () => {
+test('embed skips the API when texts is empty', async () => {
   const { fetch, recorded } = recordingFetch(() => {
     throw new Error('fetch should not be called');
   });
   const llm = createLlm(llmConfig(), { fetch });
 
-  assert.deepEqual(await llm.embedDocuments([]), []);
-  assert.deepEqual(await llm.embedQueries([]), []);
+  assert.deepEqual(await llm.embed([]), []);
   assert.equal(recorded.length, 0);
 });
 
-test('embedDocuments rejects when the abort signal is already aborted', async () => {
+test('embed rejects when the abort signal is already aborted', async () => {
   const { fetch, recorded } = recordingFetch(() => jsonResponse(200, { data: [] }));
   const llm = createLlm(llmConfig(), { fetch });
   const controller = new AbortController();
   controller.abort();
 
-  await assert.rejects(() => llm.embedDocuments(['x'], controller.signal));
+  await assert.rejects(() => llm.embed(['x'], controller.signal));
   assert.equal(recorded.length, 0);
 });
 
-test('embedDocuments L2-normalizes returned vectors', async () => {
+test('embed L2-normalizes returned vectors', async () => {
   const { fetch } = okEmbedFetch([[3, 4, 0, 0]]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  const [vector] = await llm.embedDocuments(['x']);
+  const [vector] = await llm.embed(['x']);
   assert.equal(vector.length, 4);
   assert.ok(Math.abs(vector[0] - 0.6) < 1e-6);
   assert.ok(Math.abs(vector[1] - 0.8) < 1e-6);
@@ -220,7 +208,7 @@ test('L2-normalize leaves a zero vector unchanged', async () => {
   const { fetch } = okEmbedFetch([[0, 0, 0, 0]]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  const [vector] = await llm.embedDocuments(['x']);
+  const [vector] = await llm.embed(['x']);
   assert.deepEqual(vector, [0, 0, 0, 0]);
 });
 

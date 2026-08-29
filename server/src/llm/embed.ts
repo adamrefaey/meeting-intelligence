@@ -58,7 +58,7 @@ async function embedSlice(
   });
 }
 
-async function embed(
+export async function embed(
   client: OpenAI,
   config: LlmConfig,
   texts: string[],
@@ -77,22 +77,4 @@ async function embed(
     );
   }
   return vectors;
-}
-
-export function embedDocuments(
-  client: OpenAI,
-  config: LlmConfig,
-  texts: string[],
-  signal?: AbortSignal,
-): Promise<number[][]> {
-  return embed(client, config, texts, signal);
-}
-
-export function embedQueries(
-  client: OpenAI,
-  config: LlmConfig,
-  texts: string[],
-  signal?: AbortSignal,
-): Promise<number[][]> {
-  return embed(client, config, texts, signal);
 }

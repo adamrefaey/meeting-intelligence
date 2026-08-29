@@ -66,10 +66,9 @@ function unused(): never {
   throw new Error('not used in retrieve');
 }
 
-function fakeLlm(embedQueries: Llm['embedQueries']): Llm {
+function fakeLlm(embed: Llm['embed']): Llm {
   return {
-    embedDocuments: unused,
-    embedQueries,
+    embed,
     completeJson: unused,
     streamChat: unused,
   };
@@ -132,7 +131,7 @@ test('a natural-language question still retrieves a lexically matching chunk', a
   );
 });
 
-test('lexical hits are kept when embedQueries throws', async () => {
+test('lexical hits are kept when embed throws', async () => {
   db = openMigratedMemoryDb();
   const meetingId = insertMeeting(db, 'A');
   const phoenixId = insertChunk(db, meetingId, 0, 'Project Phoenix launch date');
@@ -150,7 +149,7 @@ test('lexical hits are kept when embedQueries throws', async () => {
   assert.equal(hits[0]?.id, phoenixId);
 });
 
-test('embedQueries abort is not swallowed as a lexical-only result', async () => {
+test('embed abort is not swallowed as a lexical-only result', async () => {
   db = openMigratedMemoryDb();
   const database = db;
   const meetingId = insertMeeting(database, 'A');
