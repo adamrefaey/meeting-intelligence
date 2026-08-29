@@ -47,6 +47,13 @@ test('prompt contains action item text when provided', () => {
   // rather than at the line, or it is unsatisfiable for every continuation line.
   assert.match(system, /may span\s*\n?\s*several lines/);
   assert.match(system, /copying that \[Speaker, timestamp\] marker/);
+  assert.match(system, /ASCII square brackets/);
+  assert.match(system, /Keiko asked about people who had already moved \[Keiko, 00:04:17\]/);
+  assert.match(
+    system,
+    /Malik asked whether remote-first would make the office worse \[Malik, 00:05:55\]/,
+  );
+  assert.match(system, /If several people match/);
   assert.match(system, /not from an earlier line by the same speaker/);
   assert.match(system, /Each retrieved excerpt lists its speakers/);
   assert.match(system, /cannot find it in this meeting/);

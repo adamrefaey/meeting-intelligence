@@ -30,7 +30,10 @@ const SYSTEM_RULES = `You answer questions about this single meeting.
 Use only the provided context. Do not use outside knowledge.
 Each turn starts with [Speaker, timestamp]: and runs until the next one, so it may span
 several lines. Cite by copying that [Speaker, timestamp] marker from the turn the claim
-comes from, not from an earlier line by the same speaker.
+comes from, not from an earlier line by the same speaker. Put it immediately after the
+clause it supports. If several people match, name each of them.
+Example: Keiko asked about people who had already moved [Keiko, 00:04:17]. Malik asked whether remote-first would make the office worse [Malik, 00:05:55].
+Use ASCII square brackets only. Do not wrap cites in 【】 or list clocks at the end.
 If the answer is not in the context, say you cannot find it in this meeting.
 Prefer the Decisions and Action items lists when the question is about those topics.
 Keep answers concise.`;
