@@ -10,7 +10,7 @@ function GlowingBrandMark() {
     <div className="relative flex h-14 w-14 items-center justify-center" aria-hidden>
       <span className="absolute inset-2 rounded-full bg-accent/20 blur-xl" />
       <span className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-accent/20 bg-accent/10">
-        <BrandMark size="md" />
+        <BrandMark />
       </span>
     </div>
   );
@@ -26,7 +26,6 @@ function EmptyMeetings({
   const listFailed = error?.kind === 'load';
   return (
     <EmptyState
-      heading
       icon={<GlowingBrandMark />}
       title={listFailed ? 'Could not load meetings' : 'Upload a transcript to start'}
       description={
@@ -41,7 +40,6 @@ function EmptyMeetings({
             busyLabel={uploadName ?? undefined}
             onCancel={onCancel}
             className="w-full"
-            label="Drop a .txt transcript"
             onFile={onFile}
             onReject={onReject}
           />
@@ -57,39 +55,25 @@ function EmptyMeetings({
 }
 
 export function MeetingsPage() {
-  const { meetings, onFile, onReject, onCancel, uploadName, loading, error } =
-    useOutletContext<ShellOutletContext>();
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center px-4" aria-busy>
-        <Skeleton className="h-8 w-48" />
-      </div>
-    );
-  }
-
-  if (meetings.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center px-4">
-        <EmptyMeetings
-          onFile={onFile}
-          onReject={onReject}
-          onCancel={onCancel}
-          uploadName={uploadName}
-          error={error}
-        />
-      </div>
-    );
-  }
+  const shell = useOutletContext<ShellOutletContext>();
+  const body = shell.loading ? (
+    <Skeleton className="h-8 w-48" />
+  ) : shell.meetings.length === 0 ? (
+    <EmptyMeetings {...shell} />
+  ) : (
+    <EmptyState
+      icon={<GlowingBrandMark />}
+      title="Select a meeting"
+      description="Choose a meeting from the rail to open its transcript and chat."
+    />
+  );
 
   return (
-    <div className="flex h-full items-center justify-center px-4">
-      <EmptyState
-        heading
-        icon={<GlowingBrandMark />}
-        title="Select a meeting"
-        description="Choose a meeting from the rail to open its transcript and chat."
-      />
+    <div
+      className="flex h-full items-center justify-center px-4"
+      aria-busy={shell.loading || undefined}
+    >
+      {body}
     </div>
   );
 }

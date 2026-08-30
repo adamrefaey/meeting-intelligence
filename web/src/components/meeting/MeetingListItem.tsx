@@ -77,7 +77,6 @@ export function MeetingListItem({ meeting, onDelete, onSelect }: MeetingListItem
       </NavLink>
       <IconButton
         ref={deleteRef}
-        size="md"
         className="mt-1 text-muted hover:bg-danger/10 hover:text-danger"
         aria-label={`Delete ${meeting.title}`}
         onClick={() => onDelete(meeting)}

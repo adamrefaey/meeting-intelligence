@@ -1,29 +1,15 @@
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '../../lib/cn';
+const brandMarkSize = {
+  sm: 'h-5 w-5',
+  md: 'h-8 w-8',
+} as const;
 
-const brandMarkVariants = cva('shrink-0 text-accent', {
-  variants: {
-    size: {
-      sm: 'h-5 w-5',
-      md: 'h-8 w-8',
-    },
-  },
-  defaultVariants: {
-    size: 'md',
-  },
-});
-
-type BrandMarkProps = VariantProps<typeof brandMarkVariants> & {
-  className?: string;
-};
-
-export function BrandMark({ size, className }: BrandMarkProps) {
+export function BrandMark({ size = 'md' }: { size?: keyof typeof brandMarkSize }) {
   return (
     <svg
       aria-hidden
       focusable="false"
       viewBox="0 0 32 32"
-      className={cn(brandMarkVariants({ size }), className)}
+      className={`shrink-0 text-accent ${brandMarkSize[size]}`}
     >
       <path
         fill="currentColor"

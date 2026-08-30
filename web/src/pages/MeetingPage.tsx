@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { FactList } from '../components/meeting/FactList';
@@ -47,52 +47,40 @@ async function fetchWorkspace(id: number, signal: AbortSignal): Promise<LoadStat
   }
 }
 
-function useMeetingWorkspace(id: number | undefined): LoadState {
-  const [state, setState] = useState<LoadState>(() =>
-    id === undefined ? { status: 'missing' } : { status: 'loading' },
-  );
+function useMeetingWorkspace(id: number): LoadState {
+  const [state, setState] = useState<LoadState>({ status: 'loading' });
 
   useEffect(() => {
-    if (id === undefined) {
-      setState({ status: 'missing' });
-      return;
-    }
     const controller = new AbortController();
-    let ignore = false;
-    setState((prev) => (prev.status === 'loading' ? prev : { status: 'loading' }));
     void fetchWorkspace(id, controller.signal).then((next) => {
-      if (!ignore && next) {
+      if (next) {
         setState(next);
       }
     });
-    return () => {
-      ignore = true;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [id]);
 
   return state;
 }
 
-function shouldRecoverFocus(): boolean {
-  const active = document.activeElement;
-  if (active === document.body || active === document.documentElement) {
-    return true;
-  }
-  return !(active instanceof HTMLElement) || !active.checkVisibility();
-}
-
-function useFocusIfLost(ref: RefObject<HTMLElement | null>) {
+function useFocusIfLost<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
   useLayoutEffect(() => {
-    if (shouldRecoverFocus()) {
+    const active = document.activeElement;
+    const lost =
+      active === document.body ||
+      active === document.documentElement ||
+      !(active instanceof HTMLElement) ||
+      !active.checkVisibility();
+    if (lost) {
       ref.current?.focus({ preventScroll: true });
     }
   }, []);
+  return ref;
 }
 
 function MeetingSkeleton() {
-  const ref = useRef<HTMLDivElement>(null);
-  useFocusIfLost(ref);
+  const ref = useFocusIfLost<HTMLDivElement>();
   return (
     <div
       ref={ref}
@@ -110,8 +98,7 @@ function MeetingSkeleton() {
 }
 
 function MeetingHeader({ meeting }: { meeting: MeetingDetail }) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  useFocusIfLost(headingRef);
+  const headingRef = useFocusIfLost<HTMLHeadingElement>();
 
   return (
     <header className="relative z-10 shrink-0 border-b border-border bg-canvas px-6 py-3">
@@ -166,8 +153,7 @@ function MeetingWorkspace({
 }
 
 function MeetingUnavailable({ title, description }: { title: string; description: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useFocusIfLost(ref);
+  const ref = useFocusIfLost<HTMLDivElement>();
   return (
     <div
       ref={ref}
@@ -175,7 +161,6 @@ function MeetingUnavailable({ title, description }: { title: string; description
       className="flex h-full items-center justify-center px-4 outline-hidden"
     >
       <EmptyState
-        heading
         title={title}
         description={description}
         action={
@@ -191,7 +176,7 @@ function MeetingUnavailable({ title, description }: { title: string; description
   );
 }
 
-function MeetingPageBody({ id }: { id: number | undefined }) {
+function MeetingPageBody({ id }: { id: number }) {
   const state = useMeetingWorkspace(id);
 
   if (state.status === 'loading') {
@@ -212,6 +197,9 @@ function MeetingPageBody({ id }: { id: number | undefined }) {
 }
 
 export function MeetingPage() {
-  const rawId = useParams().id;
-  return <MeetingPageBody key={rawId ?? 'missing'} id={parseMeetingId(rawId)} />;
+  const id = parseMeetingId(useParams().id);
+  if (id === undefined) {
+    return <MeetingUnavailable title="Meeting not found" description="It may have been deleted." />;
+  }
+  return <MeetingPageBody key={id} id={id} />;
 }

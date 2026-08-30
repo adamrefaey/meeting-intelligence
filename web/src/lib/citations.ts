@@ -15,119 +15,103 @@ export type InlineCitation = {
   length: number;
 };
 
-export type AnswerSegment =
-  | { type: 'text'; text: string }
-  | { type: 'cite'; citation: InlineCitation };
+type AnswerSegment = { type: 'text'; text: string } | { type: 'cite'; citation: InlineCitation };
 
 export function clockToSeconds(clock: string): number | undefined {
-  const parts = clock.split(':').map((part) => Number(part));
-  if (parts.length === 0 || parts.some((part) => !Number.isFinite(part))) {
+  const match = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/.exec(clock);
+  if (match === null) {
     return undefined;
   }
-  if (parts.length === 2) {
-    const minutes = parts[0];
-    const seconds = parts[1];
-    if (minutes === undefined || seconds === undefined) {
-      return undefined;
-    }
-    return minutes * 60 + seconds;
-  }
-  if (parts.length === 3) {
-    const hours = parts[0];
-    const minutes = parts[1];
-    const seconds = parts[2];
-    if (hours === undefined || minutes === undefined || seconds === undefined) {
-      return undefined;
-    }
-    return hours * 3600 + minutes * 60 + seconds;
-  }
-  return undefined;
+  const [, hours = '0', minutes = '0', seconds = '0'] = match;
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
 }
 
-const CLOCK = String.raw`(\d{1,2}:\d{2}(?::\d{2})?)`;
-const RANGE = String.raw`(?:\s*[\u2013-]\s*(\d{1,2}:\d{2}(?::\d{2})?))?`;
-const CITE_PATTERNS = [
-  new RegExp(String.raw`【\s*\[(?:([^[\]]+?),\s*)?${CLOCK}${RANGE}\]\s*】`, 'g'),
-  new RegExp(String.raw`【\s*(?:([^【】,]+?),\s*)?${CLOCK}${RANGE}\s*】`, 'g'),
-  new RegExp(String.raw`\[(?:([^[\]]+?),\s*)?${CLOCK}${RANGE}\]`, 'g'),
-];
+const CLOCK = String.raw`\d{1,2}:\d{2}(?::\d{2})?`;
 
-function overlaps(existing: InlineCitation, index: number, length: number): boolean {
-  const end = index + length;
-  const existingEnd = existing.index + existing.length;
-  return index < existingEnd && end > existing.index;
+/** An optional `Speaker, ` lead-in, a clock, then an optional en-dash range. */
+function shape(speaker: string): string {
+  return String.raw`(?:(${speaker}+?),\s*)?(${CLOCK})(?:\s*[\u2013-]\s*(${CLOCK}))?`;
 }
+
+// Square brackets bound a name, so it may contain commas ("Chen, Alice"); a bare 【】 name
+// has no inner delimiter and may not. One pattern rather than three, so a 【[clock]】 wrap is
+// consumed whole and its inner [clock] cannot match again. Every alternative captures
+// speaker, start and end in that order, so START_AT finds the one that fired.
+const SQUARE = shape(String.raw`[^[\]]`);
+const LENTICULAR = shape(String.raw`[^【】,]`);
+const CITE = new RegExp(String.raw`【\s*(?:\[${SQUARE}\]|${LENTICULAR})\s*】|\[${SQUARE}\]`, 'g');
+const START_AT = [2, 5, 8];
 
 export function parseInlineCitations(text: string): InlineCitation[] {
   const found: InlineCitation[] = [];
-  for (const pattern of CITE_PATTERNS) {
-    pattern.lastIndex = 0;
-    for (const match of text.matchAll(pattern)) {
-      const raw = match[0];
-      const startTimestamp = match[2];
-      const index = match.index;
-      if (startTimestamp === undefined || index === undefined) {
-        continue;
-      }
-      const startSeconds = clockToSeconds(startTimestamp);
-      if (startSeconds === undefined) {
-        continue;
-      }
-      if (found.some((cite) => overlaps(cite, index, raw.length))) {
-        continue;
-      }
-      found.push({
-        raw,
-        speaker: match[1]?.trim() ?? '',
-        startTimestamp,
-        endTimestamp: match[3],
-        startSeconds,
-        index,
-        length: raw.length,
-      });
+  for (const match of text.matchAll(CITE)) {
+    const at = START_AT.find((group) => match[group] !== undefined);
+    const startTimestamp = at === undefined ? undefined : match[at];
+    if (at === undefined || startTimestamp === undefined) {
+      continue;
     }
+    const startSeconds = clockToSeconds(startTimestamp);
+    if (startSeconds === undefined) {
+      continue;
+    }
+    found.push({
+      raw: match[0],
+      speaker: match[at - 1]?.trim() ?? '',
+      startTimestamp,
+      endTimestamp: match[at + 1],
+      startSeconds,
+      index: match.index,
+      length: match[0].length,
+    });
   }
-  found.sort((left, right) => left.index - right.index);
   return found;
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const LETTER = /\p{L}/u;
+
+/** The name on its own word boundary, so "Ada" does not match inside "Adamant". */
+function speakerPattern(speaker: string, flags: string): RegExp {
+  const escaped = speaker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, flags);
 }
 
-function hasLetters(text: string): boolean {
-  return /\p{L}/u.test(text);
+function speakerKey(speaker: string): string {
+  return speaker.trim().toLowerCase();
 }
 
-function speakerBoundaryPattern(speaker: string, flags: string): RegExp {
-  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegex(speaker)}(?![\\p{L}\\p{N}])`, flags);
+function mentionsSpeaker(text: string, speaker: string): boolean {
+  return speakerPattern(speaker, 'iu').test(text);
 }
 
-function uniqueSpeakers(turns: CitationTurn[]): string[] {
+/** The one roster name the text mentions, or undefined when it names none or several. */
+function soleSpeakerNamed(text: string, turns: CitationTurn[]): string | undefined {
   const seen = new Set<string>();
-  const names: string[] = [];
+  let only: string | undefined;
   for (const turn of turns) {
     const key = speakerKey(turn.speaker);
     if (key === '' || seen.has(key)) {
       continue;
     }
     seen.add(key);
-    names.push(turn.speaker);
+    if (!mentionsSpeaker(text, turn.speaker)) {
+      continue;
+    }
+    if (only !== undefined) {
+      return undefined;
+    }
+    only = turn.speaker;
   }
-  names.sort((left, right) => right.length - left.length);
-  return names;
+  return only;
 }
 
-function mentionsSpeaker(text: string, speaker: string): boolean {
-  return speakerBoundaryPattern(speaker, 'iu').test(text);
+function turnAtClock(seconds: number, turns: CitationTurn[]): CitationTurn | undefined {
+  return turns.find((turn) => turn.startSeconds === seconds);
 }
 
-function speakersInText(text: string, turns: CitationTurn[]): string[] {
-  return uniqueSpeakers(turns).filter((name) => mentionsSpeaker(text, name));
-}
-
-function speakerAtClock(seconds: number, turns: CitationTurn[]): string {
-  return turns.find((turn) => turn.startSeconds === seconds)?.speaker ?? '';
+function citedSpeaker(cite: InlineCitation, turns: CitationTurn[]): string {
+  return cite.speaker !== ''
+    ? cite.speaker
+    : (turnAtClock(cite.startSeconds, turns)?.speaker ?? '');
 }
 
 function lineEndAfter(text: string, index: number): number {
@@ -135,201 +119,166 @@ function lineEndAfter(text: string, index: number): number {
   return newline === -1 ? text.length : newline;
 }
 
+function lineStart(text: string, index: number): number {
+  return text.lastIndexOf('\n', index - 1) + 1;
+}
+
 function lastLineEndForSpeaker(text: string, speaker: string): number | undefined {
   let last: number | undefined;
-  for (const match of text.matchAll(speakerBoundaryPattern(speaker, 'giu'))) {
-    if (match.index === undefined) {
-      continue;
-    }
+  for (const match of text.matchAll(speakerPattern(speaker, 'giu'))) {
     last = lineEndAfter(text, match.index + match[0].length);
   }
   return last;
 }
 
-function lineSlice(text: string, index: number): string {
-  const start = text.lastIndexOf('\n', index - 1) + 1;
-  return text.slice(start, lineEndAfter(text, index));
-}
-
-function lineWithoutCites(line: string): string {
-  let stripped = line;
-  for (const found of [...parseInlineCitations(line)].reverse()) {
-    stripped = stripped.slice(0, found.index) + stripped.slice(found.index + found.length);
-  }
-  return stripped;
-}
-
-function shouldRelocate(text: string, cite: InlineCitation, turns: CitationTurn[]): boolean {
-  const line = lineSlice(text, cite.index);
-  const lineCites = parseInlineCitations(line);
-  const stripped = lineWithoutCites(line);
-  if (!hasLetters(stripped)) {
-    return true;
-  }
-  if (lineCites.length < 2) {
-    return false;
-  }
-  const speaker = cite.speaker !== '' ? cite.speaker : speakerAtClock(cite.startSeconds, turns);
-  return speaker === '' || !mentionsSpeaker(stripped, speaker);
-}
-
-function stripCites(text: string, cites: InlineCitation[]): string {
+function stripCites(text: string, cites: { index: number; length: number }[]): string {
   let next = text;
-  for (const cite of [...cites].reverse()) {
+  for (const cite of cites.toReversed()) {
     let from = cite.index;
-    const to = cite.index + cite.length;
     while (from > 0 && /[ \t]/.test(next[from - 1] ?? '')) {
       from -= 1;
     }
-    next = next.slice(0, from) + next.slice(to);
+    next = next.slice(0, from) + next.slice(cite.index + cite.length);
   }
   return next.replace(/[ \t]+$/gm, '').replace(/\n+$/u, '');
 }
 
-function spliceCite(text: string, at: number, raw: string): string {
-  const needsSpace = at > 0 && !/\s/.test(text[at - 1] ?? ' ');
-  return `${text.slice(0, at)}${needsSpace ? ' ' : ''}${raw}${text.slice(at)}`;
+/**
+ * A cite is a footnote when its line is nothing but cites, or when the line crowds several
+ * cites together without naming this one's speaker.
+ */
+function shouldRelocate(
+  text: string,
+  cite: InlineCitation,
+  turns: CitationTurn[],
+  parsed: InlineCitation[],
+): boolean {
+  const start = lineStart(text, cite.index);
+  const end = lineEndAfter(text, cite.index);
+  const onLine = parsed
+    .filter((entry) => entry.index >= start && entry.index < end)
+    .map((entry) => ({ index: entry.index - start, length: entry.length }));
+  const stripped = stripCites(text.slice(start, end), onLine);
+  if (!LETTER.test(stripped)) {
+    return true;
+  }
+  if (onLine.length < 2) {
+    return false;
+  }
+  const speaker = citedSpeaker(cite, turns);
+  return speaker === '' || !mentionsSpeaker(stripped, speaker);
 }
 
 function lineAlreadyCited(text: string, lineEnd: number): boolean {
-  return parseInlineCitations(lineSlice(text, Math.max(0, lineEnd - 1))).length > 0;
+  const start = lineStart(text, Math.max(0, lineEnd - 1));
+  return parseInlineCitations(text.slice(start, lineEnd)).length > 0;
 }
 
-function relocateFootnotes(text: string, turns: CitationTurn[]): string {
+function prepareAnswer(
+  text: string,
+  turns: CitationTurn[],
+): { text: string; inlines: InlineCitation[] } {
+  const inlines = parseInlineCitations(text);
   if (turns.length === 0) {
-    return text;
+    return { text, inlines };
   }
-  const footnotes = parseInlineCitations(text).filter((cite) => shouldRelocate(text, cite, turns));
+  const footnotes = inlines.filter((cite) => shouldRelocate(text, cite, turns, inlines));
   if (footnotes.length === 0) {
-    return text;
+    return { text, inlines };
   }
-  let body = stripCites(text, footnotes);
-  const used = new Set<number>();
-  const insertions: { at: number; raw: string; order: number }[] = [];
+  let draft = stripCites(text, footnotes);
   const leftovers: string[] = [];
-  for (const [order, footnote] of footnotes.entries()) {
-    const speaker =
-      footnote.speaker !== '' ? footnote.speaker : speakerAtClock(footnote.startSeconds, turns);
-    const at = speaker === '' ? undefined : lastLineEndForSpeaker(body, speaker);
-    if (speaker === '' || at === undefined) {
+  const insertions = new Map<number, string>();
+  for (const footnote of footnotes) {
+    const speaker = citedSpeaker(footnote, turns);
+    const at = speaker === '' ? undefined : lastLineEndForSpeaker(draft, speaker);
+    if (at === undefined) {
       leftovers.push(footnote.raw);
       continue;
     }
-    if (used.has(at) || lineAlreadyCited(body, at)) {
-      continue;
+    if (!insertions.has(at) && !lineAlreadyCited(draft, at)) {
+      insertions.set(at, footnote.raw);
     }
-    used.add(at);
-    insertions.push({ at, raw: footnote.raw, order });
   }
-  insertions.sort((left, right) => right.at - left.at || right.order - left.order);
-  for (const insertion of insertions) {
-    body = spliceCite(body, insertion.at, insertion.raw);
+  // Latest line first, so the earlier insertion points keep the offsets measured above.
+  for (const [at, raw] of [...insertions].sort(([left], [right]) => right - left)) {
+    const gap = /\s/.test(draft[at - 1] ?? ' ') ? '' : ' ';
+    draft = `${draft.slice(0, at)}${gap}${raw}${draft.slice(at)}`;
   }
-  return leftovers.length === 0 ? body : `${body}\n${leftovers.join(' ')}`;
+  const rewritten = leftovers.length === 0 ? draft : `${draft}\n${leftovers.join(' ')}`;
+  return { text: rewritten, inlines: parseInlineCitations(rewritten) };
 }
 
-export function inlineChipLabel(inline: InlineCitation): string {
-  return inline.startTimestamp;
+const STOP = new Set(
+  'about after also asked been before being does doing from have into just made make more only over related some than that their them then there they this were what when whether which while will with would'.split(
+    ' ',
+  ),
+);
+
+const ROSTER_QUESTION = new Set(
+  'attendee attendees identified meeting meetings named participant participants people speaker speakers'.split(
+    ' ',
+  ),
+);
+
+function wordsIn(text: string): string[] {
+  return text.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
 }
-
-const STOP = new Set([
-  'about',
-  'after',
-  'also',
-  'asked',
-  'been',
-  'before',
-  'being',
-  'does',
-  'doing',
-  'from',
-  'have',
-  'into',
-  'just',
-  'made',
-  'make',
-  'more',
-  'only',
-  'over',
-  'related',
-  'some',
-  'than',
-  'that',
-  'their',
-  'them',
-  'then',
-  'there',
-  'they',
-  'this',
-  'were',
-  'what',
-  'when',
-  'whether',
-  'which',
-  'while',
-  'will',
-  'with',
-  'would',
-]);
-
-const ROSTER_QUESTION = new Set([
-  'attendee',
-  'attendees',
-  'identified',
-  'meeting',
-  'meetings',
-  'named',
-  'participant',
-  'participants',
-  'people',
-  'speaker',
-  'speakers',
-]);
 
 function tokens(text: string): Set<string> {
-  const words = text.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [];
-  return new Set(words.filter((word) => !STOP.has(word)));
+  return new Set(wordsIn(text).filter((word) => !STOP.has(word)));
 }
 
 function overlap(claim: Set<string>, turnText: string): number {
-  const body = tokens(turnText);
-  let n = 0;
+  const words = tokens(turnText);
+  let shared = 0;
   for (const word of claim) {
-    if (body.has(word)) {
-      n += 1;
+    if (words.has(word)) {
+      shared += 1;
     }
   }
-  return n;
+  return shared;
 }
 
 /** The speaker's own name matches all of their turns equally, so it decides nothing. */
 function withoutSpeaker(text: string, speaker: string): Set<string> {
   const words = tokens(text);
-  for (const part of speaker.toLowerCase().match(/[a-z0-9]{4,}/g) ?? []) {
+  for (const part of wordsIn(speaker)) {
     words.delete(part);
   }
   return words;
 }
 
-function speakerKey(speaker: string): string {
-  return speaker.trim().toLowerCase();
+function searchTokens(claim: string, question: string, speaker: string): Set<string> {
+  const fromClaim = withoutSpeaker(claim, speaker);
+  if (fromClaim.size > 0) {
+    return fromClaim;
+  }
+  const fromQuestion = withoutSpeaker(question, speaker);
+  for (const word of ROSTER_QUESTION) {
+    fromQuestion.delete(word);
+  }
+  return fromQuestion;
 }
 
-/** The speaker's turn sharing the most words with the claim, nearest `around` among equals. */
-function bestTurnFor(
-  claim: Set<string>,
+/**
+ * The speaker's turn sharing the most words with the claim, nearest `around` among equals.
+ * A claim that shares nothing leaves every turn tied at zero, so the nearest one wins.
+ */
+function bestTurn(
+  turns: CitationTurn[],
   wanted: string,
   around: number,
-  turns: CitationTurn[],
+  claim: Set<string>,
 ): { turn: CitationTurn; score: number } | undefined {
   let best: CitationTurn | undefined;
-  let bestScore = 0;
+  let bestScore = -1;
   for (const turn of turns) {
     if (speakerKey(turn.speaker) !== wanted) {
       continue;
     }
     const score = overlap(claim, turn.text);
-    if (score === 0 || score < bestScore) {
+    if (score < bestScore) {
       continue;
     }
     const nearer =
@@ -341,59 +290,6 @@ function bestTurnFor(
     }
   }
   return best === undefined ? undefined : { turn: best, score: bestScore };
-}
-
-function resolveSpeaker(inline: InlineCitation, claim: string, turns: CitationTurn[]): string {
-  if (inline.speaker !== '') {
-    return inline.speaker;
-  }
-  const named = speakersInText(claim, turns);
-  if (named.length === 1 && named[0] !== undefined) {
-    return named[0];
-  }
-  return speakerAtClock(inline.startSeconds, turns);
-}
-
-function nearestTurn(
-  wanted: string,
-  around: number,
-  turns: CitationTurn[],
-): CitationTurn | undefined {
-  let best: CitationTurn | undefined;
-  for (const turn of turns) {
-    if (speakerKey(turn.speaker) !== wanted) {
-      continue;
-    }
-    const closer =
-      best === undefined ||
-      Math.abs(turn.startSeconds - around) < Math.abs(best.startSeconds - around);
-    if (closer) {
-      best = turn;
-    }
-  }
-  return best;
-}
-
-function withTurn(inline: InlineCitation, turn: CitationTurn): InlineCitation {
-  return {
-    ...inline,
-    startTimestamp: turn.timestamp,
-    startSeconds: turn.startSeconds,
-    endTimestamp: undefined,
-  };
-}
-
-function retargetIfWrongSpeaker(
-  inline: InlineCitation,
-  speaker: string,
-  turns: CitationTurn[],
-): InlineCitation {
-  const at = turns.find((turn) => turn.startSeconds === inline.startSeconds);
-  if (at !== undefined && speakerKey(at.speaker) === speakerKey(speaker)) {
-    return inline;
-  }
-  const nearest = nearestTurn(speakerKey(speaker), inline.startSeconds, turns);
-  return nearest === undefined ? inline : withTurn(inline, nearest);
 }
 
 /**
@@ -413,34 +309,28 @@ function groundCitation(
   question: string,
   turns: CitationTurn[],
 ): InlineCitation {
-  if (turns.length === 0) {
-    return inline;
-  }
-  const speaker = resolveSpeaker(inline, claim, turns);
+  const at = turnAtClock(inline.startSeconds, turns);
+  const speaker =
+    inline.speaker !== '' ? inline.speaker : (soleSpeakerNamed(claim, turns) ?? at?.speaker ?? '');
   if (speaker === '') {
     return inline;
   }
-  const claimTokens = withoutSpeaker(claim, speaker);
-  const questionTokens = withoutSpeaker(question, speaker);
-  for (const word of ROSTER_QUESTION) {
-    questionTokens.delete(word);
-  }
-  const searchTokens = claimTokens.size > 0 ? claimTokens : questionTokens;
-  if (searchTokens.size === 0) {
-    return retargetIfWrongSpeaker(inline, speaker, turns);
-  }
   const wanted = speakerKey(speaker);
-  const at = turns.find((turn) => turn.startSeconds === inline.startSeconds);
-  const citedScore =
-    at !== undefined && speakerKey(at.speaker) === wanted ? overlap(searchTokens, at.text) : -1;
-  const best = bestTurnFor(searchTokens, wanted, inline.startSeconds, turns);
-  if (best !== undefined && best.score > citedScore) {
-    return withTurn(inline, best.turn);
+  const claimTokens = searchTokens(claim, question, speaker);
+  // A clock belonging to anyone else scores below every turn the speaker did take, so any
+  // of their turns will do rather than send the chip to the wrong person.
+  const cited = at !== undefined && speakerKey(at.speaker) === wanted ? at : undefined;
+  const citedScore = cited === undefined ? -1 : overlap(claimTokens, cited.text);
+  const best = bestTurn(turns, wanted, inline.startSeconds, claimTokens);
+  if (best === undefined || best.score <= citedScore) {
+    return inline;
   }
-  if (citedScore < 0) {
-    return retargetIfWrongSpeaker(inline, speaker, turns);
-  }
-  return inline;
+  return {
+    ...inline,
+    startTimestamp: best.turn.timestamp,
+    startSeconds: best.turn.startSeconds,
+    endTimestamp: undefined,
+  };
 }
 
 export function segmentAnswer(
@@ -448,8 +338,7 @@ export function segmentAnswer(
   turns: CitationTurn[] = [],
   question = '',
 ): AnswerSegment[] {
-  const rewritten = relocateFootnotes(text, turns);
-  const inlines = parseInlineCitations(rewritten);
+  const { text: rewritten, inlines } = prepareAnswer(text, turns);
   if (inlines.length === 0) {
     return rewritten === '' ? [] : [{ type: 'text', text: rewritten }];
   }
@@ -459,8 +348,8 @@ export function segmentAnswer(
     if (citation.index > cursor) {
       segments.push({ type: 'text', text: rewritten.slice(cursor, citation.index) });
     }
-    const lineStart = rewritten.lastIndexOf('\n', citation.index - 1) + 1;
-    const claim = rewritten.slice(Math.max(lineStart, cursor), citation.index);
+    const start = lineStart(rewritten, citation.index);
+    const claim = rewritten.slice(Math.max(start, cursor), citation.index);
     segments.push({ type: 'cite', citation: groundCitation(citation, claim, question, turns) });
     cursor = citation.index + citation.length;
   }

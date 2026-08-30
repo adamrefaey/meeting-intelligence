@@ -1,12 +1,10 @@
 export class ApiError extends Error {
   readonly status: number;
-  readonly error: string;
 
   constructor(status: number, error: string) {
     super(error);
     this.name = 'ApiError';
     this.status = status;
-    this.error = error;
   }
 }
 
@@ -71,12 +69,8 @@ export function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-export function isUploadCancelled(error: unknown): boolean {
-  return isAbortError(error) || (error instanceof ApiError && error.status === 204);
-}
-
 export function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.error : fallback;
+  return error instanceof ApiError ? error.message : fallback;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -148,12 +142,17 @@ function parseSseBlock(block: string): { event: string; data: unknown } | undefi
   return { event, data };
 }
 
+function normalizeEol(text: string): string {
+  return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+}
+
 // SSE allows CRLF, LF, or a bare CR as a line terminator. A trailing CR is left as-is
 // because it may be the first half of a CRLF that straddles two chunks.
 function foldSse(text: string): string {
-  const held = text.endsWith('\r') ? '\r' : '';
-  const body = held === '' ? text : text.slice(0, -1);
-  return body.replaceAll('\r\n', '\n').replaceAll('\r', '\n') + held;
+  if (!text.endsWith('\r')) {
+    return normalizeEol(text);
+  }
+  return normalizeEol(text.slice(0, -1)) + '\r';
 }
 
 function toChatEvent(event: string, data: unknown): ChatEvent | undefined {
@@ -197,13 +196,16 @@ export async function listMeetings(signal?: AbortSignal): Promise<MeetingSummary
   return getJson<MeetingSummary[]>('/api/meetings', signal);
 }
 
-export async function createMeeting(file: File, signal?: AbortSignal): Promise<{ id: number }> {
+export async function createMeeting(
+  file: File,
+  signal?: AbortSignal,
+): Promise<{ id: number } | undefined> {
   const body = new FormData();
   body.append('file', file);
   const response = await fetch('/api/meetings', { method: 'POST', body, signal });
   await throwIfNotOk(response);
   if (response.status === 204) {
-    throw new ApiError(204, 'Upload was cancelled');
+    return undefined;
   }
   return parseJson<{ id: number }>(response);
 }
@@ -239,10 +241,7 @@ async function readChatStream(
     for (;;) {
       const { done, value } = await reader.read();
       if (done) {
-        const rest = drainSseBuffer(
-          foldSse(buffer + decoder.decode()).replaceAll('\r', '\n'),
-          onEvent,
-        );
+        const rest = drainSseBuffer(normalizeEol(buffer + decoder.decode()), onEvent);
         if (rest.trim() !== '') {
           drainSseBuffer(`${rest}\n\n`, onEvent);
         }

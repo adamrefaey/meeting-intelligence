@@ -1,11 +1,6 @@
 import { memo } from 'react';
 import { cn } from '../../lib/cn';
-import {
-  inlineChipLabel,
-  segmentAnswer,
-  type CitationTurn,
-  type InlineCitation,
-} from '../../lib/citations';
+import { segmentAnswer, type CitationTurn, type InlineCitation } from '../../lib/citations';
 import { Badge } from '../ui/Badge';
 import { CitationChip } from './CitationChip';
 
@@ -46,7 +41,7 @@ function AnswerContent({
         return (
           <CitationChip
             key={index}
-            label={inlineChipLabel(segment.citation)}
+            label={segment.citation.startTimestamp}
             title={inlineChipTitle(segment.citation)}
             startSeconds={segment.citation.startSeconds}
             className="mx-0.5 align-baseline"

@@ -4,13 +4,12 @@ import { Button } from './Button';
 
 type FileDropProps = {
   onFile: (file: File) => void;
-  onReject?: (file: File) => void;
+  onReject: (file: File) => void;
+  onCancel: () => void;
   className?: string;
   label?: string;
-  disabled?: boolean;
   busy?: boolean;
   busyLabel?: string;
-  onCancel?: () => void;
 };
 
 function isTxt(file: File): boolean {
@@ -20,7 +19,7 @@ function isTxt(file: File): boolean {
 function takeFile(
   files: FileList | null,
   onFile: (file: File) => void,
-  onReject?: (file: File) => void,
+  onReject: (file: File) => void,
 ) {
   const txt = files ? [...files].find(isTxt) : undefined;
   if (txt) {
@@ -29,14 +28,14 @@ function takeFile(
   }
   const first = files?.[0];
   if (first) {
-    onReject?.(first);
+    onReject(first);
   }
 }
 
 const boxClassName =
   'flex flex-col items-center justify-center rounded-lg border border-dashed border-control-border bg-control px-6 py-10 text-center text-foreground transition-colors duration-150 motion-reduce:transition-none';
 
-function IngestProgress({ label, onCancel }: { label?: string; onCancel?: () => void }) {
+function IngestProgress({ label, onCancel }: { label?: string; onCancel: () => void }) {
   const labelId = useId();
   const fileId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -63,31 +62,17 @@ function IngestProgress({ label, onCancel }: { label?: string; onCancel?: () => 
       >
         <div className="ingest-progress-fill h-full rounded-full bg-accent" />
       </div>
-      {onCancel ? (
-        <Button
-          ref={cancelRef}
-          variant="ghost"
-          size="sm"
-          className="mt-3"
-          aria-label={label ? `Cancel ingesting ${label}` : 'Cancel ingest'}
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-      ) : null}
+      <Button
+        ref={cancelRef}
+        variant="ghost"
+        size="sm"
+        className="mt-3"
+        aria-label={label ? `Cancel ingesting ${label}` : 'Cancel ingest'}
+        onClick={onCancel}
+      >
+        Cancel
+      </Button>
     </div>
-  );
-}
-
-function idleBoxClassName(dragging: boolean, disabled: boolean, className?: string) {
-  return cn(
-    boxClassName,
-    'cursor-pointer hover:border-accent hover:bg-surface-raised',
-    focusRingWithin,
-    dragging && 'border-accent bg-accent/10 text-accent',
-    disabled &&
-      'pointer-events-none cursor-not-allowed border-border bg-surface text-muted hover:border-border hover:bg-surface',
-    className,
   );
 }
 
@@ -96,37 +81,31 @@ function IdleFileDrop({
   onReject,
   className,
   label,
-  disabled,
-}: {
-  onFile: (file: File) => void;
-  onReject?: (file: File) => void;
-  className?: string;
-  label: string;
-  disabled: boolean;
-}) {
+}: Pick<FileDropProps, 'onFile' | 'onReject' | 'className'> & { label: string }) {
   const [dragging, setDragging] = useState(false);
   return (
     <label
       onDragOver={(event) => {
         event.preventDefault();
-        if (!disabled) {
-          setDragging(true);
-        }
+        setDragging(true);
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        if (!disabled) {
-          takeFile(event.dataTransfer.files, onFile, onReject);
-        }
+        takeFile(event.dataTransfer.files, onFile, onReject);
       }}
-      className={idleBoxClassName(dragging, disabled, className)}
+      className={cn(
+        boxClassName,
+        'cursor-pointer hover:border-accent hover:bg-surface-raised',
+        focusRingWithin,
+        dragging && 'border-accent bg-accent/10 text-accent',
+        className,
+      )}
     >
       <input
         type="file"
         accept=".txt,text/plain"
-        disabled={disabled}
         className="pointer-events-none sr-only outline-hidden"
         onChange={(event) => {
           takeFile(event.target.files, onFile, onReject);
@@ -144,7 +123,6 @@ export function FileDrop({
   onReject,
   className,
   label = 'Drop a .txt transcript',
-  disabled = false,
   busy = false,
   busyLabel,
   onCancel,
@@ -156,13 +134,5 @@ export function FileDrop({
       </div>
     );
   }
-  return (
-    <IdleFileDrop
-      onFile={onFile}
-      onReject={onReject}
-      className={className}
-      label={label}
-      disabled={disabled}
-    />
-  );
+  return <IdleFileDrop onFile={onFile} onReject={onReject} className={className} label={label} />;
 }

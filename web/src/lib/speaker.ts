@@ -1,4 +1,4 @@
-export const SPEAKER_SWATCHES = [
+const SPEAKER_SWATCHES = [
   'bg-speaker-blue',
   'bg-speaker-cyan',
   'bg-speaker-green',
@@ -7,7 +7,7 @@ export const SPEAKER_SWATCHES = [
   'bg-speaker-gold',
 ] as const;
 
-export type SpeakerSwatch = (typeof SPEAKER_SWATCHES)[number];
+type SpeakerSwatch = (typeof SPEAKER_SWATCHES)[number];
 
 function hashName(name: string): number {
   const key = name.trim().toLowerCase();
@@ -25,21 +25,15 @@ export function speakerSwatch(name: string): SpeakerSwatch {
 
 function firstLetter(value: string): string {
   const point = value.codePointAt(0);
-  if (point === undefined) {
-    return '?';
-  }
-  return String.fromCodePoint(point).toUpperCase();
+  return point === undefined ? '?' : String.fromCodePoint(point).toUpperCase();
 }
 
 export function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
+  const first = parts[0];
+  const last = parts.at(-1);
+  if (first === undefined || last === undefined) {
     return '?';
   }
-  const first = parts[0] ?? '';
-  if (parts.length === 1) {
-    return firstLetter(first);
-  }
-  const last = parts[parts.length - 1] ?? first;
-  return `${firstLetter(first)}${firstLetter(last)}`;
+  return parts.length === 1 ? firstLetter(first) : `${firstLetter(first)}${firstLetter(last)}`;
 }

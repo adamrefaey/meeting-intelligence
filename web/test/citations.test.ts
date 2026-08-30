@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  clockToSeconds,
-  inlineChipLabel,
-  parseInlineCitations,
-  segmentAnswer,
-} from '../src/lib/citations.ts';
+import { clockToSeconds, parseInlineCitations, segmentAnswer } from '../src/lib/citations.ts';
 
 // The four clock shapes parseTranscript accepts, so a cite lands on the turn it names.
 test('clockToSeconds agrees with transcript turns for every accepted clock shape', () => {
@@ -95,6 +90,29 @@ test('parseInlineCitations reads a named cite inside lenticular brackets', () =>
   assert.equal(cite?.raw, '【[Keiko, 00:04:17]】');
 });
 
+// Square brackets bound the name, so a "Last, First" speaker still parses; the bare 【】
+// form has no inner delimiter, so there a comma can only mean the end of the name.
+test('parseInlineCitations reads a speaker name containing a comma', () => {
+  const [square] = parseInlineCitations('As noted [Chen, Alice, 00:04:17] earlier.');
+  assert.equal(square?.speaker, 'Chen, Alice');
+  assert.equal(square?.startTimestamp, '00:04:17');
+  assert.equal(square?.raw, '[Chen, Alice, 00:04:17]');
+
+  const [wrapped] = parseInlineCitations('As noted 【[Chen, Alice, 00:04:17]】 earlier.');
+  assert.equal(wrapped?.speaker, 'Chen, Alice');
+  assert.equal(wrapped?.raw, '【[Chen, Alice, 00:04:17]】');
+
+  assert.deepEqual(parseInlineCitations('【Chen, Alice, 00:04:17】'), []);
+});
+
+test('parseInlineCitations requires matching wrap delimiters', () => {
+  assert.deepEqual(parseInlineCitations('【00:01:52]'), []);
+  assert.deepEqual(parseInlineCitations('[00:01:52】'), []);
+  assert.deepEqual(parseInlineCitations('【[00:22:39】'), []);
+  const [inner] = parseInlineCitations('See 【[00:22:39]');
+  assert.equal(inner?.raw, '[00:22:39]');
+});
+
 test('segmentAnswer does not leave 【】 around a lenticular-wrapped chip', () => {
   const answer =
     'There is also an unidentified speaker and Conference Room B. 【[00:22:39]】 【[00:19:34]】';
@@ -106,15 +124,6 @@ test('segmentAnswer does not leave 【】 around a lenticular-wrapped chip', () 
   assert.equal(leftover.includes('【'), false);
   assert.equal(leftover.includes('】'), false);
   assert.equal(segments.filter((segment) => segment.type === 'cite').length, 2);
-});
-
-test('inlineChipLabel uses only the start clock', () => {
-  const [inline] = parseInlineCitations('[00:23:10–00:25:19]');
-  assert.ok(inline);
-  assert.equal(inlineChipLabel(inline), '00:23:10');
-  const [named] = parseInlineCitations('[Victoria, 00:01:52]');
-  assert.ok(named);
-  assert.equal(inlineChipLabel(named), '00:01:52');
 });
 
 // Chips are only ever rendered from segments, so this is what stops a chip appearing
