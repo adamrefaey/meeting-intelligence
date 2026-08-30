@@ -33,46 +33,28 @@ export class ParseError extends Error {
   }
 }
 
-const BRACKETED = /^\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+?):\s*(.*)$/;
-const PAREN = /^(.+?)\s+\((\d{1,2}:\d{2}(?::\d{2})?)\):\s*(.*)$/;
-const BARE_HMS = /^(\d{1,2}:\d{2}:\d{2})\s+(.+?):\s*(.*)$/;
+const HEADERS = [
+  /^\[(?<timestamp>\d{1,2}:\d{2}(?::\d{2})?)\]\s*(?<speaker>\S.*?):\s*(?<text>.*)$/,
+  /^(?<speaker>\S.*?)\s+\((?<timestamp>\d{1,2}:\d{2}(?::\d{2})?)\):\s*(?<text>.*)$/,
+  /^(?<timestamp>\d{1,2}:\d{2}:\d{2})\s+(?<speaker>\S.*?):\s*(?<text>.*)$/,
+];
 
 function toStartSeconds(clock: string): number {
-  const parts = clock.split(':').map((part) => Number(part));
-  if (parts.length === 2) {
-    const [minutes, seconds] = parts;
-    return minutes * 60 + seconds;
-  }
-  const [hours, minutes, seconds] = parts;
-  return hours * 3600 + minutes * 60 + seconds;
+  return clock.split(':').reduce((total, part) => total * 60 + Number(part), 0);
 }
 
 function matchHeader(
   line: string,
 ): { speaker: string; timestamp: string; text: string } | undefined {
-  const bracketed = BRACKETED.exec(line);
-  if (bracketed) {
-    return {
-      timestamp: bracketed[1],
-      speaker: bracketed[2].trim(),
-      text: bracketed[3],
-    };
-  }
-  const paren = PAREN.exec(line);
-  if (paren) {
-    return {
-      speaker: paren[1].trim(),
-      timestamp: paren[2],
-      text: paren[3],
-    };
-  }
-  const bare = BARE_HMS.exec(line);
-  if (bare) {
-    return {
-      timestamp: bare[1],
-      speaker: bare[2].trim(),
-      text: bare[3],
-    };
+  for (const pattern of HEADERS) {
+    const groups = pattern.exec(line)?.groups;
+    if (groups) {
+      return {
+        speaker: groups.speaker.trim(),
+        timestamp: groups.timestamp,
+        text: groups.text,
+      };
+    }
   }
   return undefined;
 }
@@ -96,7 +78,7 @@ export function parseTranscript(text: string): Turn[] {
       });
       continue;
     }
-    const previous = turns[turns.length - 1];
+    const previous = turns.at(-1);
     if (previous) {
       previous.text += `\n${line}`;
     }

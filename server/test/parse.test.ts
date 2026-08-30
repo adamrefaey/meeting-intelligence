@@ -92,6 +92,23 @@ test('ignores blank lines between turns', () => {
   assert.equal(turns[1].text, 'hi');
 });
 
+test('whitespace-only speaker is not a header', () => {
+  assert.throws(
+    () => parseTranscript('[00:00:01] : a'),
+    (error: unknown) => {
+      assert.ok(error instanceof ParseError);
+      return true;
+    },
+  );
+});
+
+test('whitespace-only speaker line attaches as a continuation', () => {
+  const turns = parseTranscript('[00:00:01] Ada: hello\n[00:00:02] : a');
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].speaker, 'Ada');
+  assert.equal(turns[0].text, 'hello\n[00:00:02] : a');
+});
+
 test('garbage-only input throws ParseError', () => {
   assert.throws(
     () => parseTranscript('not a transcript\nat all'),

@@ -1,3 +1,4 @@
+import { packAll } from '../transcript/pack.ts';
 import { renderTurn, turnPrefix, type Turn } from '../transcript/parse.ts';
 
 export const WINDOW_MAX_CHARS = 12_000;
@@ -9,7 +10,7 @@ export type FactWindow = {
   text: string;
 };
 
-function packedEnd(start: number, lines: string[], maxChars: number): number {
+function packWindowFrom(start: number, lines: string[], maxChars: number): FactWindow {
   let end = start;
   let length = lines[start].length;
   for (let index = start + 1; index < lines.length; index += 1) {
@@ -20,35 +21,22 @@ function packedEnd(start: number, lines: string[], maxChars: number): number {
     length = nextLength;
     end = index;
   }
-  return end;
+  return { turnStart: start, turnEnd: end, text: lines.slice(start, end + 1).join('\n') };
 }
 
-function nextWindowStart(
-  packed: FactWindow,
-  lines: string[],
-  maxChars: number,
-  overlapRatio: number,
-): number {
-  if (packed.turnEnd === packed.turnStart || packed.turnEnd + 1 >= lines.length) {
-    return packed.turnEnd + 1;
-  }
-  const target = packed.text.length * overlapRatio;
+function overlapStart(previous: FactWindow, lines: string[], overlapRatio: number): number {
+  const target = previous.text.length * overlapRatio;
   let acc = 0;
-  let overlapped = packed.turnEnd;
-  for (let index = packed.turnEnd; index > packed.turnStart; index -= 1) {
+  for (let index = previous.turnEnd; index > previous.turnStart; index -= 1) {
     acc += lines[index].length + (acc === 0 ? 0 : 1);
     if (acc >= target) {
-      overlapped = index;
-      break;
+      return index;
     }
   }
-  if (packedEnd(overlapped, lines, maxChars) <= packed.turnEnd) {
-    return packed.turnEnd + 1;
-  }
-  return overlapped;
+  return previous.turnEnd;
 }
 
-function splitOversizedTurn(
+function sliceOversized(
   turn: Turn,
   turnIndex: number,
   maxChars: number,
@@ -79,22 +67,13 @@ export function packWindows(
   overlapRatio = WINDOW_OVERLAP_RATIO,
 ): FactWindow[] {
   const lines = turns.map(renderTurn);
-  const windows: FactWindow[] = [];
-  let start = 0;
-  while (start < turns.length) {
-    if (lines[start].length > maxChars) {
-      windows.push(...splitOversizedTurn(turns[start], start, maxChars, overlapRatio));
-      start += 1;
-      continue;
-    }
-    const end = packedEnd(start, lines, maxChars);
-    const packed = {
-      turnStart: start,
-      turnEnd: end,
-      text: lines.slice(start, end + 1).join('\n'),
-    };
-    windows.push(packed);
-    start = nextWindowStart(packed, lines, maxChars, overlapRatio);
-  }
-  return windows;
+  return packAll(
+    turns.length,
+    (start) => packWindowFrom(start, lines, maxChars),
+    (previous) => overlapStart(previous, lines, overlapRatio),
+  ).flatMap((window) =>
+    window.text.length > maxChars
+      ? sliceOversized(turns[window.turnStart], window.turnStart, maxChars, overlapRatio)
+      : [window],
+  );
 }

@@ -94,6 +94,27 @@ test('skips overlap after a solo oversized chunk', () => {
   assert.equal(chunks[1].turnStartIndex, 1);
 });
 
+test('cursor advances after each single-turn chunk', () => {
+  const utterance = 'x'.repeat(50);
+  const chunks = chunkTurns(
+    [
+      t('Ada', '00:00:01', 1, utterance),
+      t('Ben', '00:00:02', 2, utterance),
+      t('Cam', '00:00:03', 3, utterance),
+    ],
+    10,
+  );
+  assert.equal(chunks.length, 3);
+  assert.deepEqual(
+    chunks.map((chunk) => [chunk.turnStartIndex, chunk.turnEndIndex]),
+    [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ],
+  );
+});
+
 test('skips overlap when the overlapped pair cannot grow', () => {
   const twoTurnText = 'Speakers: Ada, Ben\n[Ada, 00:00:01]: xx\n[Ben, 00:00:02]: xx';
   const turns = [
