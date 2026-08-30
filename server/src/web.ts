@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import fastifyStatic from '@fastify/static';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 
 export function resolveWebRoot(): string {
   return resolve(process.env.WEB_ROOT || 'web/dist');
@@ -10,10 +10,6 @@ export function resolveWebRoot(): string {
 export function webDistRoot(): string | undefined {
   const root = resolveWebRoot();
   return existsSync(join(root, 'index.html')) ? root : undefined;
-}
-
-function sendIndex(reply: FastifyReply) {
-  return reply.sendFile('index.html', { maxAge: 0, immutable: false });
 }
 
 export async function registerWeb(app: FastifyInstance, root: string): Promise<void> {
@@ -34,6 +30,7 @@ export async function registerWeb(app: FastifyInstance, root: string): Promise<v
     if (path === '/api' || path.startsWith('/api/') || path.startsWith('/assets/')) {
       return reply.code(404).send({ error: 'Not found' });
     }
-    return sendIndex(reply);
+    // The index must revalidate every load; the hashed assets above are immutable.
+    return reply.sendFile('index.html', { maxAge: 0, immutable: false });
   });
 }

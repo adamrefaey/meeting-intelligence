@@ -3,7 +3,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { packWindows, WINDOW_MAX_CHARS, WINDOW_OVERLAP_RATIO } from '../src/extract/window.ts';
-import { shouldUseFullTranscript } from '../src/rag/retrieve.ts';
 import { chunkTurns, DEFAULT_MAX_CHARS } from '../src/transcript/chunk.ts';
 import { parseTranscript } from '../src/transcript/parse.ts';
 
@@ -283,7 +282,7 @@ test('no fixture pastes machine output a person would not read aloud', () => {
 test('fixtures straddle the full-context threshold in both directions', () => {
   const sized = cases.map((fixture) => ({
     file: fixture.file,
-    full: shouldUseFullTranscript(fixture.chars, FULL_CONTEXT_CHAR_THRESHOLD),
+    full: fixture.chars < FULL_CONTEXT_CHAR_THRESHOLD,
   }));
   const fullContext = sized.filter((entry) => entry.full).map((entry) => entry.file);
   const retrieval = sized.filter((entry) => !entry.full).map((entry) => entry.file);

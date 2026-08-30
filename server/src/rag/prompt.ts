@@ -1,5 +1,4 @@
 import type { ChatMessage } from '../llm/types.ts';
-import type { RetrievedChunk } from './retrieve.ts';
 
 export type PromptFact = {
   text: string;
@@ -14,16 +13,15 @@ export type PromptActionItem = {
   timestamp: string | null;
 };
 
-export type BuildChatMessagesInput = {
-  meeting: { title: string };
+type BuildChatMessagesInput = {
+  title: string;
   decisions: PromptFact[];
   actionItems: PromptActionItem[];
-  chunks: RetrievedChunk[];
+  excerpts: string[];
   history: ChatMessage[];
   userMessage: string;
   useFullTranscript: boolean;
   rawText: string;
-  chatHistoryTurns: number;
 };
 
 const SYSTEM_RULES = `You answer questions about this single meeting.
@@ -43,26 +41,16 @@ const EXCERPT_RULES =
   'beginning with a [Speaker, timestamp]: marker. Copy that marker to cite. Excerpts are ' +
   'separate windows of the same meeting and may be out of order.';
 
-function bullet(text: string, meta: string[]): string {
-  return meta.length > 0 ? `- ${text} (${meta.join(', ')})` : `- ${text}`;
+function nonEmpty(value: string | null, label?: string): string | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+  return label === undefined ? value : `${label}: ${value}`;
 }
 
-function formatFact(fact: PromptFact): string {
-  return bullet(
-    fact.text,
-    [fact.speaker, fact.timestamp].filter((part): part is string => part != null && part !== ''),
-  );
-}
-
-function formatAction(item: PromptActionItem): string {
-  return bullet(
-    item.text,
-    [
-      item.owner != null && item.owner !== '' ? `owner: ${item.owner}` : undefined,
-      item.due != null && item.due !== '' ? `due: ${item.due}` : undefined,
-      item.timestamp != null && item.timestamp !== '' ? item.timestamp : undefined,
-    ].filter((part): part is string => part !== undefined),
-  );
+function bullet(text: string, meta: Array<string | undefined>): string {
+  const parts = meta.filter((part): part is string => part !== undefined);
+  return parts.length > 0 ? `- ${text} (${parts.join(', ')})` : `- ${text}`;
 }
 
 function section(title: string, lines: string[]): string {
@@ -70,36 +58,41 @@ function section(title: string, lines: string[]): string {
   return `## ${title}\n${body}`;
 }
 
-function recentHistory(history: ChatMessage[], turns: number): ChatMessage[] {
-  return turns > 0 ? history.slice(-turns) : [];
-}
-
-function userContent(input: BuildChatMessagesInput): string {
-  if (input.useFullTranscript) {
-    return input.userMessage;
-  }
-  const excerpts =
-    input.chunks.length > 0
-      ? input.chunks.map((chunk) => chunk.text).join('\n\n')
-      : 'None retrieved.';
-  return `## Retrieved excerpts\n${excerpts}\n\n## Question\n${input.userMessage}`;
-}
-
 export function buildChatMessages(input: BuildChatMessagesInput): ChatMessage[] {
   const systemParts = [
     SYSTEM_RULES,
-    `Meeting title: ${input.meeting.title}`,
-    section('Decisions', input.decisions.map(formatFact)),
-    section('Action items', input.actionItems.map(formatAction)),
+    `Meeting title: ${input.title}`,
+    section(
+      'Decisions',
+      input.decisions.map((fact) =>
+        bullet(fact.text, [nonEmpty(fact.speaker), nonEmpty(fact.timestamp)]),
+      ),
+    ),
+    section(
+      'Action items',
+      input.actionItems.map((item) =>
+        bullet(item.text, [
+          nonEmpty(item.owner, 'owner'),
+          nonEmpty(item.due, 'due'),
+          nonEmpty(item.timestamp),
+        ]),
+      ),
+    ),
   ];
+  let userContent = input.userMessage;
   if (input.useFullTranscript) {
     systemParts.push(`## Transcript\n${input.rawText}`);
-  } else if (input.chunks.length > 0) {
-    systemParts.push(EXCERPT_RULES);
+  } else {
+    const hasExcerpts = input.excerpts.length > 0;
+    if (hasExcerpts) {
+      systemParts.push(EXCERPT_RULES);
+    }
+    const body = hasExcerpts ? input.excerpts.join('\n\n') : 'None retrieved.';
+    userContent = `## Retrieved excerpts\n${body}\n\n## Question\n${input.userMessage}`;
   }
   return [
     { role: 'system', content: systemParts.join('\n\n') },
-    ...recentHistory(input.history, input.chatHistoryTurns),
-    { role: 'user', content: userContent(input) },
+    ...input.history,
+    { role: 'user', content: userContent },
   ];
 }

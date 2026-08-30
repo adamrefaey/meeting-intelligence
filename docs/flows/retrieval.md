@@ -42,7 +42,7 @@ flowchart TD
   lex["FTS MATCH, bm25 top FTS_K"]
   rrf["reciprocalRankFusion"]
   top["slice 0, RETRIEVE_K"]
-  load["load those chunks"]
+  load["load id, meeting_id, text"]
 
   start --> vec
   start --> lex
@@ -52,7 +52,7 @@ flowchart TD
 
 [`server/src/rag/retrieve.ts`](../../server/src/rag/retrieve.ts)
 
-The query embedding runs while the FTS query executes. Both lists use `LIMIT` `FTS_K` (default `8`); `RETRIEVE_K` trims the fused list.
+The query embedding runs while the FTS query executes. Both lists use `LIMIT` `FTS_K` (default `8`); `RETRIEVE_K` trims the fused list. Only `id`, `meeting_id`, and `text` are read from those rows — retrieved chunks are not sent on the wire.
 
 - **Lexical:** quote each token from the question, join with `OR`, and rank by bm25 within this meeting.
 - **Vector:** embed the query string unchanged, L2-normalize, then nearest `chunk_embeddings` for this meeting (cosine distance, lowest first).

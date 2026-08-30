@@ -8,7 +8,7 @@ import { migrate } from '../src/db/migrate.ts';
 import { INSERT_BATCH_SIZE } from '../src/db/batch.ts';
 import { ingestTranscript } from '../src/ingest/pipeline.ts';
 import type { ChatMessage, Llm } from '../src/llm/types.ts';
-import { reindexMeeting } from '../src/rag/chat.ts';
+import { reindexMeeting } from '../src/rag/reindex.ts';
 
 const ENV_KEYS = [
   'OPENAI_API_KEY',
@@ -216,6 +216,36 @@ test('chat streams tokens and persists user then assistant messages', async () =
   assert.equal(body.messages[1]?.role, 'assistant');
   assert.equal(body.messages[1]?.content, 'Hello world');
 });
+
+for (const turns of ['0', '-1']) {
+  test(`CHAT_HISTORY_TURNS of ${turns} keeps prior turns out of the prompt`, async () => {
+    process.env.CHAT_HISTORY_TURNS = turns;
+    const prompts: ChatMessage[][] = [];
+    const llm = fakeLlm({
+      streamChat: async function* (messages) {
+        prompts.push(messages);
+        yield 'Hello';
+        yield ' world';
+      },
+    });
+    const { app: instance, db: database } = await openTestApp(llm);
+    const { meetingId } = await seedMeeting(database, llm, 'Short', '[00:00:01] Ada: hello');
+
+    const first = await chat(instance, meetingId, 'Who spoke first?');
+    assert.equal(first.statusCode, 200);
+    prompts.length = 0;
+
+    const second = await chat(instance, meetingId, 'What did we cover?');
+    assert.equal(second.statusCode, 200);
+
+    const asked = prompts[0] ?? [];
+    assert.deepEqual(
+      asked.filter((message) => message.role !== 'system'),
+      [{ role: 'user', content: 'What did we cover?' }],
+    );
+    assert.doesNotMatch(JSON.stringify(asked), /Who spoke first/);
+  });
+}
 
 function chunkTexts(database: DatabaseSync, meetingId: number): string[] {
   return (

@@ -4,7 +4,7 @@ import { cosineQuery } from '../db/client.ts';
 import type { Llm } from '../llm/types.ts';
 import { reciprocalRankFusion } from './fuse.ts';
 
-export type RetrieveConfig = {
+type RetrieveConfig = {
   retrieveK: number;
   ftsK: number;
 };
@@ -12,35 +12,8 @@ export type RetrieveConfig = {
 export type RetrievedChunk = {
   id: number;
   meetingId: number;
-  chunkIndex: number;
   text: string;
-  speakerLabel: string;
-  startTimestamp: string;
-  endTimestamp: string;
-  startSeconds: number;
-  endSeconds: number;
-  turnStartIndex: number;
-  turnEndIndex: number;
-  score: number;
 };
-
-type ChunkRow = {
-  id: number | bigint;
-  meeting_id: number | bigint;
-  chunk_index: number;
-  text: string;
-  speaker_label: string;
-  start_timestamp: string;
-  end_timestamp: string;
-  start_seconds: number;
-  end_seconds: number;
-  turn_start_index: number;
-  turn_end_index: number;
-};
-
-export function shouldUseFullTranscript(charCount: number, threshold: number): boolean {
-  return charCount < threshold;
-}
 
 const HAS_LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
 
@@ -78,38 +51,36 @@ function lexicalIds(db: DatabaseSync, meetingId: number, query: string, ftsK: nu
   }
 }
 
-function loadChunks(db: DatabaseSync, meetingId: number, ids: number[]): Map<number, ChunkRow> {
+function loadChunks(db: DatabaseSync, meetingId: number, ids: number[]): RetrievedChunk[] {
   if (ids.length === 0) {
-    return new Map();
+    return [];
   }
   const placeholders = ids.map(() => '?').join(', ');
   const rows = db
     .prepare(
-      `SELECT id, meeting_id, chunk_index, text, speaker_label,
-              start_timestamp, end_timestamp, start_seconds, end_seconds,
-              turn_start_index, turn_end_index
+      `SELECT id, meeting_id, text
        FROM chunks
        WHERE meeting_id = ? AND id IN (${placeholders})`,
     )
-    .all(meetingId, ...ids) as ChunkRow[];
-  return new Map(rows.map((row) => [Number(row.id), row]));
-}
-
-function toRetrievedChunk(row: ChunkRow, score: number): RetrievedChunk {
-  return {
-    id: Number(row.id),
-    meetingId: Number(row.meeting_id),
-    chunkIndex: row.chunk_index,
-    text: row.text,
-    speakerLabel: row.speaker_label,
-    startTimestamp: row.start_timestamp,
-    endTimestamp: row.end_timestamp,
-    startSeconds: row.start_seconds,
-    endSeconds: row.end_seconds,
-    turnStartIndex: row.turn_start_index,
-    turnEndIndex: row.turn_end_index,
-    score,
-  };
+    .all(meetingId, ...ids) as Array<{
+    id: number | bigint;
+    meeting_id: number | bigint;
+    text: string;
+  }>;
+  const byId = new Map(
+    rows.map((row) => {
+      const id = Number(row.id);
+      return [id, { id, meetingId: Number(row.meeting_id), text: row.text }] as const;
+    }),
+  );
+  const results: RetrievedChunk[] = [];
+  for (const id of ids) {
+    const chunk = byId.get(id);
+    if (chunk !== undefined) {
+      results.push(chunk);
+    }
+  }
+  return results;
 }
 
 async function vectorIds(
@@ -144,18 +115,11 @@ export async function retrieveForMeeting(
 ): Promise<RetrievedChunk[]> {
   const embedded = vectorIds(db, llm, meetingId, query, config.ftsK, signal);
   const ftsIds = lexicalIds(db, meetingId, query, config.ftsK);
-  const fused = reciprocalRankFusion([ftsIds, await embedded]).slice(0, config.retrieveK);
-  const byId = loadChunks(
+  return loadChunks(
     db,
     meetingId,
-    fused.map((hit) => hit.id),
+    reciprocalRankFusion([ftsIds, await embedded])
+      .slice(0, config.retrieveK)
+      .map((hit) => hit.id),
   );
-  const results: RetrievedChunk[] = [];
-  for (const hit of fused) {
-    const row = byId.get(hit.id);
-    if (row !== undefined) {
-      results.push(toRetrievedChunk(row, hit.score));
-    }
-  }
-  return results;
 }

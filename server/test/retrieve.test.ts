@@ -3,11 +3,7 @@ import { afterEach, test } from 'node:test';
 import type { DatabaseSync } from 'node:sqlite';
 import { openDb, toVectorBlob } from '../src/db/client.ts';
 import { migrate } from '../src/db/migrate.ts';
-import {
-  retrieveForMeeting,
-  shouldUseFullTranscript,
-  toFtsMatchQuery,
-} from '../src/rag/retrieve.ts';
+import { retrieveForMeeting, toFtsMatchQuery } from '../src/rag/retrieve.ts';
 import type { Llm } from '../src/llm/types.ts';
 
 let db: DatabaseSync | undefined;
@@ -93,11 +89,6 @@ test('retrieve never returns a chunk from another meeting_id', async () => {
   assert.ok(hits.every((hit) => hit.meetingId === meetingA));
   assert.ok(hits.some((hit) => hit.id === chunkA));
   assert.ok(hits.every((hit) => hit.id !== chunkB));
-});
-
-test('shouldUseFullTranscript is true only below the threshold', () => {
-  assert.equal(shouldUseFullTranscript(23999, 24000), true);
-  assert.equal(shouldUseFullTranscript(24000, 24000), false);
 });
 
 test('toFtsMatchQuery quotes tokens and joins with OR', () => {

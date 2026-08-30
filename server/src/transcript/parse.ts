@@ -5,20 +5,22 @@ export type Turn = {
   text: string;
 };
 
+type SpokenTurn = Pick<Turn, 'speaker' | 'timestamp' | 'text'>;
+
 /**
  * The one way a turn is written for a model. The prefix is the citation itself, so
  * copying the marker from the turn that contains the claim cannot yield an earlier
  * greeting by the same speaker. turn.text may contain newlines.
  */
-export function turnPrefix(turn: Turn): string {
+export function turnPrefix(turn: Pick<Turn, 'speaker' | 'timestamp'>): string {
   return `[${turn.speaker}, ${turn.timestamp}]: `;
 }
 
-export function renderTurn(turn: Turn): string {
+export function renderTurn(turn: SpokenTurn): string {
   return turnPrefix(turn) + turn.text;
 }
 
-export function renderTurns(turns: Turn[]): string {
+export function renderTurns(turns: readonly SpokenTurn[]): string {
   return turns.map(renderTurn).join('\n');
 }
 

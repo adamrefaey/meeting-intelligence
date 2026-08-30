@@ -5,7 +5,7 @@ export function sendError(reply: FastifyReply, status: number, error: string) {
   return reply.code(status).send({ error });
 }
 
-export function parseMeetingId(raw: string): number | undefined {
+function parseMeetingId(raw: string): number | undefined {
   if (!/^[1-9][0-9]*$/.test(raw)) {
     return undefined;
   }
@@ -13,12 +13,8 @@ export function parseMeetingId(raw: string): number | undefined {
   return Number.isSafeInteger(id) ? id : undefined;
 }
 
-export function readMeetingId(request: FastifyRequest): number | undefined {
-  return parseMeetingId((request.params as { id: string }).id);
-}
-
 export function requireMeetingId(request: FastifyRequest, reply: FastifyReply): number | undefined {
-  const id = readMeetingId(request);
+  const id = parseMeetingId((request.params as { id: string }).id);
   if (id === undefined) {
     sendError(reply, 400, 'invalid meeting id');
     return undefined;
