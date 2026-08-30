@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { cn } from '../../lib/cn';
-import { segmentAnswer, type CitationTurn, type InlineCitation } from '../../lib/citations';
+import { segmentAnswer, type CitationTurn } from '../../lib/citations';
 import { Badge } from '../ui/Badge';
 import { CitationChip } from './CitationChip';
 
@@ -14,14 +14,6 @@ type ChatBubbleProps = {
   turns: CitationTurn[];
 };
 
-function inlineChipTitle(inline: InlineCitation): string {
-  const range =
-    inline.endTimestamp !== undefined
-      ? `${inline.startTimestamp}\u2013${inline.endTimestamp}`
-      : inline.startTimestamp;
-  return inline.speaker === '' ? range : `${inline.speaker} ${range}`;
-}
-
 function AnswerContent({
   content,
   question,
@@ -31,19 +23,23 @@ function AnswerContent({
   question: string;
   turns: CitationTurn[];
 }) {
-  const segments = segmentAnswer(content, turns, question);
   return (
     <p className="wrap-break-word whitespace-pre-wrap">
-      {segments.map((segment, index) => {
+      {segmentAnswer(content, turns, question).map((segment, index) => {
         if (segment.type === 'text') {
           return <span key={index}>{segment.text}</span>;
         }
+        const { citation } = segment;
+        const range =
+          citation.endTimestamp !== undefined
+            ? `${citation.startTimestamp}\u2013${citation.endTimestamp}`
+            : citation.startTimestamp;
         return (
           <CitationChip
             key={index}
-            label={segment.citation.startTimestamp}
-            title={inlineChipTitle(segment.citation)}
-            startSeconds={segment.citation.startSeconds}
+            label={citation.startTimestamp}
+            title={citation.speaker === '' ? range : `${citation.speaker} ${range}`}
+            startSeconds={citation.startSeconds}
             className="mx-0.5 align-baseline"
           />
         );

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Link, Outlet, useMatch, useNavigate, type NavigateFunction } from 'react-router';
 import { BrandMark } from '../ui/BrandMark';
+import { Button } from '../ui/Button';
 import { FileDrop } from '../ui/FileDrop';
-import { IconButton } from '../ui/IconButton';
 import { cn, focusRing } from '../../lib/cn';
 import {
   createMeeting,
@@ -139,14 +139,6 @@ function useShellMeetings(openId: string | undefined, closeRail: CloseRail) {
 
 export type ShellOutletContext = ReturnType<typeof useShellMeetings>;
 
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-      <path fill="currentColor" d="M2 3h12v2H2zm0 4h12v2H2zm0 4h12v2H2z" />
-    </svg>
-  );
-}
-
 function ShellHeader({
   railOpen,
   overlay,
@@ -160,16 +152,20 @@ function ShellHeader({
 }) {
   return (
     <header className="z-30 flex h-13 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
-      <IconButton
+      <Button
         ref={menuRef}
+        variant="ghost"
+        size="icon"
         className="xl:hidden"
         aria-label={railOpen ? 'Close meetings' : 'Open meetings'}
         aria-expanded={railOpen}
         aria-controls="meeting-rail"
         onClick={onToggleRail}
       >
-        <MenuIcon />
-      </IconButton>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+          <path fill="currentColor" d="M2 3h12v2H2zm0 4h12v2H2zm0 4h12v2H2z" />
+        </svg>
+      </Button>
       <div className="flex min-w-0 flex-1 items-center gap-2" inert={overlay}>
         <Link
           to="/"

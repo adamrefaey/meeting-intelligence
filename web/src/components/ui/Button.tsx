@@ -9,12 +9,12 @@ const buttonVariant = {
 const buttonSize = {
   sm: 'h-8 px-3 text-sm',
   md: 'h-9 px-4 text-sm',
+  icon: 'h-9 w-9 shrink-0',
 } as const;
 
 type ButtonProps = ComponentProps<'button'> & {
   variant?: keyof typeof buttonVariant;
-  size?: keyof typeof buttonSize;
-};
+} & ({ size?: 'sm' | 'md' } | { size: 'icon'; 'aria-label': string });
 
 export function Button({
   className,

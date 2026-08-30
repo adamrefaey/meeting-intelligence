@@ -32,15 +32,6 @@ type Bubble = {
   streaming?: boolean;
 };
 
-function toBubbles(messages: ChatMessage[]): Bubble[] {
-  return messages.map((message) => ({
-    key: String(message.id),
-    role: message.role,
-    content: message.content,
-    useFullTranscript: false,
-  }));
-}
-
 function patchLastAssistant(bubbles: Bubble[], patch: Partial<Bubble>): Bubble[] {
   const last = bubbles.at(-1);
   if (!last || last.role !== 'assistant') {
@@ -77,23 +68,6 @@ function finishAssistant(bubbles: Bubble[]): Bubble[] {
   });
 }
 
-function isNearBottom(el: HTMLElement): boolean {
-  return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-}
-
-function optimisticPair(seq: number, text: string): Bubble[] {
-  return [
-    { key: `local-user-${seq}`, role: 'user', content: text, useFullTranscript: false },
-    {
-      key: `local-assistant-${seq}`,
-      role: 'assistant',
-      content: '',
-      useFullTranscript: false,
-      streaming: true,
-    },
-  ];
-}
-
 async function sendQuestion(
   meetingId: number,
   text: string,
@@ -106,8 +80,7 @@ async function sendQuestion(
     if (isAbortError(error)) {
       return;
     }
-    const message = errorMessage(error, 'failed to answer');
-    onEvent({ type: 'error', error: message });
+    onEvent({ type: 'error', error: errorMessage(error, 'failed to answer') });
   }
 }
 
@@ -231,11 +204,14 @@ function useStickScroll(bubbles: Bubble[]) {
   return { scrollerRef, stickRef };
 }
 
+function isNearBottom(el: HTMLElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+}
+
 /** An answer's chips are grounded against the question, which is the bubble just above it. */
 function askedBefore(bubbles: Bubble[], index: number): string {
-  const bubble = bubbles[index];
   const previous = bubbles[index - 1];
-  if (bubble?.role !== 'assistant' || previous?.role !== 'user') {
+  if (bubbles[index]?.role !== 'assistant' || previous?.role !== 'user') {
     return '';
   }
   return previous.content;
@@ -299,7 +275,17 @@ function startQuestion(
   abortRef.current = controller;
   setDraft('');
   setStreaming(true);
-  setBubbles((prev) => [...prev, ...optimisticPair(seq, text)]);
+  setBubbles((prev) => [
+    ...prev,
+    { key: `local-user-${seq}`, role: 'user', content: text, useFullTranscript: false },
+    {
+      key: `local-assistant-${seq}`,
+      role: 'assistant',
+      content: '',
+      useFullTranscript: false,
+      streaming: true,
+    },
+  ]);
   void sendQuestion(meetingId, text, controller.signal, (event) => {
     if (alive.current) {
       setBubbles((prev) => applyChatEvent(prev, event));
@@ -315,7 +301,14 @@ function startQuestion(
 }
 
 function useChatSession(meetingId: number, initialMessages: ChatMessage[]) {
-  const [bubbles, setBubbles] = useState(() => toBubbles(initialMessages));
+  const [bubbles, setBubbles] = useState<Bubble[]>(() =>
+    initialMessages.map((message) => ({
+      key: String(message.id),
+      role: message.role,
+      content: message.content,
+      useFullTranscript: false,
+    })),
+  );
   const [draft, setDraft] = useState('');
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);

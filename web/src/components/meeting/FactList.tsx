@@ -1,27 +1,36 @@
 import { Badge } from '../ui/Badge';
+import { cn } from '../../lib/cn';
 import type { ActionItem, Decision } from '../../lib/api';
 
-type FactListProps = {
-  decisions: Decision[];
-  actionItems: ActionItem[];
-};
+const factKind = {
+  decision: { badge: 'accent', label: 'Decision', edge: 'border-l-accent' },
+  action: { badge: 'positive', label: 'Action', edge: 'border-l-positive' },
+} as const;
 
-function DecisionRow({ item }: { item: Decision }) {
+type FactKind = keyof typeof factKind;
+
+type Fact = { id: number; text: string; detail: string | null; timestamp: string | null };
+
+function FactRow({ kind, fact }: { kind: FactKind; fact: Fact }) {
+  const { badge, label, edge } = factKind[kind];
   return (
-    <li className="rounded-md border border-border border-l-2 border-l-accent bg-surface-raised px-3 py-2 shadow-raised">
+    <li
+      className={cn(
+        'rounded-md border border-border border-l-2 bg-surface-raised px-3 py-2 shadow-raised',
+        edge,
+      )}
+    >
       <div className="flex items-start gap-2">
-        <Badge variant="accent" className="mt-0.5 shrink-0">
-          Decision
+        <Badge variant={badge} className="mt-0.5 shrink-0">
+          {label}
         </Badge>
         <div className="min-w-0 flex-1">
-          <p className="text-sm leading-5 text-foreground">{item.text}</p>
-          {item.speaker || item.timestamp ? (
+          <p className="text-sm leading-5 text-foreground">{fact.text}</p>
+          {fact.detail || fact.timestamp ? (
             <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted">
-              {item.speaker ? (
-                <span className="min-w-0 wrap-break-word">{item.speaker}</span>
-              ) : null}
-              {item.timestamp ? (
-                <span className="font-mono whitespace-nowrap">{item.timestamp}</span>
+              {fact.detail ? <span className="min-w-0 wrap-break-word">{fact.detail}</span> : null}
+              {fact.timestamp ? (
+                <span className="font-mono whitespace-nowrap">{fact.timestamp}</span>
               ) : null}
             </p>
           ) : null}
@@ -31,61 +40,45 @@ function DecisionRow({ item }: { item: Decision }) {
   );
 }
 
-function ActionRow({ item }: { item: ActionItem }) {
-  const meta = [item.owner, item.due].filter(Boolean).join(' · ');
+function FactSection({ heading, kind, facts }: { heading: string; kind: FactKind; facts: Fact[] }) {
+  if (facts.length === 0) {
+    return null;
+  }
   return (
-    <li className="rounded-md border border-border border-l-2 border-l-positive bg-surface-raised px-3 py-2 shadow-raised">
-      <div className="flex items-start gap-2">
-        <Badge variant="positive" className="mt-0.5 shrink-0">
-          Action
-        </Badge>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm leading-5 text-foreground">{item.text}</p>
-          {meta || item.timestamp ? (
-            <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-4 text-muted">
-              {meta ? <span className="min-w-0 wrap-break-word">{meta}</span> : null}
-              {item.timestamp ? (
-                <span className="font-mono whitespace-nowrap">{item.timestamp}</span>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </li>
+    <section>
+      <h2 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.14em] text-muted uppercase">
+        {heading}
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {facts.map((fact) => (
+          <FactRow key={fact.id} kind={kind} fact={fact} />
+        ))}
+      </ul>
+    </section>
   );
 }
+
+type FactListProps = { decisions: Decision[]; actionItems: ActionItem[] };
 
 export function FactList({ decisions, actionItems }: FactListProps) {
   if (decisions.length === 0 && actionItems.length === 0) {
     return null;
   }
-
   return (
     <div className="mt-4 flex flex-col gap-4">
-      {decisions.length > 0 ? (
-        <section>
-          <h2 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.14em] text-muted uppercase">
-            Decisions
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {decisions.map((item) => (
-              <DecisionRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {actionItems.length > 0 ? (
-        <section>
-          <h2 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.14em] text-muted uppercase">
-            Action items
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {actionItems.map((item) => (
-              <ActionRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <FactSection
+        heading="Decisions"
+        kind="decision"
+        facts={decisions.map((item) => ({ ...item, detail: item.speaker }))}
+      />
+      <FactSection
+        heading="Action items"
+        kind="action"
+        facts={actionItems.map((item) => ({
+          ...item,
+          detail: [item.owner, item.due].filter(Boolean).join(' · '),
+        }))}
+      />
     </div>
   );
 }

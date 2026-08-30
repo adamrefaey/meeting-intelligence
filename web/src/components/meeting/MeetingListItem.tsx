@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { NavLink } from 'react-router';
 import { Badge } from '../ui/Badge';
-import { IconButton } from '../ui/IconButton';
+import { Button } from '../ui/Button';
 import { cn, focusRing } from '../../lib/cn';
 import type { MeetingSummary } from '../../lib/api';
 
@@ -11,24 +11,12 @@ type MeetingListItemProps = {
   onSelect: () => void;
 };
 
-function formatCreatedAt(value: string): string {
-  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString(undefined, { month: 'short', day: 'numeric' });
-}
+const dayMonth = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M6 2h4l1 1h3v2H2V3h3l1-1zm-2 4h8v8H4V6zm2 1v6h1V7H6zm3 0v6h1V7H9z"
-      />
-    </svg>
-  );
+function formatCreatedAt(value: string): string {
+  // SQLite stores `YYYY-MM-DD HH:MM:SS` in UTC, which Date cannot parse as-is.
+  const date = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
+  return Number.isNaN(date.getTime()) ? value : dayMonth.format(date);
 }
 
 // Deleting the focused row would drop focus to <body>, so hand it to a neighbour while
@@ -75,14 +63,21 @@ export function MeetingListItem({ meeting, onDelete, onSelect }: MeetingListItem
           </Badge>
         </span>
       </NavLink>
-      <IconButton
+      <Button
         ref={deleteRef}
+        variant="ghost"
+        size="icon"
         className="mt-1 text-muted hover:bg-danger/10 hover:text-danger"
         aria-label={`Delete ${meeting.title}`}
         onClick={() => onDelete(meeting)}
       >
-        <TrashIcon />
-      </IconButton>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+          <path
+            fill="currentColor"
+            d="M6 2h4l1 1h3v2H2V3h3l1-1zm-2 4h8v8H4V6zm2 1v6h1V7H6zm3 0v6h1V7H9z"
+          />
+        </svg>
+      </Button>
     </div>
   );
 }

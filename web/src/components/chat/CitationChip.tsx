@@ -1,13 +1,9 @@
 import { cn, focusRing } from '../../lib/cn';
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 let flashTarget: HTMLElement | undefined;
 let flashTimer = 0;
 
-export function scrollToCitation(startSeconds: number): void {
+function scrollToCitation(startSeconds: number): void {
   if (!Number.isFinite(startSeconds)) {
     return;
   }
@@ -19,7 +15,7 @@ export function scrollToCitation(startSeconds: number): void {
   }
   target.scrollIntoView({
     block: 'center',
-    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
   });
   if (flashTarget && flashTarget !== target) {
     flashTarget.classList.remove('turn-flash');

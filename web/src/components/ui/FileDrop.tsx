@@ -12,16 +12,12 @@ type FileDropProps = {
   busyLabel?: string;
 };
 
-function isTxt(file: File): boolean {
-  return file.name.toLowerCase().endsWith('.txt');
-}
-
 function takeFile(
   files: FileList | null,
   onFile: (file: File) => void,
   onReject: (file: File) => void,
 ) {
-  const txt = files ? [...files].find(isTxt) : undefined;
+  const txt = [...(files ?? [])].find((file) => file.name.toLowerCase().endsWith('.txt'));
   if (txt) {
     onFile(txt);
     return;
