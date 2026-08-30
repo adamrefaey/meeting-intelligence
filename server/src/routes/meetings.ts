@@ -4,13 +4,7 @@ import type { AppConfig } from '../config.ts';
 import { discardMeeting, ingestTranscript } from '../ingest/pipeline.ts';
 import type { Llm } from '../llm/types.ts';
 import { ParseError } from '../transcript/parse.ts';
-import {
-  clientDisconnectSignal,
-  errorCode,
-  requireMeetingId,
-  sendError,
-  skipIfAborted,
-} from './http.ts';
+import { clientDisconnectSignal, requireMeetingId, sendError, skipIfAborted } from './http.ts';
 
 export type MeetingRouteDeps = {
   db: DatabaseSync;
@@ -18,52 +12,44 @@ export type MeetingRouteDeps = {
   config: AppConfig;
 };
 
-type UploadedFile = {
-  filename: string;
-  mimetype: string;
-  buffer: Buffer;
-};
-
 type UploadParts = {
-  file?: UploadedFile;
-  title?: string;
+  file?: { filename: string; buffer: Buffer };
   error?: string;
 };
 
 type MeetingSummaryRow = {
-  id: number | bigint;
+  id: number;
   title: string;
-  original_filename: string;
-  created_at: string;
-  status: string;
-  error_message: string | null;
-  embedding_model: string | null;
-  embedding_dimensions: number | null;
-  char_count: number;
+  createdAt: string;
+  status: 'processing' | 'ready';
 };
 
-function mapMeeting(row: MeetingSummaryRow) {
-  return {
-    id: Number(row.id),
-    title: row.title,
-    original_filename: row.original_filename,
-    created_at: row.created_at,
-    status: row.status,
-    error_message: row.error_message,
-    embedding_model: row.embedding_model,
-    embedding_dimensions: row.embedding_dimensions,
-    char_count: row.char_count,
-  };
-}
+type DecisionRow = { id: number; text: string; speaker: string | null; timestamp: string | null };
 
-const MEETING_COLUMNS = `id, title, original_filename, created_at, status, error_message,
-       embedding_model, embedding_dimensions, char_count`;
+type ActionItemRow = {
+  id: number;
+  text: string;
+  owner: string | null;
+  due: string | null;
+  timestamp: string | null;
+};
+
+type TurnRow = {
+  id: number;
+  speaker: string;
+  timestamp: string;
+  startSeconds: number;
+  text: string;
+};
+
+type MessageRow = { id: number; role: 'user' | 'assistant'; content: string };
+
+const MEETING_COLUMNS = `id, title, created_at AS createdAt, status`;
 
 function listMeetings(db: DatabaseSync) {
-  const rows = db
+  return db
     .prepare(`SELECT ${MEETING_COLUMNS} FROM meetings ORDER BY created_at DESC, id DESC`)
     .all() as MeetingSummaryRow[];
-  return rows.map(mapMeeting);
 }
 
 function loadMeetingRow(db: DatabaseSync, id: number): MeetingSummaryRow | undefined {
@@ -72,42 +58,18 @@ function loadMeetingRow(db: DatabaseSync, id: number): MeetingSummaryRow | undef
     | undefined;
 }
 
-function loadDecisions(db: DatabaseSync, meetingId: number) {
-  const rows = db
+function loadDecisions(db: DatabaseSync, meetingId: number): DecisionRow[] {
+  return db
     .prepare(`SELECT id, text, speaker, timestamp FROM decisions WHERE meeting_id = ? ORDER BY id`)
-    .all(meetingId) as Array<{
-    id: number | bigint;
-    text: string;
-    speaker: string | null;
-    timestamp: string | null;
-  }>;
-  return rows.map((row) => ({
-    id: Number(row.id),
-    text: row.text,
-    speaker: row.speaker,
-    timestamp: row.timestamp,
-  }));
+    .all(meetingId) as DecisionRow[];
 }
 
-function loadActionItems(db: DatabaseSync, meetingId: number) {
-  const rows = db
+function loadActionItems(db: DatabaseSync, meetingId: number): ActionItemRow[] {
+  return db
     .prepare(
       `SELECT id, text, owner, due, timestamp FROM action_items WHERE meeting_id = ? ORDER BY id`,
     )
-    .all(meetingId) as Array<{
-    id: number | bigint;
-    text: string;
-    owner: string | null;
-    due: string | null;
-    timestamp: string | null;
-  }>;
-  return rows.map((row) => ({
-    id: Number(row.id),
-    text: row.text,
-    owner: row.owner,
-    due: row.due,
-    timestamp: row.timestamp,
-  }));
+    .all(meetingId) as ActionItemRow[];
 }
 
 function getMeeting(db: DatabaseSync, request: FastifyRequest, reply: FastifyReply) {
@@ -120,80 +82,44 @@ function getMeeting(db: DatabaseSync, request: FastifyRequest, reply: FastifyRep
     return sendError(reply, 404, 'Meeting not found');
   }
   return {
-    ...mapMeeting(meeting),
+    ...meeting,
     decisions: loadDecisions(db, id),
     actionItems: loadActionItems(db, id),
   };
 }
 
-function loadTurns(db: DatabaseSync, meetingId: number) {
-  const rows = db
+function loadTurns(db: DatabaseSync, meetingId: number): TurnRow[] {
+  return db
     .prepare(
-      `SELECT id, turn_index, speaker, timestamp, start_seconds, text
+      `SELECT id, speaker, timestamp, start_seconds AS startSeconds, text
        FROM turns WHERE meeting_id = ? ORDER BY turn_index`,
     )
-    .all(meetingId) as Array<{
-    id: number | bigint;
-    turn_index: number;
-    speaker: string;
-    timestamp: string;
-    start_seconds: number;
-    text: string;
-  }>;
-  return rows.map((row) => ({
-    id: Number(row.id),
-    turnIndex: row.turn_index,
-    speaker: row.speaker,
-    timestamp: row.timestamp,
-    startSeconds: row.start_seconds,
-    text: row.text,
-  }));
+    .all(meetingId) as TurnRow[];
 }
 
-function meetingExists(db: DatabaseSync, id: number): boolean {
-  return db.prepare('SELECT 1 FROM meetings WHERE id = ?').get(id) !== undefined;
-}
-
-function getTranscript(db: DatabaseSync, request: FastifyRequest, reply: FastifyReply) {
+function requireExistingMeeting(
+  db: DatabaseSync,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): number | undefined {
   const id = requireMeetingId(request, reply);
   if (id === undefined) {
-    return;
+    return undefined;
   }
-  if (!meetingExists(db, id)) {
-    return sendError(reply, 404, 'Meeting not found');
+  if (db.prepare('SELECT 1 FROM meetings WHERE id = ?').get(id) === undefined) {
+    sendError(reply, 404, 'Meeting not found');
+    return undefined;
   }
-  return { turns: loadTurns(db, id) };
+  return id;
 }
 
-function loadMessages(db: DatabaseSync, meetingId: number) {
-  const rows = db
+function loadMessages(db: DatabaseSync, meetingId: number): MessageRow[] {
+  return db
     .prepare(
-      `SELECT id, role, content, created_at FROM messages
+      `SELECT id, role, content FROM messages
        WHERE meeting_id = ? ORDER BY created_at ASC, id ASC`,
     )
-    .all(meetingId) as Array<{
-    id: number | bigint;
-    role: string;
-    content: string;
-    created_at: string;
-  }>;
-  return rows.map((row) => ({
-    id: Number(row.id),
-    role: row.role,
-    content: row.content,
-    createdAt: row.created_at,
-  }));
-}
-
-function getMessages(db: DatabaseSync, request: FastifyRequest, reply: FastifyReply) {
-  const id = requireMeetingId(request, reply);
-  if (id === undefined) {
-    return;
-  }
-  if (!meetingExists(db, id)) {
-    return sendError(reply, 404, 'Meeting not found');
-  }
-  return { messages: loadMessages(db, id) };
+    .all(meetingId) as MessageRow[];
 }
 
 function deleteMeeting(db: DatabaseSync, request: FastifyRequest, reply: FastifyReply) {
@@ -208,15 +134,7 @@ function deleteMeeting(db: DatabaseSync, request: FastifyRequest, reply: Fastify
   return reply.code(204).send();
 }
 
-type FilePart = {
-  fieldname: string;
-  filename: string;
-  mimetype: string;
-  file: AsyncIterable<unknown>;
-  toBuffer: () => Promise<Buffer>;
-};
-
-async function discardFile(file: AsyncIterable<unknown>): Promise<void> {
+async function drainFile(file: AsyncIterable<unknown>): Promise<void> {
   for await (const _chunk of file) {
     // Drain so busboy can emit the next part.
   }
@@ -233,43 +151,32 @@ function validateUploadMeta(filename: string, mimetype: string): string | undefi
   return undefined;
 }
 
-async function takeFilePart(part: FilePart, result: UploadParts): Promise<void> {
-  if (part.fieldname !== 'file' || result.file || result.error) {
-    await discardFile(part.file);
-    return;
-  }
-  const invalid = validateUploadMeta(part.filename, part.mimetype);
-  if (invalid) {
-    result.error = invalid;
-    await discardFile(part.file);
-    return;
-  }
-  result.file = {
-    filename: part.filename,
-    mimetype: part.mimetype,
-    buffer: await part.toBuffer(),
-  };
-}
-
-async function readUploadParts(request: FastifyRequest): Promise<UploadParts> {
+async function readUpload(request: FastifyRequest): Promise<UploadParts> {
   const result: UploadParts = {};
   for await (const part of request.parts()) {
-    if (part.type === 'file') {
-      await takeFilePart(part, result);
-    } else if (part.fieldname === 'title') {
-      result.title = String(part.value);
+    if (part.type !== 'file') {
+      continue;
     }
+    if (part.fieldname !== 'file') {
+      await drainFile(part.file);
+      continue;
+    }
+    const invalid = validateUploadMeta(part.filename, part.mimetype);
+    if (invalid) {
+      result.error = invalid;
+      await drainFile(part.file);
+      continue;
+    }
+    result.file = { filename: part.filename, buffer: await part.toBuffer() };
   }
   return result;
 }
 
-function resolveTitle(title: string | undefined, filename: string): string {
-  const trimmed = title?.trim();
-  return trimmed ? trimmed : filename.replace(/\.txt$/i, '');
-}
-
 function mapUploadReadError(error: unknown): { status: number; error: string } {
-  const code = errorCode(error);
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : undefined;
   if (code === 'FST_REQ_FILE_TOO_LARGE' || code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
     return { status: 413, error: 'file too large' };
   }
@@ -279,32 +186,10 @@ function mapUploadReadError(error: unknown): { status: number; error: string } {
   return { status: 400, error: 'invalid upload' };
 }
 
-async function ingestUpload(
-  deps: MeetingRouteDeps,
-  file: UploadedFile,
-  title: string | undefined,
-  signal?: AbortSignal,
-) {
-  return ingestTranscript(
-    deps.db,
-    deps.llm,
-    {
-      embeddingModel: deps.config.embeddingModel,
-      embeddingDimensions: deps.config.embeddingDimensions,
-    },
-    {
-      title: resolveTitle(title, file.filename),
-      filename: file.filename,
-      rawText: file.buffer.toString('utf8'),
-    },
-    signal,
-  );
-}
-
 async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, reply: FastifyReply) {
-  let parts: UploadParts;
+  let upload: UploadParts;
   try {
-    parts = await readUploadParts(request);
+    upload = await readUpload(request);
   } catch (error) {
     if (skipIfAborted(reply, error)) {
       return;
@@ -312,24 +197,28 @@ async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, re
     const mapped = mapUploadReadError(error);
     return sendError(reply, mapped.status, mapped.error);
   }
-  if (parts.error) {
-    return sendError(reply, 400, parts.error);
+  if (upload.error) {
+    return sendError(reply, 400, upload.error);
   }
-  if (!parts.file) {
+  if (!upload.file) {
     return sendError(reply, 400, 'file is required');
   }
   try {
-    const { meetingId } = await ingestUpload(
-      deps,
-      parts.file,
-      parts.title,
+    const { meetingId } = await ingestTranscript(
+      deps.db,
+      deps.llm,
+      deps.config,
+      {
+        title: upload.file.filename.replace(/\.txt$/i, ''),
+        rawText: upload.file.buffer.toString('utf8'),
+      },
       clientDisconnectSignal(reply),
     );
     if (skipIfAborted(reply)) {
       discardMeeting(deps.db, meetingId);
       return;
     }
-    return reply.code(201).send({ id: meetingId, status: 'ready' });
+    return reply.code(201).send({ id: meetingId });
   } catch (error) {
     if (skipIfAborted(reply, error)) {
       return;
@@ -344,15 +233,25 @@ async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, re
 
 export function meetingsRoutes(deps: MeetingRouteDeps): FastifyPluginAsync {
   return async (app) => {
-    app.get('/api/meetings', async () => listMeetings(deps.db));
+    app.get('/api/meetings', () => listMeetings(deps.db));
     app.post('/api/meetings', { bodyLimit: 6 * 1024 * 1024 }, (request, reply) =>
       createMeeting(deps, request, reply),
     );
     app.get('/api/meetings/:id', (request, reply) => getMeeting(deps.db, request, reply));
-    app.get('/api/meetings/:id/transcript', (request, reply) =>
-      getTranscript(deps.db, request, reply),
-    );
-    app.get('/api/meetings/:id/messages', (request, reply) => getMessages(deps.db, request, reply));
+    app.get('/api/meetings/:id/transcript', (request, reply) => {
+      const id = requireExistingMeeting(deps.db, request, reply);
+      if (id === undefined) {
+        return;
+      }
+      return { turns: loadTurns(deps.db, id) };
+    });
+    app.get('/api/meetings/:id/messages', (request, reply) => {
+      const id = requireExistingMeeting(deps.db, request, reply);
+      if (id === undefined) {
+        return;
+      }
+      return { messages: loadMessages(deps.db, id) };
+    });
     app.delete('/api/meetings/:id', (request, reply) => deleteMeeting(deps.db, request, reply));
   };
 }

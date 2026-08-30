@@ -11,7 +11,6 @@ export type IngestConfig = Pick<LlmConfig, 'embeddingModel' | 'embeddingDimensio
 
 export type IngestInput = {
   title: string;
-  filename: string;
   rawText: string;
 };
 
@@ -37,11 +36,11 @@ function insertChunks(db: DatabaseSync, meetingId: number, chunks: Chunk[]): num
       chunk.turnStartIndex,
       chunk.turnEndIndex,
     ]),
-  ) as Array<{ id: number | bigint; chunk_index: number | bigint }>;
+  ) as Array<{ id: number; chunk_index: number }>;
   // INSERT...RETURNING order is undefined; index by the value we inserted.
   const ids = Array.from({ length: chunks.length }, () => 0);
   for (const row of inserted) {
-    ids[Number(row.chunk_index)] = Number(row.id);
+    ids[row.chunk_index] = row.id;
   }
   return ids;
 }
@@ -58,18 +57,11 @@ function storeTranscript(
       db
         .prepare(
           `INSERT INTO meetings (
-             title, original_filename, raw_text, status,
-             embedding_model, embedding_dimensions, char_count
-           ) VALUES (?, ?, ?, 'processing', ?, ?, ?)`,
+             title, status, embedding_model, embedding_dimensions, char_count
+           ) VALUES (?, 'processing', ?, ?, ?)`,
         )
-        .run(
-          input.title,
-          input.filename,
-          input.rawText,
-          config.embeddingModel,
-          config.embeddingDimensions,
-          input.rawText.length,
-        ).lastInsertRowid,
+        .run(input.title, config.embeddingModel, config.embeddingDimensions, input.rawText.length)
+        .lastInsertRowid,
     );
     insertRows(
       db,

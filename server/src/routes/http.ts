@@ -5,17 +5,10 @@ export function sendError(reply: FastifyReply, status: number, error: string) {
   return reply.code(status).send({ error });
 }
 
-function parseMeetingId(raw: string): number | undefined {
-  if (!/^[1-9][0-9]*$/.test(raw)) {
-    return undefined;
-  }
-  const id = Number(raw);
-  return Number.isSafeInteger(id) ? id : undefined;
-}
-
 export function requireMeetingId(request: FastifyRequest, reply: FastifyReply): number | undefined {
-  const id = parseMeetingId((request.params as { id: string }).id);
-  if (id === undefined) {
+  const raw = (request.params as { id: string }).id;
+  const id = Number(raw);
+  if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(id)) {
     sendError(reply, 400, 'invalid meeting id');
     return undefined;
   }
@@ -48,11 +41,4 @@ export function skipIfAborted(reply: FastifyReply, error?: unknown): boolean {
     return true;
   }
   return reply.sent;
-}
-
-export function errorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('code' in error)) {
-    return undefined;
-  }
-  return typeof error.code === 'string' ? error.code : undefined;
 }

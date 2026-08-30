@@ -1,11 +1,8 @@
 CREATE TABLE meetings (
   id INTEGER PRIMARY KEY,
   title TEXT NOT NULL,
-  original_filename TEXT NOT NULL,
-  raw_text TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  status TEXT NOT NULL CHECK (status IN ('processing', 'ready', 'error')),
-  error_message TEXT,
+  status TEXT NOT NULL CHECK (status IN ('processing', 'ready')),
   embedding_model TEXT,
   embedding_dimensions INTEGER,
   char_count INTEGER NOT NULL DEFAULT 0

@@ -127,9 +127,6 @@ function MeetingHeader({ meeting }: { meeting: MeetingDetail }) {
       >
         {meeting.title}
       </h1>
-      {meeting.status === 'error' && meeting.error_message ? (
-        <p className="mt-1.5 text-sm text-danger">{meeting.error_message}</p>
-      ) : null}
     </header>
   );
 }

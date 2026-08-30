@@ -2,7 +2,7 @@
 
 Upload a `.txt` transcript. The server parses speaker turns, packs them into chunks, writes SQLite rows, then embeds those chunks **in parallel with** extracting decisions and action items.
 
-The upload request stays open until ingest finishes, then returns `201 { id, status: ready }`.
+The upload request stays open until ingest finishes, then returns `201 { id }`.
 
 ## High-level ingestion
 
@@ -16,7 +16,7 @@ flowchart TD
   embed["llm.embed"]
   extract["extractFacts"]
   storeReady["storeReady: embeddings, facts, status = ready"]
-  created["201 { id, status: ready }"]
+  created["201 { id }"]
 
   post --> upload --> parse --> chunk --> storeTx
   storeTx --> embed

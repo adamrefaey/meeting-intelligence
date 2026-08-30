@@ -96,12 +96,9 @@ async function openTestApp(llm: Llm = fakeLlm()) {
   return { app, db };
 }
 
-function txtForm(filename: string, content: string, title?: string, type = 'text/plain'): FormData {
+function txtForm(filename: string, content: string, type = 'text/plain'): FormData {
   const form = new FormData();
   form.append('file', new Blob([content], { type }), filename);
-  if (title !== undefined) {
-    form.append('title', title);
-  }
   return form;
 }
 
@@ -109,30 +106,30 @@ async function upload(instance: FastifyInstance, form: FormData) {
   return instance.inject({ method: 'POST', url: '/api/meetings', payload: form });
 }
 
-test('upload fixture returns 201 with id and status ready', async () => {
+test('upload fixture returns 201 with id', async () => {
   const { app: instance } = await openTestApp();
-  const res = await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  const res = await upload(instance, txtForm('standup.txt', standupText));
   assert.equal(res.statusCode, 201);
-  const body = res.json() as { id: number; status: string };
+  const body = res.json() as { id: number };
   assert.equal(typeof body.id, 'number');
   assert.ok(body.id > 0);
-  assert.equal(body.status, 'ready');
+  assert.equal('status' in body, false);
 });
 
-test('list has length 1 after upload and omits raw_text', async () => {
+test('list has length 1 after upload', async () => {
   const { app: instance } = await openTestApp();
-  await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  await upload(instance, txtForm('standup.txt', standupText));
   const res = await instance.inject({ method: 'GET', url: '/api/meetings' });
   assert.equal(res.statusCode, 200);
   const body = res.json() as Array<Record<string, unknown>>;
   assert.equal(body.length, 1);
-  assert.equal(body[0]?.title, 'Standup');
-  assert.equal('raw_text' in body[0], false);
+  assert.deepEqual(Object.keys(body[0] ?? {}).sort(), ['createdAt', 'id', 'status', 'title']);
+  assert.equal(typeof body[0]?.createdAt, 'string');
 });
 
 test('get meeting includes decisions and actionItems; transcript has 15 turns', async () => {
   const { app: instance } = await openTestApp();
-  const created = await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  const created = await upload(instance, txtForm('standup.txt', standupText));
   const { id } = created.json() as { id: number };
 
   const meetingRes = await instance.inject({ method: 'GET', url: `/api/meetings/${id}` });
@@ -140,22 +137,29 @@ test('get meeting includes decisions and actionItems; transcript has 15 turns', 
   const meeting = meetingRes.json() as { decisions: unknown; actionItems: unknown };
   assert.ok(Array.isArray(meeting.decisions));
   assert.ok(Array.isArray(meeting.actionItems));
-  assert.equal('raw_text' in meeting, false);
 
   const transcriptRes = await instance.inject({
     method: 'GET',
     url: `/api/meetings/${id}/transcript`,
   });
   assert.equal(transcriptRes.statusCode, 200);
-  const transcript = transcriptRes.json() as { turns: unknown[] };
+  const transcript = transcriptRes.json() as { turns: Array<Record<string, unknown>> };
   assert.equal(transcript.turns.length, 15);
+  assert.equal(typeof transcript.turns[0]?.startSeconds, 'number');
+  assert.equal('turnIndex' in (transcript.turns[0] ?? {}), false);
 });
 
 test('unknown meeting id returns 404', async () => {
   const { app: instance } = await openTestApp();
-  const res = await instance.inject({ method: 'GET', url: '/api/meetings/99999' });
-  assert.equal(res.statusCode, 404);
-  assert.equal(typeof (res.json() as { error: string }).error, 'string');
+  for (const path of [
+    '/api/meetings/99999',
+    '/api/meetings/99999/transcript',
+    '/api/meetings/99999/messages',
+  ]) {
+    const res = await instance.inject({ method: 'GET', url: path });
+    assert.equal(res.statusCode, 404);
+    assert.equal(typeof (res.json() as { error: string }).error, 'string');
+  }
 });
 
 test('non-numeric meeting id returns 400', async () => {
@@ -189,7 +193,7 @@ test('non-txt filename returns 400', async () => {
 test('missing file field returns 400', async () => {
   const { app: instance } = await openTestApp();
   const form = new FormData();
-  form.append('title', 'No File');
+  form.append('note', 'no file');
   const res = await upload(instance, form);
   assert.equal(res.statusCode, 400);
 });
@@ -203,7 +207,7 @@ test('unparseable transcript returns 400 with parse error', async () => {
 
 test('delete returns 204 and cascades turns', async () => {
   const { app: instance, db: database } = await openTestApp();
-  const created = await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  const created = await upload(instance, txtForm('standup.txt', standupText));
   const { id } = created.json() as { id: number };
 
   const deleted = await instance.inject({ method: 'DELETE', url: `/api/meetings/${id}` });
@@ -238,7 +242,7 @@ test('failed ingest returns 500 and does not leave a meeting', async () => {
     streamChat: unused,
   };
   const { app: instance } = await openTestApp(llm);
-  const res = await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  const res = await upload(instance, txtForm('standup.txt', standupText));
   assert.equal(res.statusCode, 500);
   assert.equal((res.json() as { error: string }).error, 'failed to ingest transcript');
   const listed = await instance.inject({ method: 'GET', url: '/api/meetings' });
@@ -256,7 +260,7 @@ test('aborted ingest does not report 500', async () => {
     streamChat: unused,
   };
   const { app: instance } = await openTestApp(llm);
-  const res = await upload(instance, txtForm('standup.txt', standupText, 'Standup'));
+  const res = await upload(instance, txtForm('standup.txt', standupText));
   assert.equal(res.statusCode, 204);
   const listed = await instance.inject({ method: 'GET', url: '/api/meetings' });
   assert.equal((listed.json() as unknown[]).length, 0);
@@ -305,7 +309,7 @@ test('HTTP client abort during ingest does not leave a meeting', async () => {
   const controller = new AbortController();
   const pending = fetch(`${origin}/api/meetings`, {
     method: 'POST',
-    body: txtForm('standup.txt', standupText, 'Standup'),
+    body: txtForm('standup.txt', standupText),
     signal: controller.signal,
   });
   await embedStarted;
@@ -343,7 +347,7 @@ test('HTTP client abort during fact extraction does not leave a meeting', async 
   const controller = new AbortController();
   const pending = fetch(`${origin}/api/meetings`, {
     method: 'POST',
-    body: txtForm('standup.txt', standupText, 'Standup'),
+    body: txtForm('standup.txt', standupText),
     signal: controller.signal,
   });
   await extractStarted;

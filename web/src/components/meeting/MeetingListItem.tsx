@@ -20,19 +20,6 @@ function formatCreatedAt(value: string): string {
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function statusVariant(status: string): 'neutral' | 'accent' | 'positive' | 'danger' {
-  if (status === 'ready') {
-    return 'positive';
-  }
-  if (status === 'processing') {
-    return 'accent';
-  }
-  if (status === 'error') {
-    return 'danger';
-  }
-  return 'neutral';
-}
-
 function TrashIcon() {
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
@@ -81,9 +68,11 @@ export function MeetingListItem({ meeting, onDelete, onSelect }: MeetingListItem
         <span className="truncate text-sm font-medium">{meeting.title}</span>
         <span className="flex flex-wrap items-center gap-1.5">
           <span className="font-mono text-[11px] text-foreground/75">
-            {formatCreatedAt(meeting.created_at)}
+            {formatCreatedAt(meeting.createdAt)}
           </span>
-          <Badge variant={statusVariant(meeting.status)}>{meeting.status}</Badge>
+          <Badge variant={meeting.status === 'ready' ? 'positive' : 'accent'}>
+            {meeting.status}
+          </Badge>
         </span>
       </NavLink>
       <IconButton

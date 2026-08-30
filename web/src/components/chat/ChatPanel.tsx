@@ -35,7 +35,7 @@ type Bubble = {
 function toBubbles(messages: ChatMessage[]): Bubble[] {
   return messages.map((message) => ({
     key: String(message.id),
-    role: message.role === 'assistant' ? 'assistant' : 'user',
+    role: message.role,
     content: message.content,
     useFullTranscript: false,
   }));

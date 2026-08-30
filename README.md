@@ -176,7 +176,7 @@ BOM is stripped. Continuation lines matter more than they look: transcription se
 
 Do not commit `data/`, `*.db`, or `.env`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages all live in that SQLite file.
 
-Chunks are written once, at upload. Nothing re-chunks an existing meeting, so after pulling a change to chunking or citation rendering, re-upload the transcript — or delete `server/data/app.db` — to see it. Stored answers are history and are never rewritten.
+Chunks are written once, at upload. Nothing re-chunks an existing meeting, so after pulling a change to chunking, citation rendering, or the meetings schema, re-upload the transcript — or delete `server/data/app.db` — to see it. Stored answers are history and are never rewritten.
 
 ## Checks
 

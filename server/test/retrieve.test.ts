@@ -22,10 +22,10 @@ function openMigratedMemoryDb() {
 function insertMeeting(database: DatabaseSync, title: string): number {
   const result = database
     .prepare(
-      `INSERT INTO meetings (title, original_filename, raw_text, status)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO meetings (title, status)
+       VALUES (?, ?)`,
     )
-    .run(title, `${title}.txt`, 'raw transcript', 'ready');
+    .run(title, 'ready');
   return Number(result.lastInsertRowid);
 }
 

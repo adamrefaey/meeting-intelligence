@@ -108,7 +108,6 @@ const embedConfig = {
 async function seedMeeting(database: DatabaseSync, llm: Llm, title: string, rawText: string) {
   return ingestTranscript(database, llm, embedConfig, {
     title,
-    filename: `${title}.txt`,
     rawText,
   });
 }
@@ -176,10 +175,10 @@ test('chat against a non-ready meeting returns 409', async () => {
   const { app: instance, db: database } = await openTestApp(fakeLlm());
   const inserted = database
     .prepare(
-      `INSERT INTO meetings (title, original_filename, raw_text, status)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO meetings (title, status)
+       VALUES (?, ?)`,
     )
-    .run('Broken', 'broken.txt', 'raw', 'error');
+    .run('Broken', 'processing');
   const res = await chat(instance, Number(inserted.lastInsertRowid), 'What happened?');
   assert.equal(res.statusCode, 409);
 });
@@ -198,6 +197,7 @@ test('chat streams tokens and persists user then assistant messages', async () =
   assert.equal(res.headers['connection'], 'keep-alive');
   const events = parseSse(res.body);
   assert.ok(events.some((event) => event.event === 'token'));
+  assert.ok(events.some((event) => event.event === 'done'));
   const streamed = events
     .filter((event) => event.event === 'token')
     .map((event) => (event.data as { text: string }).text)
@@ -215,6 +215,37 @@ test('chat streams tokens and persists user then assistant messages', async () =
   assert.equal(body.messages[0]?.content, 'Who spoke first?');
   assert.equal(body.messages[1]?.role, 'assistant');
   assert.equal(body.messages[1]?.content, 'Hello world');
+});
+
+test('assistant persist failure still sends done and keeps the user message', async () => {
+  const llm = fakeLlm();
+  const { app: instance, db: database } = await openTestApp(llm);
+  const { meetingId } = await seedMeeting(database, llm, 'Short', '[00:00:01] Ada: hello');
+  database.exec(`
+    CREATE TRIGGER fail_assistant BEFORE INSERT ON messages
+    WHEN new.role = 'assistant'
+    BEGIN
+      SELECT RAISE(ABORT, 'nope');
+    END;
+  `);
+
+  const res = await chat(instance, meetingId, 'Who spoke first?');
+  assert.equal(res.statusCode, 200);
+  const events = parseSse(res.body);
+  assert.ok(events.some((event) => event.event === 'done'));
+  assert.equal(
+    events.some((event) => event.event === 'error'),
+    false,
+  );
+
+  const history = await instance.inject({
+    method: 'GET',
+    url: `/api/meetings/${meetingId}/messages`,
+  });
+  const body = history.json() as { messages: Array<{ role: string; content: string }> };
+  assert.equal(body.messages.length, 1);
+  assert.equal(body.messages[0]?.role, 'user');
+  assert.equal(body.messages[0]?.content, 'Who spoke first?');
 });
 
 for (const turns of ['0', '-1']) {
@@ -549,7 +580,6 @@ test('reindexMeeting keeps embeddings that spill past a 100-row batch', async ()
   const rowCount = INSERT_BATCH_SIZE + 1;
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Long',
-    filename: 'long.txt',
     rawText: oversizedTurnsTranscript(rowCount),
   });
   db.prepare('UPDATE meetings SET embedding_model = ? WHERE id = ?').run('old-model', meetingId);

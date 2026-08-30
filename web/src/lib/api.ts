@@ -10,18 +10,13 @@ export class ApiError extends Error {
   }
 }
 
-export type MeetingStatus = 'processing' | 'ready' | 'error';
+export type MeetingStatus = 'processing' | 'ready';
 
 export type MeetingSummary = {
   id: number;
   title: string;
-  original_filename: string;
-  created_at: string;
+  createdAt: string;
   status: MeetingStatus;
-  error_message: string | null;
-  embedding_model: string | null;
-  embedding_dimensions: number | null;
-  char_count: number;
 };
 
 export type Decision = {
@@ -46,7 +41,6 @@ export type MeetingDetail = MeetingSummary & {
 
 export type Turn = {
   id: number;
-  turnIndex: number;
   speaker: string;
   timestamp: string;
   startSeconds: number;
@@ -55,13 +49,10 @@ export type Turn = {
 
 export type ChatMessage = {
   id: number;
-  role: 'user' | 'assistant' | string;
+  role: 'user' | 'assistant';
   content: string;
-  createdAt: string;
 };
 
-// The context event also carries the retrieved chunks; the answer's own inline
-// citations identify the turns, so nothing here needs to read them.
 export type ChatEvent =
   | { type: 'context'; useFullTranscript: boolean }
   | { type: 'token'; text: string }
@@ -206,10 +197,7 @@ export async function listMeetings(signal?: AbortSignal): Promise<MeetingSummary
   return getJson<MeetingSummary[]>('/api/meetings', signal);
 }
 
-export async function createMeeting(
-  file: File,
-  signal?: AbortSignal,
-): Promise<{ id: number; status: string }> {
+export async function createMeeting(file: File, signal?: AbortSignal): Promise<{ id: number }> {
   const body = new FormData();
   body.append('file', file);
   const response = await fetch('/api/meetings', { method: 'POST', body, signal });
@@ -217,7 +205,7 @@ export async function createMeeting(
   if (response.status === 204) {
     throw new ApiError(204, 'Upload was cancelled');
   }
-  return parseJson<{ id: number; status: string }>(response);
+  return parseJson<{ id: number }>(response);
 }
 
 export async function getMeeting(id: number, signal?: AbortSignal): Promise<MeetingDetail> {

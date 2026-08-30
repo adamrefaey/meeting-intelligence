@@ -18,6 +18,14 @@ export type ChatRouteDeps = {
   config: AppConfig;
 };
 
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream; charset=utf-8',
+  'Cache-Control': 'no-cache, no-transform',
+  Connection: 'keep-alive',
+  'X-Accel-Buffering': 'no',
+  'X-Content-Type-Options': 'nosniff',
+};
+
 function readChatMessage(body: unknown): string | undefined {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return undefined;
@@ -57,6 +65,19 @@ function persistMessage(
   );
 }
 
+function persistAnswer(
+  db: DatabaseSync,
+  meetingId: number,
+  content: string,
+  log: FastifyBaseLogger,
+): void {
+  try {
+    persistMessage(db, meetingId, 'assistant', content);
+  } catch (persistError) {
+    log.error(persistError);
+  }
+}
+
 function writeSse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -70,7 +91,6 @@ async function* sseChunks(
 ): AsyncGenerator<string> {
   yield writeSse('context', { useFullTranscript: answer.useFullTranscript });
   let full = '';
-  let saved = false;
   try {
     for await (const text of answer.stream) {
       signal.throwIfAborted();
@@ -82,39 +102,19 @@ async function* sseChunks(
       yield writeSse('error', { error: 'failed to generate answer' });
       return;
     }
-    persistMessage(db, meetingId, 'assistant', full);
-    saved = true;
-    yield writeSse('done', {});
   } catch (error) {
     if (isAbortError(error) || signal.aborted) {
       return;
     }
     log.error(error);
     yield writeSse('error', { error: 'failed to generate answer' });
-    if (full !== '' && !saved) {
-      try {
-        persistMessage(db, meetingId, 'assistant', full);
-      } catch (persistError) {
-        log.error(persistError);
-      }
+    if (full !== '') {
+      persistAnswer(db, meetingId, full, log);
     }
+    return;
   }
-}
-
-function streamAnswer(
-  reply: FastifyReply,
-  db: DatabaseSync,
-  meetingId: number,
-  answer: AnswerQuestionResult,
-  signal: AbortSignal,
-) {
-  return reply
-    .header('Content-Type', 'text/event-stream; charset=utf-8')
-    .header('Cache-Control', 'no-cache, no-transform')
-    .header('Connection', 'keep-alive')
-    .header('X-Accel-Buffering', 'no')
-    .header('X-Content-Type-Options', 'nosniff')
-    .send(Readable.from(sseChunks(db, meetingId, answer, reply.log, signal)));
+  persistAnswer(db, meetingId, full, log);
+  yield writeSse('done', {});
 }
 
 async function postChat(deps: ChatRouteDeps, request: FastifyRequest, reply: FastifyReply) {
@@ -141,7 +141,9 @@ async function postChat(deps: ChatRouteDeps, request: FastifyRequest, reply: Fas
   if (skipIfAborted(reply)) {
     return;
   }
-  return streamAnswer(reply, deps.db, id, answer, signal);
+  return reply
+    .headers(SSE_HEADERS)
+    .send(Readable.from(sseChunks(deps.db, id, answer, reply.log, signal)));
 }
 
 export function chatRoutes(deps: ChatRouteDeps): FastifyPluginAsync {

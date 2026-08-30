@@ -91,12 +91,9 @@ function derivedRowCounts(database: DatabaseSync, meetingId: number) {
 }
 
 type MeetingRow = {
-  id: number | bigint;
+  id: number;
   title: string;
-  original_filename: string;
-  raw_text: string;
   status: string;
-  error_message: string | null;
   embedding_model: string | null;
   embedding_dimensions: number | null;
   char_count: number;
@@ -116,7 +113,6 @@ test('standup fixture ingest creates turns, chunks, embeddings, and status ready
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Standup',
-    filename: 'standup.txt',
     rawText,
   });
 
@@ -125,10 +121,7 @@ test('standup fixture ingest creates turns, chunks, embeddings, and status ready
 
   const meeting = db.prepare('SELECT * FROM meetings WHERE id = ?').get(meetingId) as MeetingRow;
   assert.equal(meeting.title, 'Standup');
-  assert.equal(meeting.original_filename, 'standup.txt');
-  assert.equal(meeting.raw_text, rawText);
   assert.equal(meeting.status, 'ready');
-  assert.equal(meeting.error_message, null);
   assert.equal(meeting.char_count, rawText.length);
   assert.equal(meeting.embedding_model, embedConfig.embeddingModel);
   assert.equal(meeting.embedding_dimensions, embedConfig.embeddingDimensions);
@@ -185,7 +178,6 @@ test('parse failure throws ParseError and does not create a meeting', async () =
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Garbage',
-        filename: 'garbage.txt',
         rawText: 'not a transcript\nat all',
       }),
     ParseError,
@@ -205,7 +197,6 @@ test('meeting is processing while embeddings are requested', async () => {
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Short',
-    filename: 'short.txt',
     rawText: oneTurn,
   });
 
@@ -223,7 +214,6 @@ test('embedding length mismatch deletes the meeting instead of leaving it in err
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Short',
-        filename: 'short.txt',
         rawText: oneTurn,
       }),
     EmbeddingDimensionError,
@@ -244,7 +234,6 @@ test('embedding count mismatch deletes the meeting instead of leaving it in erro
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Short',
-        filename: 'short.txt',
         rawText: oneTurn,
       }),
     /Expected 1 embeddings, got 0/,
@@ -265,7 +254,6 @@ test('abort during embed deletes the meeting instead of leaving it in error', as
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Short',
-        filename: 'short.txt',
         rawText: oneTurn,
       }),
     { name: 'AbortError' },
@@ -289,7 +277,6 @@ test('abort during fact extraction deletes the meeting', async () => {
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Short',
-        filename: 'short.txt',
         rawText: oneTurn,
       }),
     { name: 'AbortError' },
@@ -326,7 +313,6 @@ test('abort after facts are stored still deletes the meeting', async () => {
         embedConfig,
         {
           title: 'Short',
-          filename: 'short.txt',
           rawText: oneTurn,
         },
         controller.signal,
@@ -354,7 +340,6 @@ test('valid extract JSON inserts decisions and action items and stays ready', as
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Short',
-    filename: 'short.txt',
     rawText: oneTurn,
   });
 
@@ -407,7 +392,6 @@ test('turns, chunks, and embeddings keep rows that spill past a 100-row batch', 
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Long',
-    filename: 'long.txt',
     rawText: oversizedTurnsTranscript(rowCount),
   });
 
@@ -454,7 +438,6 @@ test('fact inserts keep rows that spill past a 100-row batch', async () => {
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Short',
-    filename: 'short.txt',
     rawText: oneTurn,
   });
 
@@ -473,7 +456,6 @@ test('malformed extract JSON leaves meeting ready with zero facts', async () => 
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Short',
-    filename: 'short.txt',
     rawText: oneTurn,
   });
 
@@ -506,7 +488,6 @@ test('marathon ingest maps every window and stays ready', async () => {
 
   const { meetingId } = await ingestTranscript(db, llm, embedConfig, {
     title: 'Marathon',
-    filename: 'all-hands-marathon.txt',
     rawText,
   });
 
@@ -547,7 +528,6 @@ test('embed failure aborts in-flight fact extraction', async () => {
     () =>
       ingestTranscript(db!, llm, embedConfig, {
         title: 'Short',
-        filename: 'short.txt',
         rawText: oneTurn,
       }),
     EmbeddingDimensionError,
