@@ -1,152 +1,107 @@
 # Meeting Intelligence
 
-Upload a speaker-labeled meeting transcript, then ask questions about **that** meeting’s discussion, decisions, and action items.
+Upload a speaker-labeled transcript, then ask questions about **that** meeting’s discussion, decisions, and action items. Chat never mixes meetings.
 
-Chat never mixes meetings. Leaving a meeting (or clicking **Stop**) aborts an in-flight answer.
+**Cancel** during ingest aborts the upload and deletes the in-progress meeting. **Stop** (or leaving the meeting) aborts an in-flight answer.
+
+Diagrams and the files that implement them: [docs/flows](docs/flows/README.md).
 
 ## Contents
 
 - [Screenshots](#screenshots)
-- [Ingestion and retrieval](docs/flows/README.md)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Run](#run)
-- [Docker](#docker)
-- [First transcript](#first-transcript)
-- [How a question is answered](#how-a-question-is-answered)
+- [Quick start](#quick-start)
+- [How it works](#how-it-works)
 - [Transcript format](#transcript-format)
+- [Configuration](#configuration)
+- [Docker](#docker)
 - [Data](#data)
 - [Checks](#checks)
 
-UI screenshots are in [docs/screenshots](docs/screenshots/). Ingestion and retrieval diagrams (and the files that implement them) are in [docs/flows](docs/flows/README.md).
-
 ## Screenshots
 
-| File                                | What                                                               |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| [`01.png`](docs/screenshots/01.png) | Empty state: drop or click-select a `.txt` transcript.             |
-| [`02.png`](docs/screenshots/02.png) | Ingest in progress (`Ingesting…`, with Cancel).                    |
-| [`03.png`](docs/screenshots/03.png) | A ready meeting: extracted **decisions** and **Ask this meeting**. |
-| [`04.png`](docs/screenshots/04.png) | Transcript plus a cited answer (chips scroll to the turn).         |
+Empty state — drop or click-select a `.txt` transcript.
 
-![Empty state: upload a transcript to start](docs/screenshots/01.png)
+![Upload a transcript to start](docs/screenshots/01.png)
+
+Ingest in progress (`Ingesting…`, with **Cancel**).
 
 ![Ingesting a transcript](docs/screenshots/02.png)
 
+A ready meeting: extracted **decisions** and **Ask this meeting**.
+
 ![Extracted decisions and Ask this meeting](docs/screenshots/03.png)
+
+Transcript plus a cited answer (chips scroll to the turn).
 
 ![Transcript with cited chat answers](docs/screenshots/04.png)
 
-## Requirements
+## Quick start
 
-- [Node.js](https://nodejs.org/) **24** or later (built-in `node:sqlite`, `--watch`, and `--env-file-if-exists`). Pin with [`.nvmrc`](.nvmrc).
-- An [OpenAI API key](https://platform.openai.com/api-keys) and network access to the chat and embedding API.
-
-Chat and embeddings use one official OpenAI SDK client. `OPENAI_BASE_URL` defaults to `https://api.openai.com/v1`. Point it at a remote OpenAI-compatible HTTP API if you use a proxy; document and query strings are sent unchanged.
-
-## Installation
-
-From the repo root:
+Needs [Node.js](https://nodejs.org/) **24+** (pin with [`.nvmrc`](.nvmrc)) and an [OpenAI API key](https://platform.openai.com/api-keys).
 
 ```bash
 npm install
-cp .env.example .env
-```
-
-That installs the `server` and `web` workspaces. `.env` is gitignored.
-
-Set `OPENAI_API_KEY` in `.env`. It is required and must be non-empty. The other variables already match the defaults in [`.env.example`](.env.example) and in `loadConfig`:
-
-| Variable                      | Default                     |
-| ----------------------------- | --------------------------- |
-| `OPENAI_BASE_URL`             | `https://api.openai.com/v1` |
-| `CHAT_MODEL`                  | `gpt-5.6-luna`              |
-| `EMBEDDING_MODEL`             | `text-embedding-3-small`    |
-| `EMBEDDING_DIMENSIONS`        | `1536`                      |
-| `DATABASE_PATH`               | `data/app.db`               |
-| `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                     |
-| `RETRIEVE_K`                  | `8`                         |
-| `FTS_K`                       | `8`                         |
-| `CHAT_HISTORY_TURNS`          | `8`                         |
-| `PORT`                        | `3000`                      |
-
-## Run
-
-The server loads `../.env` from the `server/` workspace (`--env-file-if-exists`). Config is read at process start, so restart `npm run dev` after changing `.env`.
-
-```bash
+cp .env.example .env   # set OPENAI_API_KEY
 npm run dev
 ```
 
-That starts both processes:
+That installs the `server` and `web` workspaces, then starts both processes. Config is read at process start — restart after changing `.env`.
 
-| Process     | URL                                            | Role                                               |
-| ----------- | ---------------------------------------------- | -------------------------------------------------- |
-| Vite UI     | [http://localhost:5173](http://localhost:5173) | React app. Browser origin. `/api` is proxied here. |
-| Fastify API | `http://127.0.0.1:3000`                        | Ingest, SQLite, chat. Bound to loopback.           |
+| Process     | URL                                            | Role                                      |
+| ----------- | ---------------------------------------------- | ----------------------------------------- |
+| Vite UI     | [http://localhost:5173](http://localhost:5173) | React app. Browser origin.                |
+| Fastify API | `http://127.0.0.1:3000`                        | Ingest, SQLite, chat. Bound to loopback.  |
 
-Open **http://localhost:5173**. The Vite proxy forwards `/api` to port **3000** (that target is hardcoded in `web/vite.config.ts`, so keep `PORT=3000` unless you change the proxy too).
+Open **http://localhost:5173**. Vite proxies `/api` to port **3000** (hardcoded in `web/vite.config.ts`).
 
 ```bash
 curl -s http://localhost:5173/api/health
 ```
 
-Expect `{ "ok": true, "chatModel": "gpt-5.6-luna", "embeddingModel": "text-embedding-3-small" }` when using the defaults.
+Expect `{"ok":true,"chatModel":"gpt-5.6-luna","embeddingModel":"text-embedding-3-small"}` with the defaults.
 
-Ingest **always** embeds. Chat **re-embeds** a meeting only when its stored `embedding_model` / `embedding_dimensions` do not match `.env` **and** the question uses retrieval. Full-transcript chats skip that reindex (the stored vectors are unused). There is one vector per chunk; a reindex replaces it.
+### First transcript
 
-## Docker
-
-One image serves the Vite UI and the Fastify API on port **3000**. SQLite lives on a volume. Secrets stay out of the image — pass them at run time.
-
-```bash
-cp .env.example .env   # set OPENAI_API_KEY
-docker compose up --build
-```
-
-Open **http://localhost:3000**.
-
-```bash
-curl -s http://localhost:3000/api/health
-```
-
-`HOST=0.0.0.0` is set in the image so the process is reachable from outside the container. Local `npm run dev` still binds loopback (`127.0.0.1`).
-
-Without Compose:
-
-```bash
-docker build -t meeting-intelligence .
-docker run --rm -p 3000:3000 --env-file .env -v meeting-data:/app/data meeting-intelligence
-```
-
-## First transcript
-
-1. On the empty state (**Upload a transcript to start**), drop or click-select [`fixtures/transcripts/planning.txt`](fixtures/transcripts/planning.txt).
-2. The app ingests the file and opens that meeting. You get the transcript plus extracted **decisions** and **action items**.
+1. On **Upload a transcript to start**, drop or click-select [`fixtures/transcripts/planning.txt`](fixtures/transcripts/planning.txt).
+2. The drop zone shows **Ingesting…** with **Cancel**. When ingest finishes you get the transcript, extracted **decisions** and **action items**, and **Ask this meeting**.
 3. Ask **What are the action items?**
 
-Expect those four owned follow-ups — Omar’s storage RFC by Monday, Priya’s workspace mockups by Wednesday, Sam’s soak test by Thursday, and Maya’s legal retention review next Tuesday. The owners and due days are stated in the transcript; the model may rephrase the wording.
+Expect Omar’s storage RFC by Monday, Priya’s workspace mockups by Wednesday, Sam’s soak test by Thursday, and Maya’s legal retention review next Tuesday. Those owners and due days are in the transcript; the model may rephrase.
 
-Eleven sample transcripts live under [`fixtures/`](fixtures/README.md), written to read like real transcription-service exports — turns wrapped mid-sentence, filler words, `[inaudible]` markers, diarisation failures — and sized to reach every limit in the pipeline, including ones large enough to force retrieval. That page lists each file’s size, format, and a question with the answer to expect.
+Eleven samples live in [`fixtures/transcripts/`](fixtures/transcripts/). `standup.txt` and `planning.txt` are tidy one-line-per-turn files; the others read like transcription-service exports (wrapped turns, filler, `[inaudible]`, diarisation failures). Sizes straddle the full-transcript threshold so both chat paths are reachable. Catalog: [`fixtures/README.md`](fixtures/README.md).
 
-## How a question is answered
+## How it works
 
-Uploading parses turns, packs them into chunks (~2000 characters), stores them in SQLite, and **in parallel** embeds those chunks and extracts decisions and action items from overlapping ~12k-character windows (then one reconcile pass if there is more than one window).
+### Upload
 
-Asking a question is always `WHERE meeting_id = ?`:
+The server parses speaker turns, packs them into ~2000-character chunks, and writes SQLite rows. It then embeds those chunks and extracts decisions and action items **in parallel**, from overlapping ~12k-character windows of the **turns** (a longer turn is sliced). If several windows produced more than one fact, a reconcile pass merges them.
 
-- If the transcript is **under** `FULL_CONTEXT_CHAR_THRESHOLD` (24000 characters in `.env.example`), the model sees the **full transcript**. `planning.txt` takes this path.
-- If it is **at or above** the threshold, the API retrieves a handful of chunks (vector similarity + SQLite FTS, fused) and prompts with those excerpts plus the extracted facts.
+Ingest **always** embeds. If extraction fails, ingest can still return `201`: a `ready` meeting with empty decision and action-item lists. Embed failure or **Cancel** deletes the meeting. There is no `failed` status.
 
-Either way the answer's citations become chips that scroll the transcript to the cited turn, and only what the answer actually cites gets a chip. Full-transcript answers also carry a **Full transcript** badge, since the whole file was in the prompt rather than a handful of excerpts.
+### Ask
 
-Each chunk names its turns as `[Speaker, timestamp]:` — the same shape as a citation — and keeps clocks out of its header. Copying the marker from the turn that contains the claim is what stops a citation landing on that speaker's first greeting.
+Every question is `WHERE meeting_id = ?`. The last `CHAT_HISTORY_TURNS` stored messages (default 8 **rows**, user and assistant mixed) go into the prompt. The question being answered is not among them.
 
-The cited clock is still only the model's guess, so the web app checks it against the transcript before drawing a chip: among that speaker's turns it picks the one whose words the claim actually shares, and leaves the citation alone when nothing matches better. That is why "who asked about remote work?" points at Keiko's question rather than the "Hi, can you hear me?" three seconds earlier.
+- **Below** `FULL_CONTEXT_CHAR_THRESHOLD` (24000 characters of uploaded text): the model sees the **full transcript**. `planning.txt` takes this path.
+- **At or above** that threshold: hybrid retrieval (vector similarity + SQLite FTS, fused) plus the extracted facts.
+
+If stored `embedding_model` / `embedding_dimensions` do not match `.env`, the meeting is reindexed first — retrieval path only. Full-transcript chats skip reindex; those vectors are unused. One vector per chunk; a reindex replaces it.
+
+### Citations
+
+The model copies `[Speaker, timestamp]` from the turn that supports the claim. Chunks use that same marker on each turn and keep clocks off the `Speakers:` header, so a roster line cannot be cited as a greeting.
+
+When the stream **completes**, those markers become chips that scroll to the turn. Only cited markers get a chip. A live full-transcript answer also shows a **Full transcript** badge. Reloaded history still turns markers into chips; it does not restore the badge.
+
+The cited clock is the model’s guess. Before drawing a chip, the web app checks it against the transcript: among that speaker’s turns it picks the one whose words the claim actually shares. That is why “who asked about remote work?” points at Keiko’s question rather than “Hi. Can you hear me?” three seconds earlier.
+
+**Stop** shows **Answer was interrupted**. If the question was already stored, it stays; a partial answer is not saved. Leaving the meeting aborts the same request; the panel unmounts, so that interrupted bubble is gone.
 
 ## Transcript format
 
-UTF-8 `.txt` only, up to **5 MiB**. The filename must end in `.txt`. Canonical line:
+`.txt` only, up to **5 MiB**. The filename must end in `.txt`. The body is decoded as UTF-8. The form field is `file`; Content-Type must be `text/plain` or empty.
+
+Canonical line:
 
 ```text
 [HH:MM:SS] Speaker: utterance
@@ -163,20 +118,70 @@ HH:MM:SS Speaker: utterance
 
 Bare clocks (no brackets or parentheses) must be three parts (`H:MM:SS` / `HH:MM:SS`). `01:02 Ada: hello` is not a turn header.
 
-A non-header line **after** the first turn continues that turn. Lines before the first header, and blank lines, are ignored. A file that yields no turns is rejected (`400`).
+A non-header line after the first turn continues that turn. Lines before the first header, and blank lines, are ignored. A file that yields no turns is rejected (`400`). BOM is stripped.
 
-BOM is stripped. Continuation lines matter more than they look: transcription services wrap a single turn across several lines, breaking on pauses rather than on grammar, so most turns in a real export are multi-line. A phrase can therefore straddle a newline **inside** one turn — collapse whitespace before matching text against turn content.
+Transcription services wrap a single turn across several lines, breaking on pauses rather than grammar. A phrase can therefore straddle a newline **inside** one turn — the citation grounder matches whole words, so those words still count.
+
+## Configuration
+
+The API loads `../.env` from the `server/` workspace (`--env-file-if-exists`). `.env` is gitignored.
+
+`OPENAI_API_KEY` is required and must be non-empty. Everything else falls back to the defaults below. They match [`.env.example`](.env.example) and `loadConfig`, except `HOST`, which is only in `loadConfig` (and the image).
+
+Chat and embeddings use one official OpenAI SDK client. Point `OPENAI_BASE_URL` at a proxy if you need to; embedding inputs and the assembled chat messages are sent as built.
+
+| Variable                      | Default                     | Role                                              |
+| ----------------------------- | --------------------------- | ------------------------------------------------- |
+| `OPENAI_BASE_URL`             | `https://api.openai.com/v1` | Chat and embedding HTTP API                       |
+| `CHAT_MODEL`                  | `gpt-5.6-luna`              | Fact extraction and answer streaming              |
+| `EMBEDDING_MODEL`             | `text-embedding-3-small`    | Chunk and query vectors                           |
+| `EMBEDDING_DIMENSIONS`        | `1536`                      | Vector width                                      |
+| `DATABASE_PATH`               | `data/app.db`               | SQLite file                                       |
+| `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                     | Full transcript if `char_count` is strictly below |
+| `RETRIEVE_K`                  | `8`                         | Max fused chunks in the prompt                    |
+| `FTS_K`                       | `8`                         | Limit on the vector and FTS lists                 |
+| `CHAT_HISTORY_TURNS`          | `8`                         | Stored message rows in the next prompt            |
+| `PORT`                        | `3000`                      | API port (Vite proxies `/api` here)               |
+| `HOST`                        | `127.0.0.1`                 | Listen address (`0.0.0.0` in Docker)              |
+
+`char_count` is the uploaded file’s JavaScript string length, stored at ingest.
+
+## Docker
+
+One image serves the **built** web app (`web/dist`) and the Fastify API on port **3000**. SQLite lives on a volume. Pass secrets at run time; they are not baked into the image.
+
+```bash
+cp .env.example .env   # set OPENAI_API_KEY
+docker compose up --build
+```
+
+That uses [`compose.yaml`](compose.yaml). Open **http://localhost:3000**.
+
+```bash
+curl -s http://localhost:3000/api/health
+```
+
+`HOST=0.0.0.0` is set in the image so the process is reachable from outside the container. Local `npm run dev` still binds `127.0.0.1`.
+
+Without Compose:
+
+```bash
+docker build -t meeting-intelligence .
+docker run --rm -p 3000:3000 --env-file .env -v meeting-data:/app/data meeting-intelligence
+```
 
 ## Data
 
-| Path                                    | What                                                                                                                                                                                                                          |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. With `npm run dev`, the API cwd is `server/`, so the file is `server/data/app.db`. In Docker, Compose stores it at `/app/data/app.db` on a named volume. The API creates the directory on first start. |
-| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                                                                                                      |
+| Path                                    | What                                                                                                                                     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages. The API creates the directory on start. |
+| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                 |
 
-Do not commit `data/`, `*.db`, or `.env`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages all live in that SQLite file.
+With `npm run dev`, the API cwd is `server/`, so the default file is `server/data/app.db`. In Docker, Compose mounts it at `/app/data/app.db` on a named volume.
 
-Chunks are written once, at upload. Nothing re-chunks an existing meeting, so after pulling a change to chunking, citation rendering, or the meetings schema, re-upload the transcript — or delete `server/data/app.db` — to see it. Stored answers are history and are never rewritten.
+Do not commit `data/`, `*.db`, or `.env`.
+
+Chunks are written once, at upload. Nothing re-chunks an existing meeting, so after a change to chunking, citation rendering, or the meetings schema, re-upload the transcript — or delete `server/data/app.db`. Stored answers are history and are never rewritten.
 
 ## Checks
 
@@ -185,5 +190,3 @@ npm test          # Node test runner in each workspace
 npm run typecheck
 npm run lint
 ```
-
-Ingestion and retrieval diagrams (with the implementing files) are in [docs/flows](docs/flows/README.md).
