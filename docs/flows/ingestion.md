@@ -13,25 +13,24 @@ flowchart TD
   parse["parseTranscript"]
   chunk["chunkTurns"]
   storeTx["storeTranscript: status = processing"]
-  embed["embedChunks"]
+  embed["llm.embed"]
   extract["extractFacts"]
-  storeEmb["storeEmbeddings: status = ready"]
-  storeFacts["storeFacts"]
+  storeReady["storeReady: embeddings, facts, status = ready"]
   created["201 { id, status: ready }"]
 
   post --> upload --> parse --> chunk --> storeTx
   storeTx --> embed
   storeTx --> extract
-  embed --> storeEmb --> storeFacts
-  extract --> storeFacts
-  storeFacts --> created
+  embed --> storeReady
+  extract --> storeReady
+  storeReady --> created
 ```
 
 HTTP entry: [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.ts). Orchestration: [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `ingestTranscript`.
 
 - The `.txt` transcript is form field `file`. The meeting title is the filename without `.txt`.
 - Parse and chunk run **before** any `meetings` row exists.
-- Embed and extract start together (embed first). After embeddings commit `ready`, the pipeline waits for extract and writes facts.
+- Embed and extract start together (embed first). When both finish, one transaction writes embeddings, facts, and `ready`.
 
 ## Parsing
 
@@ -113,15 +112,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  start["embedChunks"]
-  texts["texts = chunk.text"]
+  start["llm.embed(chunk.text)"]
   embed["embed in slices of 128"]
-  store["storeEmbeddings: status = ready"]
+  store["storeReady: embeddings + facts + ready"]
 
-  start --> texts --> embed --> store
+  start --> embed --> store
 ```
 
-[`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embed`, [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `embedChunks` / `storeEmbeddings`
+[`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embed`, then [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `storeReady`
 
 - The embedded string is the stored chunk `text` (roster plus turns).
 - Slices of `EMBED_BATCH_SIZE` (`128`). `text-embedding-3*` also send `dimensions`. Vectors are L2-normalized, then stored as BLOBs.
