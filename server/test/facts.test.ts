@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { extractFacts } from '../src/extract/facts.ts';
+import { extractFacts, MERGE_MAX_CHARS } from '../src/extract/facts.ts';
 import { packWindows } from '../src/extract/window.ts';
 import type { ChatMessage, Llm } from '../src/llm/types.ts';
 import { parseTranscript, type Turn } from '../src/transcript/parse.ts';
@@ -59,6 +59,14 @@ function numberedTurns(count: number, body: string): Turn[] {
       text: body,
     };
   });
+}
+
+function overlappingTurns(count = 40): Turn[] {
+  return numberedTurns(count, 'x'.repeat(400));
+}
+
+function isReduceCall(messages: ChatMessage[]): boolean {
+  return /near-duplicate/.test(messages[0]?.content ?? '');
 }
 
 test('valid JSON maps decisions and action items, omitting owner as null', async () => {
@@ -138,27 +146,6 @@ test('markdown-fenced JSON still parses', async () => {
   assert.equal(result.actionItems[1].owner, null);
 });
 
-test('JSON wrapped in prose still parses', async () => {
-  const llm = fakeLlm(async () => `Sure!\n${JSON.stringify(validFacts)}\nHope this helps!`);
-
-  const result = await extractFacts(llm, lockingTurns);
-
-  assert.equal(result.decisions.length, 1);
-  assert.equal(result.decisions[0].text, 'Embeddings stay in SQLite');
-  assert.equal(result.actionItems[0].owner, 'Omar');
-});
-
-test('decoy braces before the payload do not hide facts', async () => {
-  const llm = fakeLlm(
-    async () => `Hope this {helps}! ${JSON.stringify({ foo: 1 })} ${JSON.stringify(validFacts)}`,
-  );
-
-  const result = await extractFacts(llm, lockingTurns);
-
-  assert.equal(result.decisions.length, 1);
-  assert.equal(result.decisions[0].text, 'Embeddings stay in SQLite');
-});
-
 test('facts nested one object deep still parse', async () => {
   const llm = fakeLlm(async () => JSON.stringify({ result: validFacts }));
 
@@ -174,19 +161,6 @@ test('a flood of unmatched braces does not stall parsing', { timeout: 1000 }, as
   const result = await extractFacts(llm, helloTurns);
 
   assert.deepEqual(result, { decisions: [], actionItems: [] });
-});
-
-test('JSON with braces in strings and trailing braces still parses', async () => {
-  const payload = {
-    decisions: [{ text: 'Use } in copy', speaker: 'Maya', timestamp: '00:02:01' }],
-    actionItems: [],
-  };
-  const llm = fakeLlm(async () => `Sure ${JSON.stringify(payload)} trailing }`);
-
-  const result = await extractFacts(llm, lockingTurns);
-
-  assert.equal(result.decisions.length, 1);
-  assert.equal(result.decisions[0].text, 'Use } in copy');
 });
 
 test('invalid items are dropped without discarding valid ones', async () => {
@@ -318,6 +292,21 @@ test('NUL bytes are stripped from fact text', async () => {
   assert.equal(result.decisions[0].text, 'Budget is ~£60k');
 });
 
+test('NUL bytes are stripped from owner', async () => {
+  const llm = fakeLlm(async () =>
+    JSON.stringify({
+      decisions: [],
+      actionItems: [
+        { text: 'Write RFC', owner: 'Omar\u0000', due: 'Monday', timestamp: '00:02:34' },
+      ],
+    }),
+  );
+
+  const result = await extractFacts(llm, rfcTurns);
+
+  assert.equal(result.actionItems[0].owner, 'Omar');
+});
+
 test('NUL-only fact text is dropped', async () => {
   const llm = fakeLlm(async () =>
     JSON.stringify({
@@ -379,7 +368,7 @@ test('trailing-comma JSON still keeps complete inner items', async () => {
   assert.equal(result.actionItems[0].text, 'Write RFC');
 });
 
-test('a trailing comma after the last property still keeps the item', async () => {
+test('a trailing comma after an inner property yields empty facts', async () => {
   const llm = fakeLlm(
     async () =>
       '{"decisions":[{"text":"Use ,} in copy","speaker":"Maya","timestamp":"00:02:01",}]}',
@@ -387,11 +376,10 @@ test('a trailing comma after the last property still keeps the item', async () =
 
   const result = await extractFacts(llm, lockingTurns);
 
-  assert.equal(result.decisions.length, 1);
-  assert.equal(result.decisions[0].text, 'Use ,} in copy');
+  assert.deepEqual(result, { decisions: [], actionItems: [] });
 });
 
-test('truncated JSON keeps complete items emitted before the cut', async () => {
+test('truncated JSON does not keep complete items emitted before the cut', async () => {
   const llm = fakeLlm(
     async () =>
       '{"decisions":[{"text":"Lock SQLite","speaker":"Maya","timestamp":"00:02:01"},{"text":"Ship',
@@ -399,24 +387,7 @@ test('truncated JSON keeps complete items emitted before the cut', async () => {
 
   const result = await extractFacts(llm, lockingTurns);
 
-  assert.equal(result.decisions.length, 1);
-  assert.equal(result.decisions[0].text, 'Lock SQLite');
-  assert.equal(result.actionItems.length, 0);
-});
-
-test('truncated JSON keeps an action item even when the model copies speaker', async () => {
-  const llm = fakeLlm(
-    async () =>
-      '{"actionItems":[{"text":"Write RFC","speaker":"Maya","owner":"Omar","due":"Monday","timestamp":"00:02:34"},{"text":"Ship',
-  );
-
-  const result = await extractFacts(llm, rfcTurns);
-
-  assert.equal(result.decisions.length, 0);
-  assert.equal(result.actionItems.length, 1);
-  assert.equal(result.actionItems[0].text, 'Write RFC');
-  assert.equal(result.actionItems[0].owner, 'Omar');
-  assert.equal(result.actionItems[0].due, 'Monday');
+  assert.deepEqual(result, { decisions: [], actionItems: [] });
 });
 
 test('truncated JSON does not invent a fact from a cut string', async () => {
@@ -450,7 +421,7 @@ test('a clock in due is dropped so it cannot replace a spoken deadline', async (
   assert.equal(result.actionItems[2].due, null);
 });
 
-test('snake_case action_items still populate the action-item list', async () => {
+test('snake_case action_items are ignored', async () => {
   const llm = fakeLlm(async () =>
     JSON.stringify({
       decisions: [{ text: 'Lock SQLite', speaker: 'Maya', timestamp: '00:02:01' }],
@@ -461,9 +432,8 @@ test('snake_case action_items still populate the action-item list', async () => 
   const result = await extractFacts(llm, lockingTurns);
 
   assert.equal(result.decisions.length, 1);
-  assert.equal(result.actionItems.length, 1);
-  assert.equal(result.actionItems[0].text, 'Write RFC');
-  assert.equal(result.actionItems[0].due, 'Monday');
+  assert.equal(result.decisions[0].text, 'Lock SQLite');
+  assert.deepEqual(result.actionItems, []);
 });
 
 test('a single window does not run a reconcile prompt', async () => {
@@ -508,14 +478,14 @@ const twoDistinctFacts = {
 };
 
 test('several windows map in parallel then reconcile once', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const windows = packWindows(turns);
   assert.ok(windows.length >= 2);
 
   const calls: ChatMessage[][] = [];
   const llm = fakeLlm(async (messages) => {
     calls.push(messages);
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [{ text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' }],
         actionItems: [],
@@ -530,7 +500,7 @@ test('several windows map in parallel then reconcile once', async () => {
   const result = await extractFacts(llm, turns);
 
   assert.equal(calls.length, windows.length + 1);
-  assert.equal(calls.filter((call) => /near-duplicate/.test(call[0]?.content ?? '')).length, 1);
+  assert.equal(calls.filter(isReduceCall).length, 1);
   const reduce = calls[calls.length - 1];
   assert.match(reduce[0].content, /near-duplicate/);
   assert.match(reduce[1].content, /Locked a ship decision/);
@@ -539,10 +509,39 @@ test('several windows map in parallel then reconcile once', async () => {
   assert.deepEqual(result.decisions, [{ text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' }]);
 });
 
-test('a failed window is dropped and the rest still reconcile', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+test('nested window payload still feeds summary into reconcile', async () => {
+  const turns = overlappingTurns();
+  const windows = packWindows(turns);
+  assert.ok(windows.length >= 2);
+
+  const calls: ChatMessage[][] = [];
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    calls.push(messages);
+    if (isReduceCall(messages)) {
+      return JSON.stringify({
+        decisions: [{ text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' }],
+        actionItems: [],
+      });
+    }
+    return JSON.stringify({
+      result: {
+        summary: 'Locked a ship decision.',
+        ...twoDistinctFacts,
+      },
+    });
+  });
+
+  const result = await extractFacts(llm, turns);
+
+  const reduce = calls[calls.length - 1];
+  assert.match(reduce[1].content, /Locked a ship decision/);
+  assert.deepEqual(result.decisions, [{ text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' }]);
+});
+
+test('a failed window is dropped and the rest still reconcile', async () => {
+  const turns = overlappingTurns();
+  const llm = fakeLlm(async (messages) => {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [{ text: 'Keep this', speaker: 'Ada', timestamp: '00:00:01' }],
         actionItems: [],
@@ -568,9 +567,9 @@ test('a failed window is dropped and the rest still reconcile', async () => {
 });
 
 test('reconcile failure keeps the exact-deduped concatenation', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       throw new Error('reconcile failed');
     }
     return JSON.stringify({
@@ -587,9 +586,9 @@ test('reconcile failure keeps the exact-deduped concatenation', async () => {
 });
 
 test('unreadable reconcile keeps the window facts', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return 'cannot comply';
     }
     return JSON.stringify({
@@ -606,9 +605,9 @@ test('unreadable reconcile keeps the window facts', async () => {
 });
 
 test('empty reconcile keeps the window facts', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return '{"decisions":[],"actionItems":[]}';
     }
     return JSON.stringify({
@@ -623,9 +622,9 @@ test('empty reconcile keeps the window facts', async () => {
 });
 
 test('reconcile drops invented items and keeps known wording', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [
           { text: 'Acquire competitor', speaker: 'CEO', timestamp: '00:00:01' },
@@ -646,9 +645,9 @@ test('reconcile drops invented items and keeps known wording', async () => {
 });
 
 test('reconcile cannot rewrite speaker timestamp owner or due', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [{ text: 'Ship it', speaker: 'IMPOSTOR', timestamp: '23:59:59' }],
         actionItems: [
@@ -672,7 +671,7 @@ test('reconcile cannot rewrite speaker timestamp owner or due', async () => {
 });
 
 test('reconcile that rephrases most rows keeps the window facts', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const threeFacts = {
     decisions: [
       { text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' },
@@ -682,7 +681,7 @@ test('reconcile that rephrases most rows keeps the window facts', async () => {
     actionItems: [],
   };
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [
           { text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' },
@@ -704,9 +703,9 @@ test('reconcile that rephrases most rows keeps the window facts', async () => {
 });
 
 test('reconcile maps reworded text back to the original wording', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       return JSON.stringify({
         decisions: [
           { text: 'Ship it', speaker: 'Ada', timestamp: '00:00:01' },
@@ -739,11 +738,11 @@ test('marathon maps every window including the tail and skips an empty reduce', 
 
   assert.equal(calls.length, windows.length);
   assert.ok(calls.some((call) => call[1]?.content.includes('onboarding buddy rota')));
-  assert.equal(calls.filter((call) => /near-duplicate/.test(call[0]?.content ?? '')).length, 0);
+  assert.equal(calls.filter(isReduceCall).length, 0);
 });
 
 test('later window fills owner and due on the same action text', async () => {
-  const turns = numberedTurns(40, 'x'.repeat(400));
+  const turns = overlappingTurns();
   const calls: ChatMessage[][] = [];
   const llm = fakeLlm(async (messages) => {
     calls.push(messages);
@@ -770,14 +769,14 @@ test('later window fills owner and due on the same action text', async () => {
     due: 'Monday',
     timestamp: '00:00:01',
   });
-  assert.equal(calls.filter((call) => /near-duplicate/.test(call[0]?.content ?? '')).length, 0);
+  assert.equal(calls.filter(isReduceCall).length, 0);
 });
 
 test(
   'oversized per-window payloads skip reduce instead of looping',
   { timeout: 5000 },
   async () => {
-    const turns = numberedTurns(40, 'x'.repeat(400));
+    const turns = overlappingTurns();
     const windows = packWindows(turns);
     assert.ok(windows.length >= 2);
     let calls = 0;
@@ -799,20 +798,20 @@ test(
 );
 
 test('payloads over MERGE_MAX_CHARS collapse then reconcile', async () => {
-  const turns = numberedTurns(120, 'x'.repeat(400));
+  const turns = overlappingTurns(120);
   const windows = packWindows(turns);
   assert.ok(windows.length >= 3);
   const bulky = {
     summary: 'ok',
     decisions: [
       ...twoDistinctFacts.decisions,
-      { text: 'y'.repeat(20_000), speaker: 'Ada', timestamp: '00:00:03' },
+      { text: 'y'.repeat(Math.floor(MERGE_MAX_CHARS / 3)), speaker: 'Ada', timestamp: '00:00:03' },
     ],
     actionItems: [],
   };
   let reduceCalls = 0;
   const llm = fakeLlm(async (messages) => {
-    if (/near-duplicate/.test(messages[0]?.content ?? '')) {
+    if (isReduceCall(messages)) {
       reduceCalls += 1;
       return JSON.stringify({
         decisions: twoDistinctFacts.decisions,

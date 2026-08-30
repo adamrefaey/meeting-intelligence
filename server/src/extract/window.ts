@@ -23,24 +23,29 @@ function packedEnd(start: number, lines: string[], maxChars: number): number {
   return end;
 }
 
-function packFrom(start: number, lines: string[], maxChars: number): FactWindow {
-  const end = packedEnd(start, lines, maxChars);
-  return { turnStart: start, turnEnd: end, text: lines.slice(start, end + 1).join('\n') };
-}
-
-function nextStart(previous: FactWindow, lines: string[], overlapRatio: number): number {
-  if (previous.turnEnd === previous.turnStart) {
-    return previous.turnEnd + 1;
+function nextWindowStart(
+  packed: FactWindow,
+  lines: string[],
+  maxChars: number,
+  overlapRatio: number,
+): number {
+  if (packed.turnEnd === packed.turnStart || packed.turnEnd + 1 >= lines.length) {
+    return packed.turnEnd + 1;
   }
-  const target = previous.text.length * overlapRatio;
+  const target = packed.text.length * overlapRatio;
   let acc = 0;
-  for (let index = previous.turnEnd; index > previous.turnStart; index -= 1) {
+  let overlapped = packed.turnEnd;
+  for (let index = packed.turnEnd; index > packed.turnStart; index -= 1) {
     acc += lines[index].length + (acc === 0 ? 0 : 1);
     if (acc >= target) {
-      return index;
+      overlapped = index;
+      break;
     }
   }
-  return previous.turnEnd;
+  if (packedEnd(overlapped, lines, maxChars) <= packed.turnEnd) {
+    return packed.turnEnd + 1;
+  }
+  return overlapped;
 }
 
 function splitOversizedTurn(
@@ -50,9 +55,8 @@ function splitOversizedTurn(
   overlapRatio: number,
 ): FactWindow[] {
   const prefix = turnPrefix(turn);
-  const labeled = prefix.length < maxChars;
-  const head = labeled ? prefix : '';
-  const body = labeled ? turn.text : prefix + turn.text;
+  const head = prefix.length < maxChars ? prefix : '';
+  const body = head.length > 0 ? turn.text : prefix + turn.text;
   const budget = maxChars - head.length;
   const stride = Math.max(1, budget - Math.floor(budget * overlapRatio));
   const windows: FactWindow[] = [];
@@ -74,9 +78,6 @@ export function packWindows(
   maxChars = WINDOW_MAX_CHARS,
   overlapRatio = WINDOW_OVERLAP_RATIO,
 ): FactWindow[] {
-  if (turns.length === 0) {
-    return [];
-  }
   const lines = turns.map(renderTurn);
   const windows: FactWindow[] = [];
   let start = 0;
@@ -86,16 +87,14 @@ export function packWindows(
       start += 1;
       continue;
     }
-    const packed = packFrom(start, lines, maxChars);
+    const end = packedEnd(start, lines, maxChars);
+    const packed = {
+      turnStart: start,
+      turnEnd: end,
+      text: lines.slice(start, end + 1).join('\n'),
+    };
     windows.push(packed);
-    if (packed.turnEnd + 1 >= turns.length) {
-      break;
-    }
-    let next = nextStart(packed, lines, overlapRatio);
-    if (next <= packed.turnStart || packedEnd(next, lines, maxChars) <= packed.turnEnd) {
-      next = packed.turnEnd + 1;
-    }
-    start = next;
+    start = nextWindowStart(packed, lines, maxChars, overlapRatio);
   }
   return windows;
 }

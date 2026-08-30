@@ -3,19 +3,13 @@ export async function mapPool<T, R>(
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
-  if (items.length === 0) {
-    return [];
-  }
   const results: R[] = Array.from({ length: items.length });
   let next = 0;
   let failure: unknown;
   async function worker(): Promise<void> {
-    while (failure === undefined) {
+    while (failure === undefined && next < items.length) {
       const index = next;
       next += 1;
-      if (index >= items.length) {
-        return;
-      }
       try {
         results[index] = await fn(items[index], index);
       } catch (error) {
@@ -24,8 +18,9 @@ export async function mapPool<T, R>(
       }
     }
   }
-  const workerCount = Math.min(Math.max(concurrency, 1), items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(concurrency, 1), items.length) }, () => worker()),
+  );
   if (failure !== undefined) {
     throw failure;
   }
