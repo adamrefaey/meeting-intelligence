@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { inTransaction, insertRows, insertRowsReturning } from '../db/batch.ts';
 import { toVectorBlob } from '../db/client.ts';
 import { extractFacts, type ExtractedFacts } from '../extract/facts.ts';
-import { EmbeddingDimensionError } from '../llm/embed.ts';
+import { assertEmbeddings } from '../llm/embed.ts';
 import type { Llm, LlmConfig } from '../llm/types.ts';
 import { chunkTurns, type Chunk } from '../transcript/chunk.ts';
 import { parseTranscript, type Turn } from '../transcript/parse.ts';
@@ -171,14 +171,7 @@ export async function ingestTranscript(
       chunks.map((chunk) => chunk.text),
       signal,
     );
-    if (vectors.length !== chunks.length) {
-      throw new Error(`Expected ${chunks.length} embeddings, got ${vectors.length}`);
-    }
-    for (const vector of vectors) {
-      if (vector.length !== config.embeddingDimensions) {
-        throw new EmbeddingDimensionError(vector.length, config.embeddingDimensions);
-      }
-    }
+    assertEmbeddings(vectors, chunks.length, config.embeddingDimensions);
     signal?.throwIfAborted();
     const facts = await factsPromise;
     signal?.throwIfAborted();

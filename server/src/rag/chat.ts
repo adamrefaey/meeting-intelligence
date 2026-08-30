@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { AppConfig } from '../config.ts';
 import { inTransaction, insertRows } from '../db/batch.ts';
 import { toVectorBlob } from '../db/client.ts';
-import { EmbeddingDimensionError } from '../llm/embed.ts';
+import { assertEmbeddings } from '../llm/embed.ts';
 import type { ChatMessage, Llm } from '../llm/types.ts';
 import { renderTurns, type Turn } from '../transcript/parse.ts';
 import { buildChatMessages, type PromptActionItem, type PromptFact } from './prompt.ts';
@@ -84,17 +84,6 @@ function loadChunkTexts(db: DatabaseSync, meetingId: number): ChunkText[] {
   return rows.map((row) => ({ id: Number(row.id), text: row.text }));
 }
 
-function assertVectors(vectors: number[][], expectedCount: number, dimensions: number): void {
-  if (vectors.length !== expectedCount) {
-    throw new Error(`Expected ${expectedCount} embeddings, got ${vectors.length}`);
-  }
-  for (const vector of vectors) {
-    if (vector.length !== dimensions) {
-      throw new EmbeddingDimensionError(vector.length, dimensions);
-    }
-  }
-}
-
 function replaceEmbeddings(
   db: DatabaseSync,
   config: Pick<AppConfig, 'embeddingModel' | 'embeddingDimensions'>,
@@ -129,7 +118,7 @@ export async function reindexMeeting(
     chunks.map((chunk) => chunk.text),
     signal,
   );
-  assertVectors(vectors, chunks.length, config.embeddingDimensions);
+  assertEmbeddings(vectors, chunks.length, config.embeddingDimensions);
   signal?.throwIfAborted();
   replaceEmbeddings(db, config, meetingId, chunks, vectors);
 }

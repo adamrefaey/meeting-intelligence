@@ -10,20 +10,34 @@ export class EmbeddingDimensionError extends Error {
   }
 }
 
-function l2Normalize(vector: number[]): number[] {
+export function assertEmbeddings(
+  vectors: number[][],
+  expectedCount: number,
+  dimensions: number,
+): void {
+  if (vectors.length !== expectedCount) {
+    throw new Error(`Expected ${expectedCount} embeddings, got ${vectors.length}`);
+  }
+  for (const vector of vectors) {
+    if (vector.length !== dimensions) {
+      throw new EmbeddingDimensionError(vector.length, dimensions);
+    }
+  }
+}
+
+function l2NormalizeInPlace(vector: number[]): void {
   let sumSq = 0;
   for (const n of vector) {
     sumSq += n * n;
   }
   const magnitude = Math.sqrt(sumSq);
   if (magnitude === 0) {
-    return vector;
+    return;
   }
   const scale = 1 / magnitude;
   for (let i = 0; i < vector.length; i++) {
     vector[i] *= scale;
   }
-  return vector;
 }
 
 async function embedSlice(
@@ -41,21 +55,15 @@ async function embedSlice(
         ? { dimensions: config.embeddingDimensions }
         : {}),
     },
-    signal ? { signal } : {},
+    { signal },
   );
 
-  const ordered = response.data.sort((a, b) => a.index - b.index);
-  if (ordered.length !== texts.length) {
-    throw new Error(`Expected ${texts.length} embeddings, got ${ordered.length}`);
+  const vectors = response.data.sort((a, b) => a.index - b.index).map((row) => row.embedding);
+  assertEmbeddings(vectors, texts.length, config.embeddingDimensions);
+  for (const vector of vectors) {
+    l2NormalizeInPlace(vector);
   }
-
-  return ordered.map((row) => {
-    const vector = l2Normalize(row.embedding);
-    if (vector.length !== config.embeddingDimensions) {
-      throw new EmbeddingDimensionError(vector.length, config.embeddingDimensions);
-    }
-    return vector;
-  });
+  return vectors;
 }
 
 export async function embed(
