@@ -5,50 +5,14 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.ts';
+import { useTestEnv } from './helpers.ts';
 
-const ENV_KEYS = [
-  'OPENAI_API_KEY',
-  'OPENAI_BASE_URL',
-  'CHAT_MODEL',
-  'EMBEDDING_MODEL',
-  'EMBEDDING_DIMENSIONS',
-  'DATABASE_PATH',
-  'FULL_CONTEXT_CHAR_THRESHOLD',
-  'RETRIEVE_K',
-  'FTS_K',
-  'CHAT_HISTORY_TURNS',
-  'PORT',
-  'HOST',
-  'WEB_ROOT',
-] as const;
+useTestEnv();
 
-const baseline = {
-  OPENAI_API_KEY: 'test-key',
-  OPENAI_BASE_URL: 'https://api.openai.com/v1',
-  CHAT_MODEL: 'gpt-5-mini',
-  EMBEDDING_MODEL: 'text-embedding-3-small',
-  EMBEDDING_DIMENSIONS: '1536',
-  DATABASE_PATH: ':memory:',
-  FULL_CONTEXT_CHAR_THRESHOLD: '24000',
-  RETRIEVE_K: '8',
-  FTS_K: '8',
-  CHAT_HISTORY_TURNS: '8',
-  PORT: '3000',
-  HOST: '127.0.0.1',
-} as const;
-
-const envSnapshot: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
 let webRoot: string | undefined;
 let app: FastifyInstance | undefined;
 
 beforeEach(() => {
-  for (const key of ENV_KEYS) {
-    envSnapshot[key] = process.env[key];
-  }
-  for (const [key, value] of Object.entries(baseline)) {
-    process.env[key] = value;
-  }
-  delete process.env.WEB_ROOT;
   webRoot = mkdtempSync(join(tmpdir(), 'web-dist-'));
   mkdirSync(join(webRoot, 'assets'));
   writeFileSync(join(webRoot, 'index.html'), '<!doctype html><title>spa</title>');
@@ -63,74 +27,49 @@ afterEach(async () => {
     rmSync(webRoot, { recursive: true, force: true });
     webRoot = undefined;
   }
-  for (const key of ENV_KEYS) {
-    const previous = envSnapshot[key];
-    if (previous === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = previous;
-    }
-  }
 });
 
-test('GET / serves the SPA index', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'GET', url: '/' });
-  assert.equal(res.statusCode, 200);
-  assert.match(res.headers['content-type'] ?? '', /text\/html/);
-  assert.match(res.body, /<title>spa<\/title>/);
-});
-
-test('GET client route serves the SPA index', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'GET', url: '/meetings/1' });
-  assert.equal(res.statusCode, 200);
-  assert.match(res.body, /<title>spa<\/title>/);
-});
-
-test('GET hashed asset is served from WEB_ROOT', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'GET', url: '/assets/app.js' });
-  assert.equal(res.statusCode, 200);
-  assert.equal(res.body, 'console.log(1)');
-  assert.match(res.headers['cache-control'] ?? '', /immutable/);
-});
-
-test('SPA index is not immutably cached', async () => {
-  app = await buildApp({ logger: false });
-  const root = await app.inject({ method: 'GET', url: '/' });
-  const index = await app.inject({ method: 'GET', url: '/index.html' });
-  for (const res of [root, index]) {
+test('SPA index is served for / and client routes, and is not immutably cached', async () => {
+  const instance = await buildApp({ logger: false });
+  app = instance;
+  for (const url of ['/', '/meetings/1', '/index.html']) {
+    const res = await instance.inject({ method: 'GET', url });
     assert.equal(res.statusCode, 200);
     assert.match(res.headers['content-type'] ?? '', /text\/html/);
+    assert.match(res.body, /<title>spa<\/title>/);
     assert.doesNotMatch(res.headers['cache-control'] ?? '', /immutable/);
   }
 });
 
-test('GET missing hashed asset is 404 not the SPA', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'GET', url: '/assets/missing.js' });
-  assert.equal(res.statusCode, 404);
-  assert.deepEqual(res.json(), { error: 'Not found' });
+test('hashed assets are served immutable; missing assets stay JSON 404', async () => {
+  const instance = await buildApp({ logger: false });
+  app = instance;
+  const asset = await instance.inject({ method: 'GET', url: '/assets/app.js' });
+  assert.equal(asset.statusCode, 200);
+  assert.equal(asset.body, 'console.log(1)');
+  assert.match(asset.headers['cache-control'] ?? '', /immutable/);
+
+  const missing = await instance.inject({ method: 'GET', url: '/assets/missing.js' });
+  assert.equal(missing.statusCode, 404);
+  assert.deepEqual(missing.json(), { error: 'Not found' });
 });
 
-test('GET unknown /api path stays JSON 404', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'GET', url: '/api/missing' });
-  assert.equal(res.statusCode, 404);
-  assert.deepEqual(res.json(), { error: 'Not found' });
-});
+test('unknown API and non-GET paths stay JSON 404', async () => {
+  const instance = await buildApp({ logger: false });
+  app = instance;
+  const api = await instance.inject({ method: 'GET', url: '/api/missing' });
+  assert.equal(api.statusCode, 404);
+  assert.deepEqual(api.json(), { error: 'Not found' });
 
-test('POST unknown path stays JSON 404', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({ method: 'POST', url: '/meetings/1' });
-  assert.equal(res.statusCode, 404);
-  assert.deepEqual(res.json(), { error: 'Not found' });
+  const post = await instance.inject({ method: 'POST', url: '/meetings/1' });
+  assert.equal(post.statusCode, 404);
+  assert.deepEqual(post.json(), { error: 'Not found' });
 });
 
 test('production SPA does not send the Vite CORS origin', async () => {
-  app = await buildApp({ logger: false });
-  const res = await app.inject({
+  const instance = await buildApp({ logger: false });
+  app = instance;
+  const res = await instance.inject({
     method: 'OPTIONS',
     url: '/api/health',
     headers: {

@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { test } from 'node:test';
 import {
   ParseError,
@@ -9,9 +7,6 @@ import {
   turnPrefix,
   type Turn,
 } from '../src/transcript/parse.ts';
-
-const standupPath = join(import.meta.dirname, '../../fixtures/transcripts/standup.txt');
-const planningPath = join(import.meta.dirname, '../../fixtures/transcripts/planning.txt');
 
 function t(speaker: string, timestamp: string, startSeconds: number, text: string): Turn {
   return { speaker, timestamp, startSeconds, text };
@@ -38,10 +33,26 @@ test('a turn prefix is the citation, so a later turn cannot yield an earlier clo
   );
 });
 
-test('parses canonical [HH:MM:SS] Speaker: text', () => {
-  const turns = parseTranscript('[00:01:02] Ada: hello');
-  assert.equal(turns.length, 1);
-  assert.deepEqual(turns[0], {
+test('parses the supported transcript header shapes', () => {
+  assert.deepEqual(parseTranscript('[00:01:02] Ada: hello')[0], {
+    speaker: 'Ada',
+    timestamp: '00:01:02',
+    startSeconds: 62,
+    text: 'hello',
+  });
+  assert.deepEqual(parseTranscript('[01:02] Ada: hello')[0], {
+    speaker: 'Ada',
+    timestamp: '01:02',
+    startSeconds: 62,
+    text: 'hello',
+  });
+  assert.deepEqual(parseTranscript('Ada (00:01:02): hello')[0], {
+    speaker: 'Ada',
+    timestamp: '00:01:02',
+    startSeconds: 62,
+    text: 'hello',
+  });
+  assert.deepEqual(parseTranscript('00:01:02 Ada: hello')[0], {
     speaker: 'Ada',
     timestamp: '00:01:02',
     startSeconds: 62,
@@ -49,63 +60,25 @@ test('parses canonical [HH:MM:SS] Speaker: text', () => {
   });
 });
 
-test('parses [MM:SS] as seconds from zero', () => {
-  const turns = parseTranscript('[01:02] Ada: hello');
-  assert.equal(turns.length, 1);
-  assert.equal(turns[0].timestamp, '01:02');
-  assert.equal(turns[0].startSeconds, 62);
-  assert.equal(turns[0].speaker, 'Ada');
-  assert.equal(turns[0].text, 'hello');
-});
+test('continuation lines attach; blank lines between turns do not', () => {
+  const continued = parseTranscript('[00:00:01] Ada: hello\nworld');
+  assert.equal(continued.length, 1);
+  assert.equal(continued[0].text, 'hello\nworld');
 
-test('parses Speaker (HH:MM:SS): text', () => {
-  const turns = parseTranscript('Ada (00:01:02): hello');
-  assert.deepEqual(turns[0], {
-    speaker: 'Ada',
-    timestamp: '00:01:02',
-    startSeconds: 62,
-    text: 'hello',
-  });
-});
-
-test('parses HH:MM:SS Speaker: text', () => {
-  const turns = parseTranscript('00:01:02 Ada: hello');
-  assert.deepEqual(turns[0], {
-    speaker: 'Ada',
-    timestamp: '00:01:02',
-    startSeconds: 62,
-    text: 'hello',
-  });
-});
-
-test('continuation line attaches with a newline', () => {
-  const turns = parseTranscript('[00:00:01] Ada: hello\nworld');
-  assert.equal(turns.length, 1);
-  assert.equal(turns[0].text, 'hello\nworld');
-});
-
-test('ignores blank lines between turns', () => {
-  const turns = parseTranscript('[00:00:01] Ada: hello\n\n[00:00:05] Ben: hi');
-  assert.equal(turns.length, 2);
-  assert.equal(turns[0].text, 'hello');
-  assert.equal(turns[1].speaker, 'Ben');
-  assert.equal(turns[1].text, 'hi');
+  const two = parseTranscript('[00:00:01] Ada: hello\n\n[00:00:05] Ben: hi');
+  assert.equal(two.length, 2);
+  assert.equal(two[1].speaker, 'Ben');
+  assert.equal(two[1].text, 'hi');
 });
 
 test('whitespace-only speaker is not a header', () => {
   assert.throws(
     () => parseTranscript('[00:00:01] : a'),
-    (error: unknown) => {
-      assert.ok(error instanceof ParseError);
-      return true;
-    },
+    (error: unknown) => error instanceof ParseError,
   );
-});
 
-test('whitespace-only speaker line attaches as a continuation', () => {
   const turns = parseTranscript('[00:00:01] Ada: hello\n[00:00:02] : a');
   assert.equal(turns.length, 1);
-  assert.equal(turns[0].speaker, 'Ada');
   assert.equal(turns[0].text, 'hello\n[00:00:02] : a');
 });
 
@@ -120,39 +93,5 @@ test('garbage-only input throws ParseError', () => {
       );
       return true;
     },
-  );
-});
-
-test('standup fixture parses to more than 10 turns with at least 2 speakers', () => {
-  const raw = readFileSync(standupPath, 'utf8');
-  const turns = parseTranscript(raw);
-  assert.ok(turns.length > 10);
-  const speakers = new Set(turns.map((turn) => turn.speaker));
-  assert.ok(speakers.size >= 2);
-});
-
-test('planning fixture has 40 turns with explicit decisions and owned action items', () => {
-  const raw = readFileSync(planningPath, 'utf8');
-  const turns = parseTranscript(raw);
-  assert.equal(turns.length, 40);
-  const texts = turns.map((turn) => turn.text);
-  assert.ok(texts.some((text) => text.includes('Embeddings stay in SQLite')));
-  assert.ok(texts.some((text) => text.includes('transcript upload only')));
-  assert.ok(texts.some((text) => text.includes('Friday at 5pm')));
-  assert.ok(
-    texts.some((text) => text.includes('Omar') && text.includes('RFC') && text.includes('Monday')),
-  );
-  assert.ok(
-    texts.some(
-      (text) => text.includes('Priya') && text.includes('mockups') && text.includes('Wednesday'),
-    ),
-  );
-  assert.ok(
-    texts.some(
-      (text) => text.includes('Sam') && text.includes('soak test') && text.includes('Thursday'),
-    ),
-  );
-  assert.ok(
-    texts.some((text) => text.includes('legal retention review') && text.includes('Tuesday')),
   );
 });

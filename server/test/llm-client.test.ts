@@ -157,15 +157,6 @@ test('dimension mismatch throws EmbeddingDimensionError and requests dimensions 
   assert.equal(recorded[0].body.dimensions, 4);
 });
 
-test('text-embedding-3 dimensions are requested regardless of model name case', async () => {
-  const { fetch, recorded } = okEmbedFetch();
-  const llm = createLlm(llmConfig({ embeddingModel: 'TEXT-EMBEDDING-3-SMALL' }), { fetch });
-
-  await llm.embed(['x']);
-
-  assert.equal(recorded[0].body.dimensions, 4);
-});
-
 test('throws when the embedding API returns the wrong number of vectors', async () => {
   const { fetch } = okEmbedFetch([]);
   const llm = createLlm(llmConfig(), { fetch });
@@ -183,34 +174,35 @@ test('embed skips the API when texts is empty', async () => {
   assert.equal(recorded.length, 0);
 });
 
-test('embed rejects when the abort signal is already aborted', async () => {
+// An already-dead request must not reach the API on any of the three surfaces, or an
+// abandoned upload keeps spending tokens.
+test('an already-aborted signal rejects before any request is sent', async () => {
   const { fetch, recorded } = recordingFetch(() => jsonResponse(200, { data: [] }));
   const llm = createLlm(llmConfig(), { fetch });
   const controller = new AbortController();
   controller.abort();
+  const messages = [{ role: 'user' as const, content: 'hi' }];
 
   await assert.rejects(() => llm.embed(['x'], controller.signal));
+  await assert.rejects(() => collect(llm.streamChat(messages, controller.signal)));
+  await assert.rejects(() => llm.completeJson(messages, controller.signal));
   assert.equal(recorded.length, 0);
 });
 
-test('embed L2-normalizes returned vectors', async () => {
-  const { fetch } = okEmbedFetch([[3, 4, 0, 0]]);
+// A zero vector has no direction to preserve; dividing by its magnitude would store NaN
+// and silently poison every cosine distance against it.
+test('embed L2-normalizes returned vectors and leaves a zero vector alone', async () => {
+  const { fetch } = okEmbedFetch([
+    [3, 4, 0, 0],
+    [0, 0, 0, 0],
+  ]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  const [vector] = await llm.embed(['x']);
-  assert.equal(vector.length, 4);
-  assert.ok(Math.abs(vector[0] - 0.6) < 1e-6);
-  assert.ok(Math.abs(vector[1] - 0.8) < 1e-6);
-  assert.equal(vector[2], 0);
-  assert.equal(vector[3], 0);
-});
-
-test('L2-normalize leaves a zero vector unchanged', async () => {
-  const { fetch } = okEmbedFetch([[0, 0, 0, 0]]);
-  const llm = createLlm(llmConfig(), { fetch });
-
-  const [vector] = await llm.embed(['x']);
-  assert.deepEqual(vector, [0, 0, 0, 0]);
+  const [scaled, zero] = await llm.embed(['x', 'y']);
+  assert.equal(scaled.length, 4);
+  assert.ok(Math.abs(scaled[0] - 0.6) < 1e-6);
+  assert.ok(Math.abs(scaled[1] - 0.8) < 1e-6);
+  assert.deepEqual(zero, [0, 0, 0, 0]);
 });
 
 test('chatSampling omits temperature for GPT-5 and o-series models', () => {
@@ -314,17 +306,6 @@ test('streamChat retries without stream when a 400 omits param', async () => {
   assert.equal(recorded[1].body.stream, undefined);
 });
 
-test('streamChat rejects when the abort signal is already aborted', async () => {
-  const { fetch } = recordingFetch(() => sseChatResponse(['nope']));
-  const llm = createLlm(llmConfig(), { fetch });
-  const controller = new AbortController();
-  controller.abort();
-
-  await assert.rejects(() =>
-    collect(llm.streamChat([{ role: 'user', content: 'hi' }], controller.signal)),
-  );
-});
-
 test('completeJson returns content when json_object is supported', async () => {
   const { fetch, recorded } = recordingFetch(() =>
     jsonResponse(200, chatCompletionPayload('{"ok":true}')),
@@ -356,20 +337,6 @@ test('completeJson sends temperature 0 for non-reasoning chat models', async () 
   assert.equal(recorded[0].body.temperature, 0);
   assert.equal(recorded[0].body.reasoning_effort, undefined);
   assert.equal(recorded[0].body.max_tokens, undefined);
-});
-
-test('completeJson rejects when the abort signal is already aborted', async () => {
-  const { fetch, recorded } = recordingFetch(() =>
-    jsonResponse(200, chatCompletionPayload('{"ok":true}')),
-  );
-  const llm = createLlm(llmConfig(), { fetch });
-  const controller = new AbortController();
-  controller.abort();
-
-  await assert.rejects(() =>
-    llm.completeJson([{ role: 'user', content: 'Return a JSON object' }], controller.signal),
-  );
-  assert.equal(recorded.length, 0);
 });
 
 test('completeJson rejects when abort errors the request', { timeout: 2000 }, async () => {

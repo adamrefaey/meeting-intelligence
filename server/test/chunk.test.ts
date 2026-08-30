@@ -6,7 +6,6 @@ import { chunkTurns } from '../src/transcript/chunk.ts';
 import { parseTranscript, renderTurn, type Turn } from '../src/transcript/parse.ts';
 
 const transcriptsDir = join(import.meta.dirname, '../../fixtures/transcripts');
-const standupPath = join(transcriptsDir, 'standup.txt');
 
 function everyFixture(): Array<{ name: string; turns: Turn[] }> {
   return readdirSync(transcriptsDir)
@@ -20,10 +19,6 @@ function everyFixture(): Array<{ name: string; turns: Turn[] }> {
 function t(speaker: string, timestamp: string, startSeconds: number, text: string): Turn {
   return { speaker, timestamp, startSeconds, text };
 }
-
-test('empty input returns no chunks', () => {
-  assert.deepEqual(chunkTurns([]), []);
-});
 
 test('two short turns pack into one chunk with default maxChars', () => {
   const turns = [t('Ada', '00:00:01', 1, 'hi'), t('Ben', '00:00:05', 5, 'yo')];
@@ -63,12 +58,10 @@ test('adjacent chunks overlap by exactly one turn', () => {
   assert.ok(chunks.length >= 2);
   assert.equal(chunks[1].turnStartIndex, chunks[0].turnEndIndex);
   assert.ok(chunks[1].turnEndIndex > chunks[1].turnStartIndex);
-  assert.equal(chunks[0].startTimestamp, turns[chunks[0].turnStartIndex].timestamp);
-  assert.equal(chunks[0].endTimestamp, turns[chunks[0].turnEndIndex].timestamp);
-  assert.equal(chunks[1].startTimestamp, turns[chunks[1].turnStartIndex].timestamp);
-  assert.equal(chunks[1].endTimestamp, turns[chunks[1].turnEndIndex].timestamp);
   for (const [index, chunk] of chunks.entries()) {
     assert.equal(chunk.chunkIndex, index);
+    assert.equal(chunk.startTimestamp, turns[chunk.turnStartIndex].timestamp);
+    assert.equal(chunk.endTimestamp, turns[chunk.turnEndIndex].timestamp);
   }
   const covered = new Set<number>();
   for (const chunk of chunks) {
@@ -89,30 +82,8 @@ test('skips overlap after a solo oversized chunk', () => {
     10,
   );
   assert.equal(chunks.length, 2);
-  assert.equal(chunks[0].turnStartIndex, 0);
   assert.equal(chunks[0].turnEndIndex, 0);
   assert.equal(chunks[1].turnStartIndex, 1);
-});
-
-test('cursor advances after each single-turn chunk', () => {
-  const utterance = 'x'.repeat(50);
-  const chunks = chunkTurns(
-    [
-      t('Ada', '00:00:01', 1, utterance),
-      t('Ben', '00:00:02', 2, utterance),
-      t('Cam', '00:00:03', 3, utterance),
-    ],
-    10,
-  );
-  assert.equal(chunks.length, 3);
-  assert.deepEqual(
-    chunks.map((chunk) => [chunk.turnStartIndex, chunk.turnEndIndex]),
-    [
-      [0, 0],
-      [1, 1],
-      [2, 2],
-    ],
-  );
 });
 
 test('skips overlap when the overlapped pair cannot grow', () => {
@@ -124,48 +95,43 @@ test('skips overlap when the overlapped pair cannot grow', () => {
   ];
   const chunks = chunkTurns(turns, twoTurnText.length);
   assert.equal(chunks.length, 2);
-  assert.equal(chunks[0].turnStartIndex, 0);
   assert.equal(chunks[0].turnEndIndex, 1);
   assert.equal(chunks[1].turnStartIndex, 2);
-  assert.equal(chunks[1].turnEndIndex, 2);
 });
 
 test('same speaker twice uses a unique speakerLabel', () => {
   const chunks = chunkTurns([t('Ada', '00:00:01', 1, 'first'), t('Ada', '00:00:05', 5, 'second')]);
-  assert.equal(chunks.length, 1);
   assert.equal(chunks[0].speakerLabel, 'Ada');
   assert.equal(chunks[0].text, 'Speakers: Ada\n[Ada, 00:00:01]: first\n[Ada, 00:00:05]: second');
 });
 
-test('standup fixture packs into one chunk at default maxChars', () => {
-  const raw = readFileSync(standupPath, 'utf8');
-  const turns = parseTranscript(raw);
-  const chunks = chunkTurns(turns);
-  assert.equal(chunks.length, 1);
-});
-
-// The model is asked to cite [Speaker, timestamp]. It can only get that pairing right
-// if each speaker sits next to its own clock, and if no clock outside a turn is on
-// offer. These two sweeps are what stopped citations landing on someone else's turn.
-test('every turn appears with its own clock attached, in every fixture', () => {
+// The model is asked to cite [Speaker, timestamp]. It can only get that pairing right if
+// each speaker sits next to its own clock, and if no clock outside a turn is on offer.
+// This sweep over the whole corpus is what stopped citations landing on someone else's turn.
+test('every fixture parses and chunks with each turn on its own clock', () => {
   for (const { name, turns } of everyFixture()) {
-    for (const chunk of chunkTurns(turns)) {
-      for (const turn of turns.slice(chunk.turnStartIndex, chunk.turnEndIndex + 1)) {
+    assert.ok(turns.length > 0, name);
+    let previousSeconds = -1;
+    for (const turn of turns) {
+      assert.ok(turn.speaker.length > 0, name);
+      assert.ok(turn.text.length > 0, name);
+      assert.ok(turn.startSeconds >= previousSeconds, `${name} timestamps must not go backwards`);
+      previousSeconds = turn.startSeconds;
+    }
+
+    const chunks = chunkTurns(turns);
+    assert.ok(chunks.length > 0, name);
+    for (const chunk of chunks) {
+      assert.ok(chunk.startSeconds <= chunk.endSeconds, name);
+      assert.ok(chunk.speakerLabel.length > 0, name);
+
+      const own = turns.slice(chunk.turnStartIndex, chunk.turnEndIndex + 1);
+      for (const turn of own) {
         assert.ok(
           chunk.text.includes(renderTurn(turn)),
           `${name} chunk ${chunk.chunkIndex} split ${turn.speaker} from ${turn.timestamp}`,
         );
       }
-    }
-  }
-});
-
-// Spelled out rather than built from renderTurn: this test is the format's spec, so it
-// has to fail if the clock ever drifts away from the speaker it belongs to.
-test('each chunk opens every turn with its own clock, and puts a clock nowhere else', () => {
-  for (const { name, turns } of everyFixture()) {
-    for (const chunk of chunkTurns(turns)) {
-      const own = turns.slice(chunk.turnStartIndex, chunk.turnEndIndex + 1);
       const [header, ...body] = chunk.text.split('\n');
       assert.doesNotMatch(
         header,

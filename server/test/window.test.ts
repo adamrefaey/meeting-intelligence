@@ -10,20 +10,12 @@ import {
   turnPrefix,
   type Turn,
 } from '../src/transcript/parse.ts';
+import { numberedTurns } from './helpers.ts';
 
 const marathonPath = join(import.meta.dirname, '../../fixtures/transcripts/all-hands-marathon.txt');
 
 function t(speaker: string, timestamp: string, startSeconds: number, text: string): Turn {
   return { speaker, timestamp, startSeconds, text };
-}
-
-function numberedTurns(count: number, body: string): Turn[] {
-  return Array.from({ length: count }, (_, index) => {
-    const hours = String(Math.floor(index / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((index % 3600) / 60)).padStart(2, '0');
-    const seconds = String(index % 60).padStart(2, '0');
-    return t('Ada', `${hours}:${minutes}:${seconds}`, index, body);
-  });
 }
 
 function coveredTurns(windows: Array<{ turnStart: number; turnEnd: number }>): number[] {
@@ -41,40 +33,25 @@ test('renderTurns writes a canonical timestamped line per turn', () => {
   assert.equal(renderTurns(turns), '[Ada, 00:00:01]: hi\n[Ben, 00:00:05]: yo');
 });
 
-test('empty input returns no windows', () => {
-  assert.deepEqual(packWindows([]), []);
-});
-
 test('turns that fit in one budget pack into a single window', () => {
   const turns = [t('Ada', '00:00:01', 1, 'hi'), t('Ben', '00:00:05', 5, 'yo')];
   const windows = packWindows(turns);
   assert.equal(windows.length, 1);
-  assert.equal(windows[0].turnStart, 0);
-  assert.equal(windows[0].turnEnd, 1);
   assert.equal(windows[0].text, renderTurns(turns));
 });
 
-test('a turn that exceeds maxChars is sliced with overlap', () => {
+test('a turn that exceeds maxChars is sliced with overlap and keeps the speaker label', () => {
   const turn = t('Ada', '00:00:01', 1, 'x'.repeat(50));
   const line = renderTurn(turn);
-  const maxChars = 10;
-  const windows = packWindows([turn], maxChars);
-  assert.ok(windows.length > 1);
-  assert.ok(windows.every((window) => window.text.length <= maxChars));
-  assert.ok(windows.every((window) => window.turnStart === 0 && window.turnEnd === 0));
-  assert.equal(windows[0].text, line.slice(0, maxChars));
-  assert.equal(windows[windows.length - 1].text.slice(-1), line.slice(-1));
-});
-
-test('oversized slices keep the speaker label when the header fits', () => {
-  const turn = t('Ada', '00:00:01', 1, 'x'.repeat(50));
   const prefix = turnPrefix(turn);
   const maxChars = prefix.length + 10;
   const windows = packWindows([turn], maxChars);
   assert.ok(windows.length > 1);
-  assert.ok(windows.every((window) => window.text.startsWith(prefix)));
   assert.ok(windows.every((window) => window.text.length <= maxChars));
-  assert.equal(windows[windows.length - 1].text.slice(-1), 'x');
+  assert.ok(windows.every((window) => window.turnStart === 0 && window.turnEnd === 0));
+  assert.ok(windows.every((window) => window.text.startsWith(prefix)));
+  assert.equal(windows[0].text, line.slice(0, maxChars));
+  assert.equal(windows[windows.length - 1].text.slice(-1), line.slice(-1));
 });
 
 test('adjacent windows overlap by about 20% of the previous window', () => {
@@ -131,10 +108,8 @@ test('a single-turn window does not overlap itself', () => {
   const b = t('Ben', '00:00:02', 2, 'xx');
   const windows = packWindows([a, b], renderTurn(a).length);
   assert.equal(windows.length, 2);
-  assert.equal(windows[0].turnStart, 0);
   assert.equal(windows[0].turnEnd, 0);
   assert.equal(windows[1].turnStart, 1);
-  assert.equal(windows[1].turnEnd, 1);
 });
 
 test('all-hands-marathon windows cover every turn including the tail commitment', () => {

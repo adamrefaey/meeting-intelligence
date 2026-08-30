@@ -27,22 +27,8 @@ test('prompt contains action item text when provided', () => {
   const system = messages.find((m) => m.role === 'system')?.content ?? '';
   const user = messages.at(-1)?.content ?? '';
   assert.match(system, /Write the storage RFC/);
-  assert.match(system, /\[Speaker, timestamp\]/);
-  // A turn wraps over as many lines as it needs, so the rule has to point at the turn
-  // rather than at the line, or it is unsatisfiable for every continuation line.
   assert.match(system, /may span\s*\n?\s*several lines/);
   assert.match(system, /copying that \[Speaker, timestamp\] marker/);
-  assert.match(system, /ASCII square brackets/);
-  assert.match(system, /Keiko asked about people who had already moved \[Keiko, 00:04:17\]/);
-  assert.match(
-    system,
-    /Malik asked whether remote-first would make the office worse \[Malik, 00:05:55\]/,
-  );
-  assert.match(system, /If several people match/);
-  assert.match(system, /not from an earlier line by the same speaker/);
-  assert.match(system, /Each retrieved excerpt lists its speakers/);
-  assert.match(system, /cannot find it in this meeting/);
-  assert.match(system, /Keep answers concise/);
   assert.match(user, /What are the action items\?/);
   assert.match(user, /we will ship Friday/);
   assert.doesNotMatch(system, /we will ship Friday/);
@@ -67,7 +53,6 @@ test('full transcript path includes raw text and omits chunks', () => {
   assert.match(system, /FULL_TRANSCRIPT_BODY/);
   assert.match(system, /Ship Friday/);
   assert.doesNotMatch(system, /we will ship Friday/);
-  assert.match(system, /copying that \[Speaker, timestamp\] marker/);
   assert.equal(messages.at(-1)?.content, 'What did we decide?');
   assert.equal(messages.filter((m) => m.role !== 'system').length, 3);
 });

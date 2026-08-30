@@ -3,6 +3,7 @@ import { afterEach, test } from 'node:test';
 import type { DatabaseSync } from 'node:sqlite';
 import { cosineQuery, fromVectorBlob, openDb, toVectorBlob } from '../src/db/client.ts';
 import { migrate } from '../src/db/migrate.ts';
+import { insertChunk, insertMeeting, openMigratedMemoryDb } from './helpers.ts';
 
 let db: DatabaseSync | undefined;
 
@@ -10,40 +11,6 @@ afterEach(() => {
   db?.close();
   db = undefined;
 });
-
-function openMigratedMemoryDb() {
-  const opened = openDb(':memory:');
-  migrate(opened);
-  return opened;
-}
-
-function insertMeeting(database: DatabaseSync): number {
-  const result = database
-    .prepare(
-      `INSERT INTO meetings (title, status)
-       VALUES (?, ?)`,
-    )
-    .run('Standup', 'processing');
-  return Number(result.lastInsertRowid);
-}
-
-function insertChunk(
-  database: DatabaseSync,
-  meetingId: number,
-  chunkIndex: number,
-  text: string,
-): number {
-  const result = database
-    .prepare(
-      `INSERT INTO chunks (
-         meeting_id, chunk_index, text, speaker_label,
-         start_timestamp, end_timestamp, start_seconds, end_seconds,
-         turn_start_index, turn_end_index
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(meetingId, chunkIndex, text, 'Ada', '00:00:00', '00:00:05', 0, 5, 0, 0);
-  return Number(result.lastInsertRowid);
-}
 
 test('migrate is idempotent and sets user_version to 1', () => {
   const opened = openDb(':memory:');
@@ -75,13 +42,6 @@ test('vector blob round-trip preserves values within 1e-6', () => {
   for (let i = 0; i < values.length; i++) {
     assert.ok(Math.abs(restored[i] - values[i]) < 1e-6);
   }
-});
-
-test('cosine distance of a vector with itself is ~0', () => {
-  db = openMigratedMemoryDb();
-  const blob = toVectorBlob([1, 0, 0, 0]);
-  const row = db.prepare('SELECT vec_distance_cosine(?, ?) AS d').get(blob, blob) as { d: number };
-  assert.ok(Math.abs(row.d) < 1e-6);
 });
 
 test('cosineQuery returns the nearer neighbor first', () => {

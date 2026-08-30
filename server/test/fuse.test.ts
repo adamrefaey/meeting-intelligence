@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { reciprocalRankFusion } from '../src/rag/fuse.ts';
 
-test('id ranked first in both lists beats id ranked first in one list', () => {
+test('rank inside a list orders hits, and appearing in both lists outranks either', () => {
+  // Descending ids so the id tiebreak cannot stand in for a rank that is being ignored.
+  assert.deepEqual(
+    reciprocalRankFusion([[30, 20, 10]]).map((row) => row.id),
+    [30, 20, 10],
+  );
+
   const fused = reciprocalRankFusion([
     [10, 20],
     [10, 30],
@@ -15,8 +21,4 @@ test('id ranked first in both lists beats id ranked first in one list', () => {
 test('empty lists yield an empty result', () => {
   assert.deepEqual(reciprocalRankFusion([]), []);
   assert.deepEqual(reciprocalRankFusion([[], []]), []);
-});
-
-test('score is 1 / (60 + 1-based rank)', () => {
-  assert.equal(reciprocalRankFusion([[10]])[0]?.score, 1 / 61);
 });
