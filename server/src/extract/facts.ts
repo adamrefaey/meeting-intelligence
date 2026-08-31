@@ -78,20 +78,21 @@ function emptyFacts(): ExtractedFacts {
   return { decisions: [], actionItems: [] };
 }
 
+function tryJsonParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Strip ```json fences, then retry after dropping a trailing comma models often emit. */
 function parseModelJson(raw: string): unknown {
   const trimmed = raw.trim();
   const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
   const text = fenced ? fenced[1].trim() : trimmed;
-  try {
-    return JSON.parse(text);
-  } catch {
-    try {
-      return JSON.parse(text.replace(/,(\s*[}\]])$/, '$1'));
-    } catch {
-      return undefined;
-    }
-  }
+  const parsed = tryJsonParse(text);
+  return parsed !== undefined ? parsed : tryJsonParse(text.replace(/,(\s*[}\]])$/, '$1'));
 }
 
 /** Keep schema-valid items; invalid rows and a non-array must not fail the window. */
@@ -155,6 +156,13 @@ function isClosingHygiene(text: string): boolean {
   );
 }
 
+function dropClosingHygiene(facts: ExtractedFacts): ExtractedFacts {
+  return {
+    decisions: facts.decisions.filter((item) => !isClosingHygiene(item.text)),
+    actionItems: facts.actionItems.filter((item) => !isClosingHygiene(item.text)),
+  };
+}
+
 function factKey(item: { text: string }): string {
   return item.text.toLowerCase().replace(/\s+/g, ' ');
 }
@@ -191,6 +199,17 @@ function flattenWindows(group: readonly WindowExtract[]): ExtractedFacts {
   });
 }
 
+function uniqueFuzzyHit<T>(key: string, known: readonly { key: string; item: T }[]): T | undefined {
+  if (key.length < MIN_FUZZY_KEY) {
+    return undefined;
+  }
+  const hits = known.filter(
+    (entry) =>
+      entry.key.length >= MIN_FUZZY_KEY && (key.includes(entry.key) || entry.key.includes(key)),
+  );
+  return hits.length === 1 ? hits[0].item : undefined;
+}
+
 /**
  * Reconcile may only keep items that already exist — and returns those originals,
  * not the model's rephrase. Exact text first; otherwise a unique substring match
@@ -200,9 +219,9 @@ function keepKnown<T extends { text: string }>(
   parsed: T[],
   known: T[],
 ): { kept: T[]; unmatched: number } {
+  const keyed = known.map((item) => ({ key: factKey(item), item }));
   const byKey = new Map<string, T>();
-  for (const item of known) {
-    const key = factKey(item);
+  for (const { key, item } of keyed) {
     if (!byKey.has(key)) {
       byKey.set(key, item);
     }
@@ -211,24 +230,12 @@ function keepKnown<T extends { text: string }>(
   let unmatched = 0;
   for (const item of parsed) {
     const key = factKey(item);
-    const exact = byKey.get(key);
-    if (exact !== undefined) {
-      kept.push(exact);
-      continue;
+    const match = byKey.get(key) ?? uniqueFuzzyHit(key, keyed);
+    if (match !== undefined) {
+      kept.push(match);
+    } else {
+      unmatched += 1;
     }
-    if (key.length >= MIN_FUZZY_KEY) {
-      const hits = known.filter((entry) => {
-        const knownKey = factKey(entry);
-        return (
-          knownKey.length >= MIN_FUZZY_KEY && (key.includes(knownKey) || knownKey.includes(key))
-        );
-      });
-      if (hits.length === 1) {
-        kept.push(hits[0]);
-        continue;
-      }
-    }
-    unmatched += 1;
   }
   return { kept, unmatched };
 }
@@ -317,10 +324,7 @@ async function extractWindow(
       );
       return {
         summary: extract.summary,
-        facts: dedupeFacts({
-          decisions: extract.facts.decisions.filter((item) => !isClosingHygiene(item.text)),
-          actionItems: extract.facts.actionItems.filter((item) => !isClosingHygiene(item.text)),
-        }),
+        facts: dedupeFacts(dropClosingHygiene(extract.facts)),
       };
     },
     { summary: '', facts: emptyFacts() },

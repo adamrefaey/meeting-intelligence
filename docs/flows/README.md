@@ -38,15 +38,15 @@ Each page starts with one high-level diagram, then one diagram per process. Unde
 
 Env knobs that change these flows. Defaults match [`.env.example`](../../.env.example) and [`server/src/config.ts`](../../server/src/config.ts). `OPENAI_API_KEY` is required and has no default.
 
-| Name                          | Default                  | Used for                                                                  |
-| ----------------------------- | ------------------------ | ------------------------------------------------------------------------- |
-| `CHAT_MODEL`                  | `gpt-5.6-luna`           | fact extraction JSON and answer streaming                                 |
-| `EMBEDDING_MODEL`             | `text-embedding-3-small` | chunk and query vectors                                                   |
-| `EMBEDDING_DIMENSIONS`        | `1536`                   | vector width                                                              |
-| `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                  | full transcript when `char_count` is **strictly below** this              |
-| `FTS_K`                       | `8`                      | `LIMIT` on the lexical and vector lists                                   |
-| `RETRIEVE_K`                  | `8`                      | max fused hits passed to the prompt                                       |
-| `CHAT_HISTORY_TURNS`          | `8`                      | history **message rows** loaded per answer (user and assistant mixed)     |
+| Name                          | Default                  | Used for                                                              |
+| ----------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| `CHAT_MODEL`                  | `gpt-5.6-luna`           | fact extraction JSON and answer streaming                             |
+| `EMBEDDING_MODEL`             | `text-embedding-3-small` | chunk and query vectors                                               |
+| `EMBEDDING_DIMENSIONS`        | `1536`                   | vector width                                                          |
+| `FULL_CONTEXT_CHAR_THRESHOLD` | `24000`                  | full transcript when `char_count` is **strictly below** this          |
+| `FTS_K`                       | `8`                      | `LIMIT` on the lexical and vector lists                               |
+| `RETRIEVE_K`                  | `8`                      | max fused hits passed to the prompt                                   |
+| `CHAT_HISTORY_TURNS`          | `8`                      | history **message rows** loaded per answer (user and assistant mixed) |
 
 Code (not env):
 
@@ -60,7 +60,7 @@ Code (not env):
 | `DEFAULT_RRF_K`            | `60`              | [`server/src/rag/fuse.ts`](../../server/src/rag/fuse.ts)                 |
 | `INSERT_BATCH_SIZE`        | `100`             | [`server/src/db/batch.ts`](../../server/src/db/batch.ts)                 |
 | `EMBED_BATCH_SIZE`         | `128`             | [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts)               |
-| Multipart `fileSize`       | `5 * 1024 * 1024` | [`server/src/app.ts`](../../server/src/app.ts) (`files: 1`)               |
-| `POST /api/meetings` limit | `6 * 1024 * 1024` | [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.ts)    |
+| Multipart `fileSize`       | `5 * 1024 * 1024` | [`server/src/app.ts`](../../server/src/app.ts) (`files: 1`)              |
+| `POST /api/meetings` limit | `6 * 1024 * 1024` | [`server/src/routes/meetings.ts`](../../server/src/routes/meetings.ts)   |
 
 The extra 1 MiB on the POST body limit is multipart wrapping, not a larger transcript.

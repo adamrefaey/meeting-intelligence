@@ -47,10 +47,10 @@ npm run dev
 
 That installs the `server` and `web` workspaces, then starts both processes. Config is read at process start — restart after changing `.env`.
 
-| Process     | URL                                            | Role                                      |
-| ----------- | ---------------------------------------------- | ----------------------------------------- |
-| Vite UI     | [http://localhost:5173](http://localhost:5173) | React app. Browser origin.                |
-| Fastify API | `http://127.0.0.1:3000`                        | Ingest, SQLite, chat. Bound to loopback.  |
+| Process     | URL                                            | Role                                     |
+| ----------- | ---------------------------------------------- | ---------------------------------------- |
+| Vite UI     | [http://localhost:5173](http://localhost:5173) | React app. Browser origin.               |
+| Fastify API | `http://127.0.0.1:3000`                        | Ingest, SQLite, chat. Bound to loopback. |
 
 Open **http://localhost:5173**. Vite proxies `/api` to port **3000** (hardcoded in `web/vite.config.ts`).
 
@@ -172,10 +172,10 @@ docker run --rm -p 3000:3000 --env-file .env -v meeting-data:/app/data meeting-i
 
 ## Data
 
-| Path                                    | What                                                                                                                                     |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Path                                    | What                                                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_PATH` (default `data/app.db`) | SQLite + `sqlite-vec`. Meetings, turns, chunks, embeddings, extracted facts, and chat messages. The API creates the directory on start. |
-| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                 |
+| `.env`                                  | `OPENAI_API_KEY` and optional overrides.                                                                                                |
 
 With `npm run dev`, the API cwd is `server/`, so the default file is `server/data/app.db`. In Docker, Compose mounts it at `/app/data/app.db` on a named volume.
 
