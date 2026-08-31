@@ -62,6 +62,7 @@ function loadRenderedTranscript(db: DatabaseSync, meetingId: number): string {
   return renderTurns(turns);
 }
 
+/** Stored embeddings were written with a different model or dimensions than this process. */
 function needsReindex(meeting: MeetingRow, config: ChatConfig): boolean {
   return (
     meeting.embedding_model !== config.embeddingModel ||
@@ -83,6 +84,7 @@ function loadActionItems(db: DatabaseSync, meetingId: number): PromptActionItem[
     .all(meetingId) as PromptActionItem[];
 }
 
+/** Newest `limit` rows, then reverse to oldest-first. */
 function loadHistory(db: DatabaseSync, meetingId: number, limit: number): ChatMessage[] {
   if (limit <= 0) {
     return [];
@@ -98,6 +100,10 @@ function loadHistory(db: DatabaseSync, meetingId: number, limit: number): ChatMe
   return rows.reverse();
 }
 
+/**
+ * Short meetings skip retrieve and send the full transcript. Reindex only on the
+ * retrieve path, before embedding the question.
+ */
 export async function answerQuestion(
   db: DatabaseSync,
   llm: Llm,

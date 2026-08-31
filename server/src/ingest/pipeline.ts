@@ -45,6 +45,7 @@ function insertChunks(db: DatabaseSync, meetingId: number, chunks: Chunk[]): num
   return ids;
 }
 
+/** Persist turns and chunks with status `processing` before the slow embed+extract work. */
 function storeTranscript(
   db: DatabaseSync,
   config: IngestConfig,
@@ -80,6 +81,10 @@ function storeTranscript(
   });
 }
 
+/**
+ * Embeddings, extracted facts, and `ready` in one transaction so `ready` never
+ * lands without embeddings and facts.
+ */
 function storeReady(
   db: DatabaseSync,
   meetingId: number,
@@ -128,6 +133,7 @@ function storeReady(
   });
 }
 
+/** Best-effort cleanup on ingest failure. ON DELETE CASCADE clears child rows. */
 export function discardMeeting(db: DatabaseSync, meetingId: number): void {
   try {
     db.prepare('DELETE FROM meetings WHERE id = ?').run(meetingId);
@@ -136,6 +142,11 @@ export function discardMeeting(db: DatabaseSync, meetingId: number): void {
   }
 }
 
+/**
+ * Parse and chunk, then embed in parallel with fact extract. Embed failure aborts
+ * extract and discards the meeting; a non-abort extract failure yields empty facts
+ * so ingest can still finish as `ready`.
+ */
 export async function ingestTranscript(
   db: DatabaseSync,
   llm: Llm,

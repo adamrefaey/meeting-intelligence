@@ -37,6 +37,7 @@ const optionalLabel = z
     return cleaned === '' ? null : cleaned;
   });
 
+/** Spoken deadline only: empty or a bare clock becomes null. */
 const optionalDue = optionalLabel.transform((value) => {
   if (value == null) {
     return null;
@@ -77,6 +78,7 @@ function emptyFacts(): ExtractedFacts {
   return { decisions: [], actionItems: [] };
 }
 
+/** Strip ```json fences, then retry after dropping a trailing comma models often emit. */
 function parseModelJson(raw: string): unknown {
   const trimmed = raw.trim();
   const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
@@ -92,6 +94,7 @@ function parseModelJson(raw: string): unknown {
   }
 }
 
+/** Keep schema-valid items; invalid rows and a non-array must not fail the window. */
 function keepValid<T>(schema: z.ZodType<T>, value: unknown): T[] {
   if (!Array.isArray(value)) {
     return [];
@@ -110,6 +113,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/** Accept facts at the top level or nested under `result` / `data`. */
 function factsRecord(candidate: unknown): Record<string, unknown> | undefined {
   if (!isRecord(candidate)) {
     return undefined;
@@ -122,6 +126,7 @@ function factsRecord(candidate: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
+/** Summary may sit on the facts object or the outer object; nested wins if both exist. */
 function parseWindowExtract(raw: string): WindowExtract {
   const parsed = parseModelJson(raw);
   const record = factsRecord(parsed);
@@ -139,6 +144,7 @@ function parseWindowExtract(raw: string): WindowExtract {
   };
 }
 
+/** Recap/thanks wrap-up that models still emit as decisions or action items. */
 function isClosingHygiene(text: string): boolean {
   const normalized = text.trim().toLowerCase();
   return (
@@ -166,6 +172,7 @@ function exactDedupe<T extends { text: string }>(
   return [...byKey.values()];
 }
 
+/** Later duplicate action items: a non-null incoming owner or due wins over the kept row. */
 function dedupeFacts(facts: ExtractedFacts): ExtractedFacts {
   return {
     decisions: exactDedupe(facts.decisions),
@@ -184,6 +191,11 @@ function flattenWindows(group: readonly WindowExtract[]): ExtractedFacts {
   });
 }
 
+/**
+ * Reconcile may only keep items that already exist — and returns those originals,
+ * not the model's rephrase. Exact text first; otherwise a unique substring match
+ * if both keys are at least MIN_FUZZY_KEY characters.
+ */
 function keepKnown<T extends { text: string }>(
   parsed: T[],
   known: T[],
@@ -221,6 +233,7 @@ function keepKnown<T extends { text: string }>(
   return { kept, unmatched };
 }
 
+/** Abort still throws so ingest can discard the meeting. Any other error becomes `fallback`. */
 async function unlessAborted<T>(work: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await work();
@@ -232,6 +245,7 @@ async function unlessAborted<T>(work: () => Promise<T>, fallback: T): Promise<T>
   }
 }
 
+/** Split groups before adding an extract that would push JSON past MERGE_MAX_CHARS. */
 function packExtractGroups(extracts: WindowExtract[]): WindowExtract[][] {
   const groups: WindowExtract[][] = [];
   let current: WindowExtract[] = [];
@@ -313,6 +327,10 @@ async function extractWindow(
   );
 }
 
+/**
+ * Drop the reduce result if it kept nothing or unmatched count exceeds kept count —
+ * the flattened windows are the safer meeting record.
+ */
 async function reconcileOrFallback(
   llm: Llm,
   group: WindowExtract[],
@@ -345,6 +363,10 @@ async function reconcileOrFallback(
   }, fallback);
 }
 
+/**
+ * Map-reduce over window extracts. A second overflow flattens instead of
+ * looping, so a huge meeting cannot livelock on merge.
+ */
 async function reduceWindowExtracts(
   llm: Llm,
   extracts: WindowExtract[],
@@ -360,13 +382,16 @@ async function reduceWindowExtracts(
     return { summary: '', facts };
   });
   const secondPack = packExtractGroups(collapsed);
-  // A second overflow flattens instead of looping.
   if (secondPack.length === 1) {
     return reconcileOrFallback(llm, secondPack[0], signal);
   }
   return flattenWindows(collapsed);
 }
 
+/**
+ * Per-window extract, then a reduce pass unless there is one window or at most
+ * one fact (nothing to merge or reverse).
+ */
 export async function extractFacts(
   llm: Llm,
   turns: Turn[],

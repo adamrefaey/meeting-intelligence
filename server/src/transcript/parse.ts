@@ -43,6 +43,7 @@ function toStartSeconds(clock: string): number {
   return clock.split(':').reduce((total, part) => total * 60 + Number(part), 0);
 }
 
+/** Bracket clock, then speaker (clock), then bare H:MM:SS. First match wins. */
 function matchHeader(
   line: string,
 ): { speaker: string; timestamp: string; text: string } | undefined {
@@ -59,6 +60,10 @@ function matchHeader(
   return undefined;
 }
 
+/**
+ * Strip BOM. Later non-header lines append to the current turn; lines before
+ * the first header are ignored. Zero turns throws ParseError.
+ */
 export function parseTranscript(text: string): Turn[] {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
   const turns: Turn[] = [];

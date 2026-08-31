@@ -25,6 +25,10 @@ export function assertEmbeddings(
   }
 }
 
+/**
+ * Unit-length embeddings. Leave a zero vector alone — dividing by its
+ * magnitude would write NaN and poison every later distance.
+ */
 function l2NormalizeInPlace(vector: number[]): void {
   let sumSq = 0;
   for (const n of vector) {
@@ -40,6 +44,10 @@ function l2NormalizeInPlace(vector: number[]): void {
   }
 }
 
+/**
+ * `dimensions` is only valid on text-embedding-3. Sort by API `index` — the batch
+ * may come back out of order.
+ */
 async function embedSlice(
   client: OpenAI,
   config: LlmConfig,
@@ -66,6 +74,7 @@ async function embedSlice(
   return vectors;
 }
 
+/** Batch so a long transcript is several API calls, not one huge request. */
 export async function embed(
   client: OpenAI,
   config: LlmConfig,

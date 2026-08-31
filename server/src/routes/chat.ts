@@ -65,6 +65,7 @@ function persistMessage(
   );
 }
 
+/** Best-effort: a persist failure must not throw out of the SSE generator. */
 function persistAnswer(
   db: DatabaseSync,
   meetingId: number,
@@ -82,6 +83,10 @@ function writeSse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+/**
+ * Persist a partial answer if generation fails after tokens. Abort ends the
+ * stream with no `error` or `done` event.
+ */
 async function* sseChunks(
   db: DatabaseSync,
   meetingId: number,
@@ -117,6 +122,10 @@ async function* sseChunks(
   yield writeSse('done', {});
 }
 
+/**
+ * History is loaded inside answerQuestion, before this INSERT, so the question
+ * is not in its own history. The user row is stored before SSE starts.
+ */
 async function postChat(deps: ChatRouteDeps, request: FastifyRequest, reply: FastifyReply) {
   const id = requireMeetingId(request, reply);
   if (id === undefined) {

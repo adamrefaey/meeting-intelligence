@@ -32,6 +32,7 @@ function roster(speakers: readonly string[], body: string): string {
   return `Speakers: ${speakers.join(', ')}\n${body}`;
 }
 
+/** Greedy consecutive turns; roster length is part of the char budget. */
 function packChunkFrom(
   start: number,
   turns: Turn[],
@@ -62,6 +63,11 @@ function packChunkFrom(
   };
 }
 
+/**
+ * Retrieval chunks. Restart on the previous chunk's last turn when that still
+ * grows; packAll skips overlap after a solo oversized turn or when the pair
+ * cannot grow. Unlike extract windows this is not a char-ratio overlap.
+ */
 export function chunkTurns(turns: Turn[], maxChars = DEFAULT_MAX_CHARS): Chunk[] {
   const lines = turns.map(renderTurn);
   return packAll(

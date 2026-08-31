@@ -17,6 +17,7 @@ export type RetrievedChunk = {
 
 const HAS_LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
 
+/** Strip embedded quotes, then quote letter/digit tokens and OR them so punctuation is not FTS syntax. */
 export function toFtsMatchQuery(query: string): string | undefined {
   const tokens = query
     .replaceAll('"', ' ')
@@ -28,6 +29,7 @@ export function toFtsMatchQuery(query: string): string | undefined {
   return tokens.map((token) => `"${token}"`).join(' OR ');
 }
 
+/** FTS errors become no lexical hits so vector-only retrieve still works. */
 function lexicalIds(db: DatabaseSync, meetingId: number, query: string, ftsK: number): number[] {
   const match = toFtsMatchQuery(query);
   if (match === undefined) {
@@ -51,6 +53,7 @@ function lexicalIds(db: DatabaseSync, meetingId: number, query: string, ftsK: nu
   }
 }
 
+/** Reassemble rows in fused-rank order; `IN (...)` does not preserve it. */
 function loadChunks(db: DatabaseSync, meetingId: number, ids: number[]): RetrievedChunk[] {
   if (ids.length === 0) {
     return [];
@@ -83,6 +86,7 @@ function loadChunks(db: DatabaseSync, meetingId: number, ids: number[]): Retriev
   return results;
 }
 
+/** Abort still throws. Any other error is an empty list so FTS-only still works. */
 async function vectorIds(
   db: DatabaseSync,
   llm: Llm,
@@ -105,6 +109,7 @@ async function vectorIds(
   }
 }
 
+/** Embed the query while FTS runs, fuse both FTS_K lists, then keep RETRIEVE_K. */
 export async function retrieveForMeeting(
   db: DatabaseSync,
   llm: Llm,

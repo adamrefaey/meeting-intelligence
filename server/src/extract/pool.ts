@@ -1,3 +1,8 @@
+/**
+ * Run `fn` over `items` with at most `concurrency` in flight. Results stay in
+ * input order. A rejection stops taking new items; after in-flight work
+ * settles, the error is rethrown.
+ */
 export async function mapPool<T, R>(
   items: readonly T[],
   concurrency: number,

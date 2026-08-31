@@ -1,9 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
 
+/** Stay under SQLite's bound-variable cap without one statement per row. */
 export const INSERT_BATCH_SIZE = 100;
 
 export type SqlValue = null | number | string | Uint8Array;
 
+/**
+ * BEGIN IMMEDIATE so two writers cannot race after a deferred BEGIN. The
+ * callback must be sync: node:sqlite cannot hold this transaction across await.
+ */
 export function inTransaction<T>(db: DatabaseSync, fn: () => T): T {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -35,6 +40,10 @@ export function insertRows(
   }
 }
 
+/**
+ * Same batching as insertRows. Do not trust RETURNING order within a batch —
+ * callers reindex by a value they inserted.
+ */
 export function insertRowsReturning(
   db: DatabaseSync,
   insertInto: string,

@@ -58,6 +58,10 @@ function section(title: string, lines: string[]): string {
   return `## ${title}\n${body}`;
 }
 
+/**
+ * Full transcript lives on the system message. Retrieved excerpts go on the user
+ * message so they sit next to the question instead of being buried in history.
+ */
 export function buildChatMessages(input: BuildChatMessagesInput): ChatMessage[] {
   const systemParts = [
     SYSTEM_RULES,

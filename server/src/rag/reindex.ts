@@ -5,6 +5,9 @@ import { toVectorBlob } from '../db/client.ts';
 import { assertEmbeddings } from '../llm/embed.ts';
 import type { Llm } from '../llm/types.ts';
 
+/**
+ * Replace this meeting's chunk_embeddings. Chunks themselves are not rebuilt.
+ */
 export async function reindexMeeting(
   db: DatabaseSync,
   llm: Llm,

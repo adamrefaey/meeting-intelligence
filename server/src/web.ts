@@ -7,11 +7,16 @@ export function resolveWebRoot(): string {
   return resolve(process.env.WEB_ROOT || 'web/dist');
 }
 
+/** Dist with index.html, or undefined so buildApp enables Vite CORS instead of static. */
 export function webDistRoot(): string | undefined {
   const root = resolveWebRoot();
   return existsSync(join(root, 'index.html')) ? root : undefined;
 }
 
+/**
+ * Static files are cached as immutable. Unknown GET/HEAD paths get the SPA
+ * shell except `/api` and paths under `/assets/`, which 404 as JSON.
+ */
 export async function registerWeb(app: FastifyInstance, root: string): Promise<void> {
   await app.register(fastifyStatic, {
     root,
@@ -30,7 +35,7 @@ export async function registerWeb(app: FastifyInstance, root: string): Promise<v
     if (path === '/api' || path.startsWith('/api/') || path.startsWith('/assets/')) {
       return reply.code(404).send({ error: 'Not found' });
     }
-    // The index must revalidate every load; the hashed assets above are immutable.
+    // The index must revalidate every load; static files above are immutable.
     return reply.sendFile('index.html', { maxAge: 0, immutable: false });
   });
 }

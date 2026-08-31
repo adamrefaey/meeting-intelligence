@@ -8,6 +8,11 @@ export type CosineHit = {
   distance: number;
 };
 
+/**
+ * Load sqlite-vec, then disable further extensions. WAL so HTTP readers are not
+ * blocked by ingest writes; foreign_keys is required for ON DELETE CASCADE.
+ * File paths get their parent directory created; `:memory:` does not.
+ */
 export function openDb(path: string): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
@@ -20,16 +25,22 @@ export function openDb(path: string): DatabaseSync {
   return db;
 }
 
+/** sqlite-vec stores each embedding as a Float32 BLOB. */
 export function toVectorBlob(values: number[]): Uint8Array {
   const floats = Float32Array.from(values);
   return new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength);
 }
 
+/**
+ * Copy into a packed buffer first. `new Float32Array(blob.buffer)` would start
+ * at byte 0 of a larger allocation if the driver returned a view.
+ */
 export function fromVectorBlob(blob: Uint8Array): Float32Array {
   const copy = new Uint8Array(blob);
   return new Float32Array(copy.buffer);
 }
 
+/** Nearest neighbors by cosine *distance* (lower is closer), scoped to one meeting. */
 export function cosineQuery(
   db: DatabaseSync,
   meetingId: number,

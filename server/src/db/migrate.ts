@@ -8,6 +8,10 @@ const SCHEMA_SQL = readFileSync(
   'utf8',
 );
 
+/**
+ * Apply schema.sql when `user_version` is 0, then set it to 1. Any non-zero
+ * version is a no-op — there are no incremental steps.
+ */
 export function migrate(db: DatabaseSync): void {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   if ((row?.user_version ?? 0) !== 0) {

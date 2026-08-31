@@ -14,6 +14,10 @@ import { registerWeb, webDistRoot } from './web.ts';
 
 const FIVE_MIB = 5 * 1024 * 1024;
 
+/**
+ * Tests inject db/llm. CORS is only for Vite when the SPA dist has no
+ * index.html. Multipart is scoped to meeting routes so chat JSON is untouched.
+ */
 export async function buildApp(options?: {
   logger?: boolean;
   db?: DatabaseSync;

@@ -10,6 +10,7 @@ export type FactWindow = {
   text: string;
 };
 
+/** Always includes `lines[start]`, even if that line is already over budget. */
 function packWindowFrom(start: number, lines: string[], maxChars: number): FactWindow {
   let end = start;
   let length = lines[start].length;
@@ -24,6 +25,12 @@ function packWindowFrom(start: number, lines: string[], maxChars: number): FactW
   return { turnStart: start, turnEnd: end, text: lines.slice(start, end + 1).join('\n') };
 }
 
+/**
+ * Walk back from the previous window's end until ~`overlapRatio` of its text is
+ * reused, never including its first turn. If that suffix is too small
+ * (including a single-turn window), start at `previous.turnEnd` and let packAll
+ * skip it when the restart would not advance.
+ */
 function overlapStart(previous: FactWindow, lines: string[], overlapRatio: number): number {
   const target = previous.text.length * overlapRatio;
   let acc = 0;
@@ -36,6 +43,10 @@ function overlapStart(previous: FactWindow, lines: string[], overlapRatio: numbe
   return previous.turnEnd;
 }
 
+/**
+ * One turn already over budget: keep the speaker/clock prefix on every slice
+ * when it fits, and stride the body with the same overlap ratio.
+ */
 function sliceOversized(
   turn: Turn,
   turnIndex: number,
@@ -61,6 +72,10 @@ function sliceOversized(
   return windows;
 }
 
+/**
+ * Overlapping windows for the extract LLM. Turn-aligned except when a single
+ * turn exceeds `maxChars`, in which case that turn is sliced.
+ */
 export function packWindows(
   turns: Turn[],
   maxChars = WINDOW_MAX_CHARS,

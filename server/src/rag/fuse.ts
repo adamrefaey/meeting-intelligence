@@ -5,6 +5,7 @@ type FusedHit = {
 
 const DEFAULT_RRF_K = 60;
 
+/** RRF: 1/(k+rank) summed across lists. Tie-break by id so the fused order is stable. */
 export function reciprocalRankFusion(rankLists: number[][]): FusedHit[] {
   const scores = new Map<number, number>();
   for (const list of rankLists) {

@@ -13,10 +13,15 @@ function shouldRetryWithoutStream(error: unknown): boolean {
 
 const REASONING_MODEL = /^(gpt-5|o1|o3|o4)/i;
 
+/** Reasoning models reject `temperature`; others set the given value. */
 export function chatSampling(model: string, temperature: number): { temperature?: number } {
   return REASONING_MODEL.test(model) ? {} : { temperature };
 }
 
+/**
+ * Per-model `reasoning_effort` so json_object extract is accepted.
+ * gpt-5-pro stays high; chat-named gpt-5 omits the field.
+ */
 export function jsonReasoningEffort(model: string): {
   reasoning_effort?: 'none' | 'minimal' | 'low' | 'high';
 } {
@@ -59,6 +64,10 @@ export async function completeJson(
   return res.choices[0]?.message?.content ?? '';
 }
 
+/**
+ * Stream tokens. If a 400 has `param: 'stream'` or omits `param`, yield the
+ * one-shot completion instead.
+ */
 export async function* streamChat(
   client: OpenAI,
   model: string,

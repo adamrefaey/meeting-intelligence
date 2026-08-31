@@ -151,6 +151,7 @@ function validateUploadMeta(filename: string, mimetype: string): string | undefi
   return undefined;
 }
 
+/** The `file` field; other file parts are drained so the parser does not stall. */
 async function readUpload(request: FastifyRequest): Promise<UploadParts> {
   const result: UploadParts = {};
   for await (const part of request.parts()) {
@@ -186,6 +187,10 @@ function mapUploadReadError(error: unknown): { status: number; error: string } {
   return { status: 400, error: 'invalid upload' };
 }
 
+/**
+ * Ingest is bound to disconnect. If the client is gone after ingest would have
+ * returned 201, discard the meeting so a cancelled upload does not stay listed.
+ */
 async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, reply: FastifyReply) {
   let upload: UploadParts;
   try {
@@ -234,6 +239,7 @@ async function createMeeting(deps: MeetingRouteDeps, request: FastifyRequest, re
 export function meetingsRoutes(deps: MeetingRouteDeps): FastifyPluginAsync {
   return async (app) => {
     app.get('/api/meetings', () => listMeetings(deps.db));
+    // 5 MiB file + multipart wrapping; the plugin still enforces files: 1 / fileSize.
     app.post('/api/meetings', { bodyLimit: 6 * 1024 * 1024 }, (request, reply) =>
       createMeeting(deps, request, reply),
     );
