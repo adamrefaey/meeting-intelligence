@@ -4,13 +4,14 @@ Upload a speaker-labeled transcript, then ask questions about **that** meetingâ€
 
 **Cancel** during ingest aborts the upload and deletes the in-progress meeting. **Stop** (or leaving the meeting) aborts an in-flight answer.
 
-Diagrams and the files that implement them: [docs/flows](docs/flows/README.md).
+Diagrams and the files that implement them: [docs/flows](docs/flows/README.md). What is sent to OpenAI, and the size knobs: [docs/llm](docs/llm.md).
 
 ## Contents
 
 - [Screenshots](#screenshots)
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
+- [LLM calls](docs/llm.md)
 - [Transcript format](#transcript-format)
 - [Configuration](#configuration)
 - [Docker](#docker)

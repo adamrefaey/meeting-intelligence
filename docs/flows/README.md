@@ -11,7 +11,9 @@ Chat and embeddings go through one OpenAI SDK client (`createLlm` in [`server/sr
 - [Ingestion](ingestion.md) — upload a transcript, parse, chunk, persist, then embed and extract facts in parallel.
 - [Retrieval](retrieval.md) — answer a question about one meeting: full transcript or hybrid retrieve, then prompt and stream.
 
-Each page starts with one high-level diagram, then one diagram per process. Under every diagram is the implementing file.
+Each of those pages starts with one high-level diagram, then one diagram per process. Under every diagram is the implementing file.
+
+What each OpenAI request contains, and the character / count limits: [LLM calls](../llm.md).
 
 ## Code map
 
@@ -57,6 +59,7 @@ Code (not env):
 | `WINDOW_OVERLAP_RATIO`     | `0.2`             | [`server/src/extract/window.ts`](../../server/src/extract/window.ts)     |
 | `EXTRACT_CONCURRENCY`      | `8`               | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
 | `MERGE_MAX_CHARS`          | `60_000`          | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
+| `SUMMARY_MAX_CHARS`        | `1_000`           | [`server/src/extract/facts.ts`](../../server/src/extract/facts.ts)       |
 | `DEFAULT_RRF_K`            | `60`              | [`server/src/rag/fuse.ts`](../../server/src/rag/fuse.ts)                 |
 | `INSERT_BATCH_SIZE`        | `100`             | [`server/src/db/batch.ts`](../../server/src/db/batch.ts)                 |
 | `EMBED_BATCH_SIZE`         | `128`             | [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts)               |
