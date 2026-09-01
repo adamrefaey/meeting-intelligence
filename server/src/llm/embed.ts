@@ -26,25 +26,6 @@ export function assertEmbeddings(
 }
 
 /**
- * Unit-length embeddings. Leave a zero vector alone — dividing by its
- * magnitude would write NaN and poison every later distance.
- */
-function l2NormalizeInPlace(vector: number[]): void {
-  let sumSq = 0;
-  for (const n of vector) {
-    sumSq += n * n;
-  }
-  const magnitude = Math.sqrt(sumSq);
-  if (magnitude === 0) {
-    return;
-  }
-  const scale = 1 / magnitude;
-  for (let i = 0; i < vector.length; i++) {
-    vector[i] *= scale;
-  }
-}
-
-/**
  * `dimensions` is only valid on text-embedding-3. Sort by API `index` — the batch
  * may come back out of order.
  */
@@ -68,9 +49,6 @@ async function embedSlice(
 
   const vectors = response.data.sort((a, b) => a.index - b.index).map((row) => row.embedding);
   assertEmbeddings(vectors, texts.length, config.embeddingDimensions);
-  for (const vector of vectors) {
-    l2NormalizeInPlace(vector);
-  }
   return vectors;
 }
 

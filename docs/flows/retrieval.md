@@ -64,7 +64,7 @@ flowchart TD
 The query embedding runs while the FTS query executes. Both lists use `LIMIT` `FTS_K` (default `8`); `RETRIEVE_K` trims the fused list. Only `id`, `meeting_id`, and `text` are read from those rows — retrieved chunks are not sent on the wire.
 
 - **Lexical:** take tokens that contain a letter or digit, quote each, join with `OR`, and rank by bm25 within this meeting. A question with no such tokens skips FTS (vector still runs). An FTS error returns an empty lexical list.
-- **Vector:** embed the query string unchanged (L2-normalize is inside `embed`), then nearest `chunk_embeddings` for this meeting (cosine distance, lowest first). A non-abort embed failure returns an empty vector list, so FTS-only still works.
+- **Vector:** embed the query string unchanged, then nearest `chunk_embeddings` for this meeting (cosine distance, lowest first). A non-abort embed failure returns an empty vector list, so FTS-only still works.
 
 ## Fusing
 

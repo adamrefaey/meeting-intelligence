@@ -125,7 +125,7 @@ flowchart TD
 [`server/src/llm/embed.ts`](../../server/src/llm/embed.ts) `embed`, then [`server/src/ingest/pipeline.ts`](../../server/src/ingest/pipeline.ts) `storeReady`
 
 - The embedded string is the stored chunk `text` (roster plus turns).
-- Slices of `EMBED_BATCH_SIZE` (`128`). `text-embedding-3*` also send `dimensions`. Vectors are L2-normalized, then stored as BLOBs in `chunk_embeddings`. `sqlite-vec` is loaded as an extension for `vec_distance_cosine` at query time; there is no `vec0` virtual table.
+- Slices of `EMBED_BATCH_SIZE` (`128`). `text-embedding-3*` also send `dimensions`. Vectors are stored as BLOBs in `chunk_embeddings`. `sqlite-vec` is loaded as an extension for `vec_distance_cosine` at query time; there is no `vec0` virtual table.
 
 ## Extracting
 

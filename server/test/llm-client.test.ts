@@ -189,20 +189,18 @@ test('an already-aborted signal rejects before any request is sent', async () =>
   assert.equal(recorded.length, 0);
 });
 
-// A zero vector has no direction to preserve; dividing by its magnitude would store NaN
-// and silently poison every cosine distance against it.
-test('embed L2-normalizes returned vectors and leaves a zero vector alone', async () => {
+// Cosine distance already divides out magnitude; do not rescale the API vectors.
+test('embed returns API vectors unchanged', async () => {
   const { fetch } = okEmbedFetch([
     [3, 4, 0, 0],
     [0, 0, 0, 0],
   ]);
   const llm = createLlm(llmConfig(), { fetch });
 
-  const [scaled, zero] = await llm.embed(['x', 'y']);
-  assert.equal(scaled.length, 4);
-  assert.ok(Math.abs(scaled[0] - 0.6) < 1e-6);
-  assert.ok(Math.abs(scaled[1] - 0.8) < 1e-6);
-  assert.deepEqual(zero, [0, 0, 0, 0]);
+  assert.deepEqual(await llm.embed(['x', 'y']), [
+    [3, 4, 0, 0],
+    [0, 0, 0, 0],
+  ]);
 });
 
 test('chatSampling omits temperature for GPT-5 and o-series models', () => {
